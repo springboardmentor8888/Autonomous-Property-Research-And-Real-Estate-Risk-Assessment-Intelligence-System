@@ -17,10 +17,11 @@ export default function PropertyDetails() {
         </div>
       </header>
 
-      {/* Property Details */}
+      {/* Main Content */}
       <section className="px-6 py-12">
         <div className="mx-auto max-w-5xl">
 
+          {/* Heading */}
           <p className="font-medium text-blue-600">
             PROPERTY DETAILS
           </p>
@@ -30,7 +31,7 @@ export default function PropertyDetails() {
           </h2>
 
           <p className="mt-2 text-gray-600">
-            📍 Chennai, Tamil Nadu
+            📍 123 Main Street, Chennai, Tamil Nadu
           </p>
 
           {/* Property Image */}
@@ -86,11 +87,13 @@ export default function PropertyDetails() {
             </h3>
 
             <div className="mt-5 space-y-4">
+
               <div className="flex justify-between border-b pb-3">
                 <span className="text-gray-500">
                   Address
                 </span>
-                <span className="font-medium">
+
+                <span className="font-medium text-right">
                   123 Main Street, Chennai
                 </span>
               </div>
@@ -99,6 +102,7 @@ export default function PropertyDetails() {
                 <span className="text-gray-500">
                   Property Type
                 </span>
+
                 <span className="font-medium">
                   Residential
                 </span>
@@ -108,20 +112,47 @@ export default function PropertyDetails() {
                 <span className="text-gray-500">
                   Current Value
                 </span>
+
                 <span className="font-bold text-blue-600">
                   ₹85 Lakhs
                 </span>
               </div>
 
-              <div className="flex justify-between">
+              <div className="flex justify-between border-b pb-3">
                 <span className="text-gray-500">
-                  Owner Status
+                  Ownership Status
                 </span>
+
                 <span className="font-medium text-green-600">
                   Information Available
                 </span>
               </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-500">
+                  Verification Status
+                </span>
+
+                <span className="font-medium text-green-600">
+                  Ready for Review
+                </span>
+              </div>
+
             </div>
+          </div>
+
+          {/* Description */}
+          <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
+            <h3 className="text-2xl font-bold">
+              Description
+            </h3>
+
+            <p className="mt-4 leading-7 text-gray-600">
+              Modern Family Villa is a residential property
+              located in Chennai, Tamil Nadu. The property
+              contains three bedrooms, two bathrooms and
+              approximately 1,800 square feet of area.
+            </p>
           </div>
 
           {/* Actions */}
@@ -134,7 +165,10 @@ export default function PropertyDetails() {
               View Property History
             </a>
 
-            <button className="flex-1 rounded-lg border border-blue-600 px-6 py-3 font-medium text-blue-600 hover:bg-blue-50">
+            <button
+              type="button"
+              className="flex-1 rounded-lg border border-blue-600 px-6 py-3 font-medium text-blue-600 hover:bg-blue-50"
+            >
               View Due Diligence
             </button>
 
