@@ -52,11 +52,11 @@ git commit -m "feat(entity): create Property and PropertyHistory JPA entities wi
 ```
 
 ### 🛠️ Key Work Done
-* **Created [Property.java](file:///c:/Users/Asus/Desktop/Infosys/real-estate-due-diligence-agent/src/main/java/com/realestate/backend/entity/Property.java):**
+* **Created `Property.java` (`src/main/java/com/realestate/backend/entity/Property.java`):**
   * Fields: `id`, `title`, `address`, `city`, `state`, `zipCode`, `country`, `price`, `bedrooms`, `bathrooms`, `squareFeet`, `propertyType`, `yearBuilt`, `description`, `status`, `createdAt`, `updatedAt`.
   * Multi-column indexes on `city`, `state`, `zip_code`, `property_type`, and `status`.
   * Lombok annotations: `@Data`, `@NoArgsConstructor`, `@AllArgsConstructor`.
-* **Created [PropertyHistory.java](file:///c:/Users/Asus/Desktop/Infosys/real-estate-due-diligence-agent/src/main/java/com/realestate/backend/entity/PropertyHistory.java):**
+* **Created `PropertyHistory.java` (`src/main/java/com/realestate/backend/entity/PropertyHistory.java`):**
   * `@ManyToOne` relationship with `Property`.
   * Tracks historical events: `LISTED`, `PRICE_CHANGED`, `STATUS_CHANGED`.
 
@@ -74,7 +74,7 @@ git commit -m "feat(repository): implement PropertyRepository with JPQL multi-fi
 ```
 
 ### 🛠️ Key Work Done
-* **Created [PropertyRepository.java](file:///c:/Users/Asus/Desktop/Infosys/real-estate-due-diligence-agent/src/main/java/com/realestate/backend/repository/PropertyRepository.java):**
+* **Created `PropertyRepository.java` (`src/main/java/com/realestate/backend/repository/PropertyRepository.java`):**
   * Custom JPQL query for dynamic search across:
     * Keyword query (matching `title`, `address`, or `city`)
     * City, State, Zip Code
@@ -82,7 +82,7 @@ git commit -m "feat(repository): implement PropertyRepository with JPQL multi-fi
     * Price Range (`minPrice` to `maxPrice`)
     * Minimum Bedrooms & Bathrooms
     * Status (`AVAILABLE`, `PENDING`, `SOLD`)
-* **Created [PropertyHistoryRepository.java](file:///c:/Users/Asus/Desktop/Infosys/real-estate-due-diligence-agent/src/main/java/com/realestate/backend/repository/PropertyHistoryRepository.java):**
+* **Created `PropertyHistoryRepository.java` (`src/main/java/com/realestate/backend/repository/PropertyHistoryRepository.java`):**
   * `findByPropertyId(Long propertyId, Sort sort)` to fetch chronological history.
 
 ---
@@ -155,7 +155,7 @@ git commit -m "feat(api): expose Property REST controllers, configure security, 
 ```
 
 ### 🛠️ Key Work Done
-* **Created [PropertyController.java](file:///c:/Users/Asus/Desktop/Infosys/real-estate-due-diligence-agent/src/main/java/com/realestate/backend/controller/PropertyController.java):**
+* **Created `PropertyController.java` (`src/main/java/com/realestate/backend/controller/PropertyController.java`):**
   * `POST   /api/properties` - Create Property
   * `GET    /api/properties` - Get All Properties
   * `GET    /api/properties/{id}` - Get Property by ID
@@ -164,7 +164,7 @@ git commit -m "feat(api): expose Property REST controllers, configure security, 
   * `GET    /api/properties/search` - Multi-filter Property Search
   * `GET    /api/properties/{id}/history` - Get Property Price & Event History
   * `POST   /api/properties/{id}/history` - Add Manual History Event
-* **Configured [SecurityConfig.java](file:///c:/Users/Asus/Desktop/Infosys/real-estate-due-diligence-agent/src/main/java/com/realestate/backend/config/SecurityConfig.java):**
+* **Configured `SecurityConfig.java` (`src/main/java/com/realestate/backend/config/SecurityConfig.java`):**
   * Permitted public access for `/api/properties/**` and `/api/address/**`.
   * Disabled CSRF for REST stateless communication.
   * Configured CORS (`*`).
