@@ -1,3 +1,6 @@
+# real-estate-due-diligence-agent
+Java-based Real Estate Due Diligence Agent for automating property document analysis, risk identification, and due diligence reporting.
+
 # Member 4: Backend & External Data Integration — Daily Tasks & Git Documentation
 **Project:** Java-based Real Estate Due Diligence Agent  
 **Branch:** `member4-backend-external-data`  
