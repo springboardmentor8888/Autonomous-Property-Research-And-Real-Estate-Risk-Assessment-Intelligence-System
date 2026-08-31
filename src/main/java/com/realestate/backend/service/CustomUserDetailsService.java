@@ -2,6 +2,7 @@ package com.realestate.backend.service;
 
 import com.realestate.backend.entity.User;
 import com.realestate.backend.repository.UserRepository;
+
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -22,7 +23,9 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found"));
+                        new UsernameNotFoundException(
+                                "User not found: " + email
+                        ));
 
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
