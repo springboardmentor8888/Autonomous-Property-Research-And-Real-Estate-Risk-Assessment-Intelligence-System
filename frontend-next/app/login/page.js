@@ -3,23 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-
-const BASE_URL = '/api'
-
-async function post(endpoint, body) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-  })
-  const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(data?.message || data?.error || `Request failed (${res.status})`)
-  return data
-}
+import { post } from '../utils/api'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -35,12 +19,16 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
     if (!form.email.trim()) return setError('Work email is required.')
     if (!form.password) return setError('Password is required.')
+
     setLoading(true)
     try {
       const data = await post('/auth/login', form)
-      localStorage.setItem('token', data.token)
+      if (data?.token) {
+        localStorage.setItem('token', data.token)
+      }
       router.push('/dashboard')
     } catch (err) {
       setError(err.message || 'Invalid enterprise credentials. Please check your details.')

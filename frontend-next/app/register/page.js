@@ -3,23 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-
-const BASE_URL = '/api'
-
-async function post(endpoint, body) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-  })
-  const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(data?.message || data?.error || `Request failed (${res.status})`)
-  return data
-}
+import { post } from '../utils/api'
 
 const ROLES = [
   { value: 'BUYER',                label: 'Buyer',                  description: 'Access property pre-screenings, title risk summaries, and buyer due-diligence reports.', admin: false },
@@ -46,12 +30,20 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(''); setSuccess('')
+
     if (!form.fullName.trim()) return setError('Full Name is required.')
     if (!form.email.trim()) return setError('Work Email is required.')
     if (form.password.length < 8) return setError('Password must be at least 8 characters.')
+
     setLoading(true)
     try {
-      await post('/auth/register', form)
+      const data = await post('/auth/register', form)
+      if (data?.token) {
+        localStorage.setItem('token', data.token)
+        router.push('/')
+        return
+      }
+
       setSuccess('Enterprise account created! Redirecting...')
       setTimeout(() => router.push('/login'), 1500)
     } catch (err) {

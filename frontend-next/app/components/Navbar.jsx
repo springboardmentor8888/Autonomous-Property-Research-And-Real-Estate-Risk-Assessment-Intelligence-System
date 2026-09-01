@@ -144,6 +144,23 @@ export default function Navbar() {
 
           {/* Right controls */}
           <div className="flex items-center gap-3 ml-auto">
+            <div className="hidden lg:flex items-center gap-2">
+              <Link
+                href="/login"
+                id="nav-login"
+                className="inline-flex items-center px-3.5 py-1.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] rounded-md transition-all whitespace-nowrap"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                id="nav-register"
+                className="inline-flex items-center px-3.5 py-1.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] rounded-md transition-all whitespace-nowrap"
+              >
+                Register
+              </Link>
+            </div>
+
             {/* Language selector */}
             <button
               id="lang-btn"
@@ -221,6 +238,14 @@ export default function Navbar() {
               </Link>
             )
           )}
+          <div className="mt-3 border-t border-white/10 pt-4 flex flex-col gap-2">
+            <Link href="/login" className="block px-4 py-3 text-[15px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all" onClick={() => setDrawerOpen(false)}>
+              Login
+            </Link>
+            <Link href="/register" className="block px-4 py-3 text-[15px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all" onClick={() => setDrawerOpen(false)}>
+              Register
+            </Link>
+          </div>
         </nav>
       </aside>
 

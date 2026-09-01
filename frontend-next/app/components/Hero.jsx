@@ -60,7 +60,7 @@ export default function Hero() {
             Search a Property
           </Link>
           <Link
-            href="#about"
+            href="/login"
             id="cta-learn"
             className="inline-flex items-center justify-center px-8 py-3.5 text-sm font-medium
                        rounded-lg text-white bg-white/10 border border-white/20 backdrop-blur-sm
