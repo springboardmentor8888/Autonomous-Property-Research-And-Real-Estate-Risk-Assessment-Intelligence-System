@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 const NAV_ITEMS = [
-  { label: 'We Are', href: '#about' },
+  { label: 'We Are', href: '/we-are' },
   {
     label: 'Solutions',
     dropdown: [
-      { label: 'Property Search',    href: '#property-search' },
+      { label: 'Property Search',    href: '/property-search' },
       { label: 'Due Diligence',      href: '#due-diligence'   },
       { label: 'Risk Assessment',    href: '#risk-assessment' },
       { label: 'Report Generation',  href: '#reports'         },
@@ -73,7 +73,7 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link
-            href="#"
+            href="/"
             id="logo-link"
             className="flex items-center gap-2.5 flex-shrink-0 hover:opacity-80 transition-opacity"
           >

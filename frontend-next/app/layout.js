@@ -1,5 +1,6 @@
 import './globals.css'
 import Navbar from './components/Navbar'
+import HashRedirect from './components/HashRedirect'
 
 export const metadata = {
   title: 'PropDue — Autonomous Property Risk Intelligence',
@@ -10,6 +11,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="antialiased">
+        <HashRedirect />
         <Navbar />
         {children}
       </body>

@@ -50,7 +50,7 @@ export default function Hero() {
           className="flex gap-4 flex-wrap opacity-0 animate-fade-up-4 max-md:justify-center"
         >
           <Link
-            href="#property-search"
+            href="/property-search"
             id="cta-search"
             className="inline-flex items-center justify-center px-8 py-3.5 text-sm font-medium
                        rounded-lg text-white bg-accent border border-accent tracking-wide
@@ -60,7 +60,7 @@ export default function Hero() {
             Search a Property
           </Link>
           <Link
-            href="#about"
+            href="/we-are"
             id="cta-learn"
             className="inline-flex items-center justify-center px-8 py-3.5 text-sm font-medium
                        rounded-lg text-white bg-white/10 border border-white/20 backdrop-blur-sm
