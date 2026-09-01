@@ -20,7 +20,7 @@ This architecture promotes separation of concerns, maintainability, and scalabil
 ## 3. Presentation Layer
 
 This layer handles the user interface and user interactions.
-# Components
+*Components*
 Login Page
 Registration Page
 Dashboard
@@ -28,7 +28,7 @@ Property Search Page
 Property Details Page
 Report Viewing Page
 
-# Technologies
+*Technologies*
 ReactJS
 Next.js
 Tailwind CSS
@@ -38,43 +38,43 @@ Tailwind CSS
 This layer handles the main application logic,
 validation, and processing.
 
-# Modules
+*Modules*
 
-Authentication Module
+*Authentication Module*
 User Login
 User Registration
 JWT Authentication
 Role-Based Access Control
 
-# Property Search Module
+*Property Search Module*
 Property Search
 Address Validation
 Property History Retrieval
 
-# Due Diligence Module
+*Due Diligence Module*
 Ownership Verification
 Property Tax Analysis
 Permit Record Analysis
 Flood Zone Verification
 Zoning Information Retrieval
 
-# Risk Assessment Module
+*Risk Assessment Module*
 Legal Risk Analysis
 Tax Due Analysis
 Flood Risk Evaluation
 Permit Compliance Verification
 
-# Report Generation Module
+*Report Generation Module*
 Risk Score Calculation
 PDF Report Generation
 Excel Report Generation
 
-# Notification Module
+*Notification Module*
 Report Ready Notifications
 Property Update Alerts
 Email Notifications
 
-# Audit Module
+*Audit Module*
 User Activity Logging
 API Monitoring
 Report History Tracking
