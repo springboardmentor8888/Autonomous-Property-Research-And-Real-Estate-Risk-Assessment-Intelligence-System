@@ -1,127 +1,431 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+<!--
+    Maven configuration file for the Real Estate Due Diligence project.
+
+    This file tells Maven:
+    1. Which Spring Boot version the project uses
+    2. Which Java version is required
+    3. Which libraries/dependencies are needed
+    4. How the project should be built
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<!-- POM model version used by Maven -->
 	<modelVersion>4.0.0</modelVersion>
+
+
+	<!--
+        Spring Boot Parent
+
+        The parent provides:
+        - Default Maven configuration
+        - Compatible dependency versions
+        - Plugin management
+        - Common Spring Boot settings
+
+        We don't need to specify versions for most Spring Boot dependencies
+        because the parent manages compatible versions for us.
+    -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.1.1</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath />
 	</parent>
+
+
+	<!--
+        Project identification
+    -->
 	<groupId>com.realestate</groupId>
 	<artifactId>duediligence</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+
+	<name>duediligence</name>
+	<description>Real Estate Due Diligence Agent</description>
+
+
+	<!--
+        Java version used to compile the project.
+
+        The project is configured for Java 21.
+    -->
 	<properties>
 		<java.version>21</java.version>
 	</properties>
+
+
+	<!--
+        DEPENDENCIES
+
+        Dependencies are external libraries/frameworks required
+        by our application.
+    -->
 	<dependencies>
+
+
+		<!--
+            =========================================================
+            SPRING DATA JPA
+            =========================================================
+
+            Used for database interaction using JPA/Hibernate.
+
+            It allows us to work with Java Entity classes instead of
+            writing SQL for every database operation.
+        -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+
+
+		<!--
+            =========================================================
+            SPRING SECURITY
+            =========================================================
+
+            Used for application security.
+
+            It will help us implement:
+            - Authentication
+            - Authorization
+            - Password security
+            - Securing REST APIs
+        -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
+
+
+		<!--
+            =========================================================
+            SPRING VALIDATION
+            =========================================================
+
+            Used for validating incoming request data.
+
+            Examples:
+            - @NotNull
+            - @NotBlank
+            - @Email
+            - @Size
+        -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+
+
+		<!--
+            =========================================================
+            SPRING MVC / WEB
+            =========================================================
+
+            Used to create REST APIs and web endpoints.
+
+            Provides:
+            - @RestController
+            - @RequestMapping
+            - @GetMapping
+            - @PostMapping
+            - Request/Response handling
+            - Embedded Tomcat server
+        -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 
+
+		<!--
+            =========================================================
+            POSTGRESQL DATABASE DRIVER
+            =========================================================
+
+            Allows our Spring Boot application to communicate
+            with a PostgreSQL database.
+
+            'runtime' means the driver is required when the
+            application runs, but application source code does
+            not directly compile against the driver.
+        -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+
+
+		<!--
+            =========================================================
+            LOMBOK
+            =========================================================
+
+            Lombok reduces boilerplate Java code.
+
+            Examples:
+            @Getter
+            @Setter
+            @NoArgsConstructor
+            @AllArgsConstructor
+            @Builder
+            @Data
+        -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+
+
+		<!--
+            =========================================================
+            JJWT - JWT API
+            =========================================================
+
+            JJWT = JSON Web Token for Java.
+
+            This dependency provides the main JWT API used by
+            our application to create and validate JWT tokens.
+
+            JWT will be used for authentication, for example:
+
+            User Login
+                 |
+                 v
+            Username + Password
+                 |
+                 v
+            Authentication
+                 |
+                 v
+            Generate JWT
+                 |
+                 v
+            Client stores JWT
+                 |
+                 v
+            Client sends JWT with requests
+                 |
+                 v
+            Server validates JWT
+        -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.12.6</version>
+		</dependency>
+
+
+		<!--
+            =========================================================
+            JJWT - IMPLEMENTATION
+            =========================================================
+
+            Contains the actual implementation of the JJWT API.
+
+            We use 'runtime' scope because our application needs
+            this implementation when it runs.
+
+            Our application code generally works with the
+            jjwt-api classes/interfaces.
+        -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.12.6</version>
+			<scope>runtime</scope>
+		</dependency>
+
+
+		<!--
+            =========================================================
+            JJWT - JACKSON
+            =========================================================
+
+            Provides Jackson-based JSON processing support for JJWT.
+
+            Jackson is commonly used in Spring Boot applications
+            for converting Java objects to/from JSON.
+
+            'runtime' scope means it is needed when the application
+            is running.
+        -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.12.6</version>
+			<scope>runtime</scope>
+		</dependency>
+
+
+		<!--
+            =========================================================
+            JPA TESTING
+            =========================================================
+
+            Testing support for Spring Data JPA.
+        -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+
+		<!--
+            =========================================================
+            SECURITY TESTING
+            =========================================================
+
+            Provides utilities for testing Spring Security
+            configuration and secured endpoints.
+        -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+
+		<!--
+            =========================================================
+            VALIDATION TESTING
+            =========================================================
+
+            Provides testing support for validation functionality.
+        -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+
+		<!--
+            =========================================================
+            WEB MVC TESTING
+            =========================================================
+
+            Provides testing support for Spring MVC controllers
+            and REST APIs.
+        -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
 	</dependencies>
 
+
+	<!--
+        =============================================================
+        BUILD CONFIGURATION
+        =============================================================
+
+        Plugins control how Maven builds, compiles and packages
+        our Spring Boot application.
+    -->
 	<build>
+
 		<plugins>
+
+
+			<!--
+                Spring Boot Maven Plugin
+
+                Used to:
+                - Run the Spring Boot application
+                - Package the application
+                - Create an executable JAR
+            -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+
+
+			<!--
+                Maven Compiler Plugin
+
+                Used to compile Java source code.
+
+                Annotation processing is configured here so that
+                Lombok annotations are processed during compilation.
+            -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+
 				<executions>
+
+					<!--
+                        Configuration for compiling main application code.
+                    -->
 					<execution>
 						<id>default-compile</id>
 						<phase>compile</phase>
+
 						<goals>
 							<goal>compile</goal>
 						</goals>
+
 						<configuration>
+
+							<!--
+                                Lombok annotation processor.
+
+                                This allows Maven to process annotations
+                                such as @Getter, @Setter and @Data.
+                            -->
 							<annotationProcessorPaths>
 								<path>
 									<groupId>org.projectlombok</groupId>
 									<artifactId>lombok</artifactId>
 								</path>
 							</annotationProcessorPaths>
+
 						</configuration>
 					</execution>
+
+
+					<!--
+                        Configuration for compiling test code.
+                    -->
 					<execution>
 						<id>default-testCompile</id>
 						<phase>test-compile</phase>
+
 						<goals>
 							<goal>testCompile</goal>
 						</goals>
+
 						<configuration>
+
+							<!--
+                                Lombok annotation processor for tests.
+                            -->
 							<annotationProcessorPaths>
 								<path>
 									<groupId>org.projectlombok</groupId>
 									<artifactId>lombok</artifactId>
 								</path>
 							</annotationProcessorPaths>
+
 						</configuration>
 					</execution>
+
 				</executions>
 			</plugin>
+
 		</plugins>
+
 	</build>
 
 </project>
