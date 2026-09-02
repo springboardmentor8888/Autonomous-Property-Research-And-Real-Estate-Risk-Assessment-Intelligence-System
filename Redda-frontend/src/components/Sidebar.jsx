@@ -15,7 +15,7 @@ function Sidebar() {
   const menuItems = [
     {
       name: "Dashboard",
-      path: "/",
+      path: "/dashboard",
       icon: LayoutDashboard,
     },
     {
@@ -48,16 +48,13 @@ function Sidebar() {
   return (
     <aside className="w-64 min-h-screen bg-slate-950 text-white flex flex-col border-r border-slate-800">
 
-      {/* ================= LOGO ================= */}
       <div className="px-5 pt-6 pb-5 border-b border-slate-800">
         <div className="flex items-center gap-3">
 
-          {/* Logo Icon */}
           <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center shadow-lg">
             <Sparkles size={21} />
           </div>
 
-          {/* Logo Text */}
           <div>
             <h1 className="text-xl font-bold tracking-wide">
               REDDA
@@ -71,7 +68,6 @@ function Sidebar() {
         </div>
       </div>
 
-      {/* ================= NAVIGATION ================= */}
       <div className="flex-1 px-4 py-6">
 
         <p className="px-3 mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -87,7 +83,6 @@ function Sidebar() {
               <NavLink
                 key={item.name}
                 to={item.path}
-                end={item.path === "/"}
                 className={({ isActive }) =>
                   `group flex items-center justify-between px-3 py-3 rounded-lg transition-all duration-200 ${
                     isActive
@@ -96,10 +91,8 @@ function Sidebar() {
                   }`
                 }
               >
-
                 {({ isActive }) => (
                   <>
-                    {/* Left Side */}
                     <div className="flex items-center gap-3">
 
                       <div
@@ -118,13 +111,11 @@ function Sidebar() {
 
                     </div>
 
-                    {/* Active Arrow */}
                     {isActive && (
                       <ChevronRight size={17} />
                     )}
                   </>
                 )}
-
               </NavLink>
             );
           })}
@@ -132,7 +123,6 @@ function Sidebar() {
         </nav>
       </div>
 
-      {/* ================= AI STATUS ================= */}
       <div className="px-4 pb-5">
 
         <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
