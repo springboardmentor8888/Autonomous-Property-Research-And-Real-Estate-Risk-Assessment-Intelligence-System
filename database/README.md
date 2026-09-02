@@ -6,10 +6,13 @@ PostgreSQL database for the **Autonomous Property Research and Real Estate Risk 
 
 The database stores and manages information related to:
 
-* User management and role-based access
+* User management and authentication
+* Role-based access control
 * Property information
 * Address validation
-* Relationships between users, roles, properties, and address validations
+* Relationships between properties and address validations
+
+User roles and property types are managed using Java enums in the backend and stored as string values in PostgreSQL.
 
 ## Technology Stack
 
@@ -18,16 +21,22 @@ The database stores and manages information related to:
 
 ## Database Tables
 
-### 1. roles
+### 1. users
 
-Stores the different roles available in the system.
+Stores user account information, authentication details, and the role assigned to each user.
 
-| Column    | Data Type   | Description      |
-| --------- | ----------- | ---------------- |
-| id        | BIGSERIAL   | Primary Key      |
-| role_name | VARCHAR(50) | Unique role name |
+| Column     | Data Type    | Description                 |
+| ---------- | ------------ | --------------------------- |
+| id         | BIGSERIAL    | Primary Key                 |
+| full_name  | VARCHAR(255) | User's full name            |
+| email      | VARCHAR(255) | Unique email address        |
+| password   | VARCHAR(255) | BCrypt hashed user password |
+| role       | VARCHAR(50)  | User role                   |
+| created_at | TIMESTAMP    | Account creation timestamp  |
 
-Default roles:
+### Supported User Roles
+
+The following roles are defined in the backend `Role` enum:
 
 * BUYER
 * REAL_ESTATE_AGENT
@@ -35,20 +44,9 @@ Default roles:
 * FINANCIAL_INSTITUTION
 * ADMINISTRATOR
 
-### 2. users
+The `role` value is stored directly in the `users` table. There is no separate `roles` table.
 
-Stores user account information and associates each user with a system role.
-
-| Column        | Data Type    | Description                        |
-| ------------- | ------------ | ---------------------------------- |
-| id            | BIGSERIAL    | Primary Key                        |
-| full_name     | VARCHAR(100) | User's full name                   |
-| email         | VARCHAR(150) | Unique email address               |
-| password_hash | VARCHAR(255) | Hashed user password               |
-| role_id       | BIGINT       | Foreign Key referencing `roles.id` |
-| created_at    | TIMESTAMP    | Account creation timestamp         |
-
-### 3. properties
+### 2. properties
 
 Stores property information used for property search and due diligence.
 
@@ -56,13 +54,24 @@ Stores property information used for property search and due diligence.
 | ------------- | ------------ | --------------------------- |
 | id            | BIGSERIAL    | Primary Key                 |
 | address       | VARCHAR(255) | Property address            |
-| city          | VARCHAR(100) | City                        |
-| state         | VARCHAR(100) | State                       |
-| zip_code      | VARCHAR(20)  | ZIP/postal code             |
+| city          | VARCHAR(255) | City                        |
+| state         | VARCHAR(255) | State                       |
+| zip_code      | VARCHAR(255) | ZIP/postal code             |
 | property_type | VARCHAR(50)  | Type of property            |
 | created_at    | TIMESTAMP    | Property creation timestamp |
 
-### 4. address_validations
+### Supported Property Types
+
+The following property types are defined in the backend `PropertyType` enum:
+
+* RESIDENTIAL
+* COMMERCIAL
+* INDUSTRIAL
+* LAND
+
+The `property_type` value is stored as a string in the database.
+
+### 3. address_validations
 
 Stores address validation information associated with properties.
 
@@ -78,67 +87,107 @@ Stores address validation information associated with properties.
 ## Relationships
 
 ```text
-roles
-  │
-  └── users
-        │
-        └── role_id → roles.id
-
 properties
-  │
-  └── address_validations
-        │
-        └── property_id → properties.id
+    │
+    └── address_validations
+            │
+            └── property_id → properties.id
 ```
 
-### Relationship Details
+### Relationship Description
 
-* Each user is assigned one role through `users.role_id`.
-* `users.role_id` references `roles.id`.
-* Each address validation belongs to a property through `address_validations.property_id`.
-* `address_validations.property_id` references `properties.id`.
+* One property can have multiple address validation records.
+* Each address validation record belongs to one property.
+* `address_validations.property_id` is a foreign key referencing `properties.id`.
 
-## API Contract Mapping
+## Database Structure
 
-The database fields are designed to support the API contract defined in `docs/api-contract.md`.
+```text
+users
+ ├── id (PK)
+ ├── full_name
+ ├── email (UNIQUE)
+ ├── password
+ ├── role
+ └── created_at
 
-| API Field      | Database Field                               |
-| -------------- | -------------------------------------------- |
-| `fullName`     | `users.full_name`                            |
-| `email`        | `users.email`                                |
-| `password`     | `users.password_hash`                        |
-| `role`         | `roles.role_name` through `users.role_id`    |
-| `id`           | `users.id` / `properties.id`                 |
-| `zipCode`      | `properties.zip_code`                        |
-| `propertyType` | `properties.property_type`                   |
-| `createdAt`    | `users.created_at` / `properties.created_at` |
+properties
+ ├── id (PK)
+ ├── address
+ ├── city
+ ├── state
+ ├── zip_code
+ ├── property_type
+ └── created_at
 
-## SQL Files
+address_validations
+ ├── id (PK)
+ ├── property_id (FK → properties.id)
+ ├── submitted_address
+ ├── validated_address
+ ├── is_valid
+ └── validation_source
+```
 
-* `schema.sql` — Creates the database tables, primary keys, foreign keys, and relationships.
-* `seed.sql` — Inserts the default system roles.
+## Security
+
+* User passwords are stored as **BCrypt hashed passwords**.
+* Email addresses are unique in the `users` table.
+* Role-based access control is handled by the backend using the defined Java `Role` enum.
+* Sensitive authentication information is not stored in plain text.
+
+## Project Integration
+
+The PostgreSQL database is integrated with the **Spring Boot backend** using Spring Data JPA.
+
+The database supports the backend modules for:
+
+* User registration
+* User authentication
+* JWT-based authorization
+* Role-based access control
+* Property search
+* Property information management
+* Address validation
+
+## Project Structure
+
+```text
+database/
+├── README.md
+├── schema.sql
+├── seed.sql
+└── migrations/
+```
 
 ## Setup
 
-1. Create a PostgreSQL database.
-2. Run `schema.sql` to create the tables.
-3. Run `seed.sql` to insert the default roles.
+Create the PostgreSQL database:
 
-Example:
+```sql
+CREATE DATABASE real_estate_db;
+```
+
+Connect to the database:
+
+```bash
+psql -U postgres -d real_estate_db
+```
+
+Run the schema:
 
 ```sql
 \i database/schema.sql
+```
+
+Run the seed data if required:
+
+```sql
 \i database/seed.sql
 ```
 
-## Milestone 1
+## Team
 
-The current database schema supports the Milestone 1 requirements:
+**Infosys Springboard Internship — Team Two**
 
-* Authentication and user management
-* Role-based access
-* Property information
-* Property search
-* Address validation
-
-The database schema will be extended in future milestones as additional project features are implemented.
+Project: **Autonomous Property Research and Real Estate Risk Assessment Intelligence System**
