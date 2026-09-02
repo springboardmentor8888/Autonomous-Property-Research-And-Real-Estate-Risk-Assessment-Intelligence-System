@@ -1,31 +1,42 @@
-CREATE TABLE roles (
-    id BIGSERIAL PRIMARY KEY,
-    role_name VARCHAR(50) NOT NULL UNIQUE
-);
-
-
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
-    full_name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role_id BIGINT NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_users_role
-        FOREIGN KEY (role_id)
-        REFERENCES roles(id)
+    CONSTRAINT chk_user_role
+        CHECK (
+            role IN (
+                'BUYER',
+                'REAL_ESTATE_AGENT',
+                'LEGAL_REVIEWER',
+                'FINANCIAL_INSTITUTION',
+                'ADMINISTRATOR'
+            )
+        )
 );
 
 
 CREATE TABLE properties (
     id BIGSERIAL PRIMARY KEY,
     address VARCHAR(255) NOT NULL,
-    city VARCHAR(100),
-    state VARCHAR(100),
-    zip_code VARCHAR(20),
-    property_type VARCHAR(50),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    city VARCHAR(255) NOT NULL,
+    state VARCHAR(255) NOT NULL,
+    zip_code VARCHAR(255) NOT NULL,
+    property_type VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_property_type
+        CHECK (
+            property_type IN (
+                'RESIDENTIAL',
+                'COMMERCIAL',
+                'INDUSTRIAL',
+                'LAND'
+            )
+        )
 );
 
 
