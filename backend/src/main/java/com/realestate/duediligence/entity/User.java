@@ -40,7 +40,7 @@ public class User {
 	 * database.
 	 */
 	@Column(nullable = false)
-	private String name;
+	private String fullName;
 
 	/*
 	 * Email address of the user.
