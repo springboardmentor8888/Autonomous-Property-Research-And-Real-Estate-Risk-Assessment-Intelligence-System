@@ -11,29 +11,46 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
 
-	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-	}
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
-	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-		http.csrf(csrf -> csrf.disable())
+        http
+                .csrf(csrf -> csrf.disable())
 
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/users/register", "/api/users/login",
+                .cors(cors -> {})
 
-						"/error").permitAll().requestMatchers("/api/users/agent-test").hasRole("REAL_ESTATE_AGENT")
-						.anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> auth
 
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers(
+                                "/",
+                                "/api/users/register",
+                                "/api/users/login",
+                                "/error"
+                        ).permitAll()
 
-		return http.build();
-	}
+                        .requestMatchers("/api/users/agent-test")
+                        .hasRole("REAL_ESTATE_AGENT")
+
+                        .anyRequest()
+                        .authenticated()
+                )
+
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
+
+        return http.build();
+    }
 }
