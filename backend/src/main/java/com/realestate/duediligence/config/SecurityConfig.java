@@ -1,6 +1,7 @@
 package com.realestate.duediligence.config;
 
 import com.realestate.duediligence.security.JwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -8,6 +9,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -72,6 +74,28 @@ public class SecurityConfig {
 	}
 
 	/**
+	 * Defines what response is sent when an unauthenticated request tries to
+	 * access a protected endpoint (e.g. no token, or an invalid token).
+	 *
+	 * Without this bean, Spring Security's default behavior returns 403
+	 * Forbidden for missing/invalid authentication, which is misleading —
+	 * 403 should mean "you're logged in but not allowed here," while 401
+	 * should mean "we don't know who you are." This bean makes that
+	 * distinction correct, and also returns a clean JSON error body matching
+	 * the rest of the API's error format, instead of a default HTML/blank
+	 * error page.
+	 */
+	@Bean
+	public AuthenticationEntryPoint authenticationEntryPoint() {
+		return (request, response, authException) -> {
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			response.setContentType("application/json");
+			response.getWriter().write(
+					"{\"success\":false,\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}");
+		};
+	}
+
+	/**
 	 * Configures Spring Security for the application.
 	 */
 	@Bean
@@ -87,6 +111,11 @@ public class SecurityConfig {
 				// Do not create or maintain HTTP sessions.
 				// Each request must provide its own JWT token for authentication.
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+				// Use our custom entry point so missing/invalid authentication
+				// returns a proper 401 with clean JSON, instead of the default 403.
+				.exceptionHandling(exceptions -> exceptions
+						.authenticationEntryPoint(authenticationEntryPoint()))
 
 				// Define which endpoints are publicly accessible
 				// and which endpoints require authentication.
