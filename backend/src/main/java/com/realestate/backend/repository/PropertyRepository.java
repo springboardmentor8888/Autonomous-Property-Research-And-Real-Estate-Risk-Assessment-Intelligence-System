@@ -20,8 +20,16 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 
     List<Property> findByStatusIgnoreCase(String status);
 
+    List<Property> findAllByOrderByPriceAsc();
+
+    List<Property> findAllByOrderByPriceDesc();
+
     @Query("SELECT p FROM Property p WHERE " +
-           "(:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.address) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.city) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
+           "(:query IS NULL OR " +
+           "LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.address) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.city) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
+
            "(:city IS NULL OR LOWER(p.city) = LOWER(:city)) AND " +
            "(:state IS NULL OR LOWER(p.state) = LOWER(:state)) AND " +
            "(:zipCode IS NULL OR p.zipCode = :zipCode) AND " +
