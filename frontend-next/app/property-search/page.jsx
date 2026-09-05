@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyBfNdVdk0cQt8nZ1Lf-nuqMD_MSss8dI68";
+const GOOGLE_MAPS_API_KEY = "";
 
 export default function PropertySearchPage() {
     const mapRef = useRef(null);
