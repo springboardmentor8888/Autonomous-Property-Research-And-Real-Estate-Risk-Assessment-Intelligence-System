@@ -1,256 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
-const GOOGLE_MAPS_API_KEY = "";
+const GEOAPIFY_API_KEY = "#_YOUR_GEOAPIFY_API_KEY_HERE_#";
 
 export default function PropertySearchPage() {
-    const mapRef = useRef(null);
-    const mapInstanceRef = useRef(null);
-    const geocoderRef = useRef(null);
-    const markerRef = useRef(null);
-
-    const [mapsReady, setMapsReady] = useState(false);
     const [address, setAddress] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [result, setResult] = useState(null);
-
-    /*
-    |--------------------------------------------------------------------------
-    | LOAD GOOGLE MAPS
-    |--------------------------------------------------------------------------
-    */
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const initializeGoogleMaps = () => {
-            if (cancelled) return;
-
-            if (!window.google?.maps) {
-                setError("Google Maps failed to load.");
-                return;
-            }
-
-            if (!window.google.maps.Geocoder) {
-                setError(
-                    "Google Maps loaded, but Geocoding is unavailable. Make sure the Geocoding API is enabled."
-                );
-                return;
-            }
-
-            geocoderRef.current =
-                new window.google.maps.Geocoder();
-
-            setMapsReady(true);
-            setError("");
-
-            console.log(
-                "Google Maps and Geocoder loaded successfully."
-            );
-        };
-
-        if (
-            !GOOGLE_MAPS_API_KEY ||
-            GOOGLE_MAPS_API_KEY ===
-            "YOUR_API_KEY_HERE"
-        ) {
-            setError(
-                "Please add your Google Maps API key in page.jsx."
-            );
-
-            return () => {
-                cancelled = true;
-            };
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | If Google Maps is already available
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            window.google?.maps &&
-            window.google.maps.Geocoder
-        ) {
-            initializeGoogleMaps();
-
-            return () => {
-                cancelled = true;
-            };
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Remove our previous script if HMR left it behind
-        |--------------------------------------------------------------------------
-        */
-
-        const oldScript = document.getElementById(
-            "propdue-google-maps"
-        );
-
-        if (oldScript) {
-            oldScript.remove();
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create Google Maps script
-        |--------------------------------------------------------------------------
-        */
-
-        const script = document.createElement("script");
-
-        script.id = "propdue-google-maps";
-
-        script.src =
-            "https://maps.googleapis.com/maps/api/js" +
-            `?key=${encodeURIComponent(
-                GOOGLE_MAPS_API_KEY
-            )}` +
-            "&libraries=geocoding" +
-            "&v=weekly" +
-            "&loading=async";
-
-        script.async = true;
-        script.defer = true;
-
-        script.onload = initializeGoogleMaps;
-
-        script.onerror = () => {
-            if (!cancelled) {
-                setError(
-                    "Google Maps could not be loaded. Check your API key, Maps JavaScript API, and API restrictions."
-                );
-            }
-        };
-
-        document.head.appendChild(script);
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    /*
-    |--------------------------------------------------------------------------
-    | CREATE MAP AFTER SEARCH RESULT
-    |--------------------------------------------------------------------------
-    */
-
-    useEffect(() => {
-        if (
-            !mapsReady ||
-            !result ||
-            !mapRef.current ||
-            !window.google?.maps
-        ) {
-            return;
-        }
-
-        const position = {
-            lat: result.latitude,
-            lng: result.longitude,
-        };
-
-        const map =
-            new window.google.maps.Map(
-                mapRef.current,
-                {
-                    center: position,
-                    zoom: 17,
-
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                    fullscreenControl: false,
-
-                    styles: [
-                        {
-                            elementType: "geometry",
-                            stylers: [
-                                {
-                                    color: "#111111",
-                                },
-                            ],
-                        },
-                        {
-                            elementType:
-                                "labels.text.fill",
-                            stylers: [
-                                {
-                                    color: "#a8a8a8",
-                                },
-                            ],
-                        },
-                        {
-                            elementType:
-                                "labels.text.stroke",
-                            stylers: [
-                                {
-                                    color: "#111111",
-                                },
-                            ],
-                        },
-                        {
-                            featureType:
-                                "administrative",
-                            elementType: "geometry",
-                            stylers: [
-                                {
-                                    color: "#333333",
-                                },
-                            ],
-                        },
-                        {
-                            featureType: "road",
-                            elementType: "geometry",
-                            stylers: [
-                                {
-                                    color: "#292929",
-                                },
-                            ],
-                        },
-                        {
-                            featureType: "water",
-                            elementType: "geometry",
-                            stylers: [
-                                {
-                                    color: "#080808",
-                                },
-                            ],
-                        },
-                    ],
-                }
-            );
-
-        mapInstanceRef.current = map;
-
-        markerRef.current =
-            new window.google.maps.Marker({
-                position,
-                map,
-                title: result.formattedAddress,
-            });
-
-        return () => {
-            if (markerRef.current) {
-                markerRef.current.setMap(null);
-                markerRef.current = null;
-            }
-
-            mapInstanceRef.current = null;
-        };
-    }, [mapsReady, result]);
-
-    /*
-    |--------------------------------------------------------------------------
-    | SEARCH / ADDRESS VALIDATION
-    |--------------------------------------------------------------------------
-    */
 
     async function handleSearch(event) {
         event.preventDefault();
@@ -261,26 +20,31 @@ export default function PropertySearchPage() {
 
         const cleanAddress = address.trim();
 
+        // -----------------------------
+        // BASIC ADDRESS VALIDATION
+        // -----------------------------
+
         if (!cleanAddress) {
-            setError(
-                "Please enter a property address."
-            );
+            setError("Please enter a property address.");
             return;
         }
 
         if (cleanAddress.length < 8) {
-            setError(
-                "Please enter a complete property address."
-            );
+            setError("Please enter a complete property address.");
             return;
         }
 
+        // -----------------------------
+        // API KEY CHECK
+        // -----------------------------
+
         if (
-            !mapsReady ||
-            !geocoderRef.current
+            !GEOAPIFY_API_KEY ||
+            GEOAPIFY_API_KEY ===
+            "#_YOUR_GEOAPIFY_API_KEY_HERE_#"
         ) {
             setError(
-                "Google Maps is not ready yet. Please wait a moment and try again."
+                "Please add your Geoapify API key in page.jsx."
             );
             return;
         }
@@ -288,151 +52,174 @@ export default function PropertySearchPage() {
         setLoading(true);
 
         try {
-            const response =
-                await geocoderRef.current.geocode({
-                    address: cleanAddress,
-                });
+            // -----------------------------
+            // GEOAPIFY GEOCODING REQUEST
+            // -----------------------------
 
-            if (
-                !response ||
-                !response.results ||
-                response.results.length === 0
-            ) {
-                throw new Error(
-                    "No address found."
-                );
-            }
+            const url =
+                "https://api.geoapify.com/v1/geocode/search" +
+                `?text=${encodeURIComponent(cleanAddress)}` +
+                `&apiKey=${encodeURIComponent(
+                    GEOAPIFY_API_KEY
+                )}`;
 
-            const firstResult =
-                response.results[0];
-
-            if (
-                !firstResult.geometry ||
-                !firstResult.geometry.location
-            ) {
-                throw new Error(
-                    "Location information was not returned."
-                );
-            }
-
-            const location =
-                firstResult.geometry.location;
-
-            const latitude = location.lat();
-            const longitude = location.lng();
-
-            /*
-            |--------------------------------------------------------------------------
-            | Extract address components
-            |--------------------------------------------------------------------------
-            */
-
-            let streetNumber = "";
-            let route = "";
-            let city = "";
-            let state = "";
-            let postalCode = "";
-            let country = "";
-
-            (
-                firstResult.address_components || []
-            ).forEach((component) => {
-                const types =
-                    component.types || [];
-
-                if (
-                    types.includes("street_number")
-                ) {
-                    streetNumber =
-                        component.long_name;
-                }
-
-                if (
-                    types.includes("route")
-                ) {
-                    route =
-                        component.long_name;
-                }
-
-                if (
-                    types.includes("locality") ||
-                    types.includes("postal_town")
-                ) {
-                    city =
-                        component.long_name;
-                }
-
-                if (
-                    types.includes(
-                        "administrative_area_level_1"
-                    )
-                ) {
-                    state =
-                        component.short_name;
-                }
-
-                if (
-                    types.includes("postal_code")
-                ) {
-                    postalCode =
-                        component.long_name;
-                }
-
-                if (
-                    types.includes("country")
-                ) {
-                    country =
-                        component.long_name;
-                }
+            const response = await fetch(url, {
+                method: "GET",
             });
 
-            /*
-            |--------------------------------------------------------------------------
-            | Build result
-            |--------------------------------------------------------------------------
-            */
+            // -----------------------------
+            // HTTP ERROR
+            // -----------------------------
+
+            if (!response.ok) {
+                const errorText = await response.text();
+
+                console.error(
+                    "Geoapify HTTP error:",
+                    response.status,
+                    errorText
+                );
+
+                throw new Error(
+                    `Geoapify request failed (${response.status}).`
+                );
+            }
+
+            // -----------------------------
+            // PARSE RESPONSE
+            // -----------------------------
+
+            const data = await response.json();
+
+            console.log(
+                "Geoapify response:",
+                data
+            );
+
+            // -----------------------------
+            // CHECK RESULTS
+            // -----------------------------
+
+            if (
+                !data ||
+                !Array.isArray(data.features) ||
+                data.features.length === 0
+            ) {
+                throw new Error(
+                    "No matching address was found."
+                );
+            }
+
+            // Take the best matching result
+            const firstFeature = data.features[0];
+
+            const properties =
+                firstFeature.properties || {};
+
+            const geometry =
+                firstFeature.geometry || {};
+
+            const coordinates =
+                geometry.coordinates || [];
+
+            const longitude = coordinates[0];
+            const latitude = coordinates[1];
+
+            // -----------------------------
+            // CHECK COORDINATES
+            // -----------------------------
+
+            if (
+                typeof latitude !== "number" ||
+                typeof longitude !== "number"
+            ) {
+                throw new Error(
+                    "Location coordinates were not returned."
+                );
+            }
+
+            // -----------------------------
+            // BUILD PROPERTY RESULT
+            // -----------------------------
 
             const propertyResult = {
                 formattedAddress:
-                    firstResult.formatted_address ||
+                    properties.formatted ||
                     cleanAddress,
 
+                houseNumber:
+                    properties.housenumber ||
+                    "Not available",
+
                 street:
-                    [
-                        streetNumber,
-                        route,
-                    ]
-                        .filter(Boolean)
-                        .join(" ") ||
+                    properties.street ||
                     "Not available",
 
                 city:
-                    city || "Not available",
+                    properties.city ||
+                    properties.town ||
+                    properties.village ||
+                    properties.municipality ||
+                    "Not available",
 
                 state:
-                    state || "Not available",
+                    properties.state ||
+                    "Not available",
 
                 postalCode:
-                    postalCode || "Not available",
+                    properties.postcode ||
+                    "Not available",
 
                 country:
-                    country || "Not available",
+                    properties.country ||
+                    "Not available",
+
+                countryCode:
+                    properties.country_code ||
+                    "Not available",
 
                 latitude,
                 longitude,
 
                 placeId:
-                    firstResult.place_id ||
+                    properties.place_id ||
                     "Not available",
 
-                locationType:
-                    firstResult.geometry
-                        .location_type ||
+                resultType:
+                    properties.result_type ||
                     "Not available",
 
-                types:
-                    firstResult.types || [],
+                confidence:
+                    properties.rank?.confidence ??
+                    null,
+
+                confidenceCity:
+                    properties.rank?.confidence_city ??
+                    null,
+
+                confidenceStreet:
+                    properties.rank?.confidence_street ??
+                    null,
+
+                distance:
+                    properties.rank?.distance ??
+                    null,
+
+                categories:
+                    properties.categories || [],
+
+                datasource:
+                    properties.datasource || null,
+
+                originalAddress:
+                    cleanAddress,
+
+                rawResponse: data,
             };
+
+            // -----------------------------
+            // SAVE RESULT
+            // -----------------------------
 
             setResult(propertyResult);
 
@@ -441,11 +228,12 @@ export default function PropertySearchPage() {
             );
         } catch (searchError) {
             console.error(
-                "Address search error:",
+                "Address validation error:",
                 searchError
             );
 
             setError(
+                searchError.message ||
                 "We could not validate that address. Please check the address and try again."
             );
         } finally {
@@ -453,16 +241,12 @@ export default function PropertySearchPage() {
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | PAGE
-    |--------------------------------------------------------------------------
-    */
-
     return (
         <main className="min-h-screen bg-[#0b0b0b] text-white">
 
-            {/* BACKGROUND */}
+            {/* =========================================
+                BACKGROUND
+            ========================================= */}
 
             <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
 
@@ -475,7 +259,9 @@ export default function PropertySearchPage() {
             </div>
 
 
-            {/* HEADER */}
+            {/* =========================================
+                HEADER
+            ========================================= */}
 
             <section className="border-b border-white/10 px-6 pb-20 pt-32 sm:px-10 md:px-16 lg:px-24">
 
@@ -486,11 +272,15 @@ export default function PropertySearchPage() {
                     </p>
 
                     <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
+
                         Start with
+
                         <br />
+
                         <span className="text-white/35">
                             the address.
                         </span>
+
                     </h1>
 
                     <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
@@ -504,7 +294,9 @@ export default function PropertySearchPage() {
             </section>
 
 
-            {/* SEARCH */}
+            {/* =========================================
+                SEARCH SECTION
+            ========================================= */}
 
             <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
 
@@ -514,6 +306,8 @@ export default function PropertySearchPage() {
                         onSubmit={handleSearch}
                         className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 backdrop-blur-xl md:p-8"
                     >
+
+                        {/* LABEL */}
 
                         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
@@ -527,7 +321,7 @@ export default function PropertySearchPage() {
                             <span className="flex items-center gap-2 text-xs">
 
                                 <span
-                                    className={`h-2 w-2 rounded-full ${mapsReady
+                                    className={`h-2 w-2 rounded-full ${success
                                         ? "bg-emerald-400"
                                         : "bg-yellow-400"
                                         }`}
@@ -535,20 +329,22 @@ export default function PropertySearchPage() {
 
                                 <span
                                     className={
-                                        mapsReady
+                                        success
                                             ? "text-emerald-400/70"
                                             : "text-yellow-400/70"
                                     }
                                 >
-                                    {mapsReady
+                                    {success
                                         ? "Address service ready"
-                                        : "Loading address service..."}
+                                        : "Geoapify Geocoding"}
                                 </span>
 
                             </span>
 
                         </div>
 
+
+                        {/* INPUT + BUTTON */}
 
                         <div className="flex flex-col gap-3 lg:flex-row">
 
@@ -563,6 +359,7 @@ export default function PropertySearchPage() {
 
                                     setError("");
                                     setSuccess("");
+                                    setResult(null);
                                 }}
                                 placeholder="1600 Pennsylvania Avenue NW, Washington, D.C. 20500"
                                 autoComplete="street-address"
@@ -572,10 +369,7 @@ export default function PropertySearchPage() {
 
                             <button
                                 type="submit"
-                                disabled={
-                                    loading ||
-                                    !mapsReady
-                                }
+                                disabled={loading}
                                 className="min-h-[62px] rounded-xl border border-white/20 px-8 text-sm font-medium transition duration-300 hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-40"
                             >
 
@@ -608,7 +402,9 @@ export default function PropertySearchPage() {
                         </div>
 
 
-                        {/* SUCCESS */}
+                        {/* =================================
+                            SUCCESS MESSAGE
+                        ================================= */}
 
                         {success && (
 
@@ -625,7 +421,9 @@ export default function PropertySearchPage() {
                         )}
 
 
-                        {/* ERROR */}
+                        {/* =================================
+                            ERROR MESSAGE
+                        ================================= */}
 
                         {error && (
 
@@ -654,7 +452,9 @@ export default function PropertySearchPage() {
             </section>
 
 
-            {/* EMPTY STATE */}
+            {/* =========================================
+                EMPTY STATE
+            ========================================= */}
 
             {!result && !loading && (
 
@@ -673,7 +473,7 @@ export default function PropertySearchPage() {
                             <InfoBlock
                                 number="02"
                                 title="Validate location"
-                                text="The address is resolved to a recognized location and geographic coordinates."
+                                text="The address is resolved using the Geoapify Geocoding API."
                             />
 
                             <InfoBlock
@@ -691,7 +491,9 @@ export default function PropertySearchPage() {
             )}
 
 
-            {/* LOADING */}
+            {/* =========================================
+                LOADING
+            ========================================= */}
 
             {loading && (
 
@@ -716,7 +518,7 @@ export default function PropertySearchPage() {
                                     </p>
 
                                     <p className="mt-1 text-sm text-white/30">
-                                        Resolving the address and location.
+                                        Resolving the address using Geoapify.
                                     </p>
 
                                 </div>
@@ -732,13 +534,17 @@ export default function PropertySearchPage() {
             )}
 
 
-            {/* RESULT */}
+            {/* =========================================
+                RESULT
+            ========================================= */}
 
             {result && (
 
                 <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
 
                     <div className="mx-auto max-w-[1400px]">
+
+                        {/* VALIDATED HEADER */}
 
                         <div className="border-t border-white/10 pt-16">
 
@@ -762,178 +568,195 @@ export default function PropertySearchPage() {
                         </div>
 
 
-                        {/* DETAILS + MAP */}
+                        {/* =================================
+                            LOCATION DETAILS
+                        ================================= */}
 
-                        <div className="mt-16 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+                        <div className="mt-16">
 
-                            <div>
+                            <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
+                                LOCATION DETAILS
+                            </p>
 
-                                <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
-                                    LOCATION DETAILS
+
+                            <div className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
+
+                                <DetailCard
+                                    label="House Number"
+                                    value={result.houseNumber}
+                                />
+
+                                <DetailCard
+                                    label="Street"
+                                    value={result.street}
+                                />
+
+                                <DetailCard
+                                    label="City"
+                                    value={result.city}
+                                />
+
+                                <DetailCard
+                                    label="State"
+                                    value={result.state}
+                                />
+
+                                <DetailCard
+                                    label="Postal Code"
+                                    value={result.postalCode}
+                                />
+
+                                <DetailCard
+                                    label="Country"
+                                    value={result.country}
+                                />
+
+                                <DetailCard
+                                    label="Country Code"
+                                    value={result.countryCode}
+                                />
+
+                                <DetailCard
+                                    label="Result Type"
+                                    value={result.resultType}
+                                />
+
+                                <DetailCard
+                                    label="Confidence"
+                                    value={
+                                        result.confidence !== null
+                                            ? result.confidence
+                                            : "Not available"
+                                    }
+                                />
+
+                            </div>
+
+
+                            {/* =================================
+                                COORDINATES
+                            ================================= */}
+
+                            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
+
+                                <p className="text-xs tracking-[0.25em] text-white/25">
+                                    COORDINATES
                                 </p>
 
+                                <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
 
-                                <div className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2">
+                                    <div>
 
-                                    <DetailCard
-                                        label="Street"
-                                        value={result.street}
-                                    />
+                                        <p className="text-sm text-white/30">
+                                            Latitude
+                                        </p>
 
-                                    <DetailCard
-                                        label="City"
-                                        value={result.city}
-                                    />
+                                        <p className="mt-2 text-lg text-white/80">
+                                            {result.latitude.toFixed(6)}
+                                        </p>
 
-                                    <DetailCard
-                                        label="State"
-                                        value={result.state}
-                                    />
-
-                                    <DetailCard
-                                        label="Postal Code"
-                                        value={result.postalCode}
-                                    />
-
-                                    <DetailCard
-                                        label="Country"
-                                        value={result.country}
-                                    />
-
-                                    <DetailCard
-                                        label="Location Type"
-                                        value={result.locationType}
-                                    />
-
-                                </div>
+                                    </div>
 
 
-                                {/* COORDINATES */}
+                                    <div>
 
-                                <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
+                                        <p className="text-sm text-white/30">
+                                            Longitude
+                                        </p>
 
-                                    <p className="text-xs tracking-[0.25em] text-white/25">
-                                        COORDINATES
-                                    </p>
-
-                                    <div className="mt-5 grid grid-cols-2 gap-6">
-
-                                        <div>
-
-                                            <p className="text-sm text-white/30">
-                                                Latitude
-                                            </p>
-
-                                            <p className="mt-2 text-lg text-white/80">
-                                                {result.latitude.toFixed(6)}
-                                            </p>
-
-                                        </div>
-
-
-                                        <div>
-
-                                            <p className="text-sm text-white/30">
-                                                Longitude
-                                            </p>
-
-                                            <p className="mt-2 text-lg text-white/80">
-                                                {result.longitude.toFixed(6)}
-                                            </p>
-
-                                        </div>
+                                        <p className="mt-2 text-lg text-white/80">
+                                            {result.longitude.toFixed(6)}
+                                        </p>
 
                                     </div>
 
                                 </div>
 
+                            </div>
 
-                                {/* PLACE ID */}
 
-                                <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
+                            {/* =================================
+                                MAP
+                            ================================= */}
 
-                                    <p className="text-xs tracking-[0.25em] text-white/25">
-                                        PLACE ID
+                            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
+
+                                <p className="text-xs tracking-[0.25em] text-white/25">
+                                    LOCATION
+                                </p>
+
+                                <p className="mt-4 text-sm leading-6 text-white/40">
+                                    The address was successfully
+                                    converted into geographic
+                                    coordinates.
+                                </p>
+
+                                <a
+                                    href={`https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=18/${result.latitude}/${result.longitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/20 px-6 py-3 text-sm transition hover:bg-white hover:text-black"
+                                >
+                                    Open Location on Map
+                                    <span>↗</span>
+                                </a>
+
+                            </div>
+
+
+                            {/* =================================
+                                PLACE ID
+                            ================================= */}
+
+                            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
+
+                                <p className="text-xs tracking-[0.25em] text-white/25">
+                                    PLACE ID
+                                </p>
+
+                                <p className="mt-4 break-all text-sm leading-6 text-white/50">
+                                    {result.placeId}
+                                </p>
+
+                            </div>
+
+
+                            {/* =================================
+                                NEXT STEP
+                            ================================= */}
+
+                            <div className="mt-20 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
+
+                                <div>
+
+                                    <p className="text-xs font-semibold tracking-[0.3em] text-white/25">
+                                        NEXT STEP
                                     </p>
 
-                                    <p className="mt-4 break-all text-sm leading-6 text-white/50">
-                                        {result.placeId}
+                                    <p className="mt-3 text-xl font-light text-white/70">
+                                        Continue to property details
+                                        and due diligence.
                                     </p>
 
                                 </div>
 
-                            </div>
 
-
-                            {/* MAP */}
-
-                            <div>
-
-                                <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
-                                    LOCATION
-                                </p>
-
-                                <div
-                                    ref={mapRef}
-                                    className="h-[520px] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#111111]"
-                                />
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm font-medium transition duration-300 hover:bg-white hover:text-black"
+                                    onClick={() =>
+                                        alert(
+                                            "Property details module will be connected next."
+                                        )
+                                    }
+                                >
+                                    View Property Details
+                                    <span>↗</span>
+                                </button>
 
                             </div>
 
-                        </div>
 
-
-                        {/* NEXT STEP */}
-
-                        <div className="mt-20 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
-
-                            <div>
-
-                                <p className="text-xs font-semibold tracking-[0.3em] text-white/25">
-                                    NEXT STEP
-                                </p>
-
-                                <p className="mt-3 text-xl font-light text-white/70">
-                                    Continue to property details and due diligence.
-                                </p>
-
-                            </div>
-
-                            <button
-                                type="button"
-                                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm font-medium transition duration-300 hover:bg-white hover:text-black"
-                                onClick={() =>
-                                    alert(
-                                        "Property details module will be connected next."
-                                    )
-                                }
-                            >
-                                View Property Details
-                                <span>↗</span>
-                            </button>
-
-                        </div>
-
-
-                        {/* RESPONSE */}
-
-                        <div className="mt-16 border-t border-white/10 pt-10">
-
-                            <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
-                                VALIDATION RESPONSE
-                            </p>
-
-                            <p className="mt-2 text-sm text-white/30">
-                                Useful for the Week 1 demonstration.
-                            </p>
-
-                            <pre className="mt-5 max-h-[500px] overflow-auto rounded-2xl border border-white/10 bg-black/40 p-6 text-xs leading-6 text-white/50">
-                                {JSON.stringify(
-                                    result,
-                                    null,
-                                    2
-                                )}
-                            </pre>
 
                         </div>
 
@@ -944,7 +767,9 @@ export default function PropertySearchPage() {
             )}
 
 
-            {/* FOOTER */}
+            {/* =========================================
+                FOOTER
+            ========================================= */}
 
             <footer className="border-t border-white/10 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
 
