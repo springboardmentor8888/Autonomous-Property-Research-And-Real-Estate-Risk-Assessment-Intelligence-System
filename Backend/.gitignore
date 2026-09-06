@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Environment / secrets
+.env
+*.env
+
+# Temporary login/test files
+login.json
+register.json
+test-login.json
+test-register.json
