@@ -1,76 +1,44 @@
 package com.realestate.duediligence.controller;
 
+import com.realestate.duediligence.dto.AddressValidationRequest;
+import com.realestate.duediligence.dto.AddressValidationResponse;
 import com.realestate.duediligence.entity.Property;
 import com.realestate.duediligence.service.PropertyService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controller class for handling HTTP requests related to properties.
- *
- * @RestController tells Spring that this class handles REST API requests
- * and that the return values will be sent as JSON responses.
- */
 @RestController
-
-/*
- * Base URL for all endpoints in this controller.
- *
- * Example:
- * http://localhost:8080/api/properties
- */
 @RequestMapping("/api/properties")
 public class PropertyController {
 
-    /*
-     * Service layer used to perform property-related business logic.
-     */
-    private final PropertyService propertyService;
+	private final PropertyService propertyService;
 
-    /**
-     * Constructor injection.
-     *
-     * Spring automatically provides the PropertyService object
-     * when creating this controller.
-     */
-    public PropertyController(PropertyService propertyService) {
-        this.propertyService = propertyService;
-    }
+	public PropertyController(PropertyService propertyService) {
+		this.propertyService = propertyService;
+	}
 
-    /**
-     * Searches for properties using an address.
-     *
-     * HTTP request:
-     * GET /api/properties/search?address=Hyderabad
-     *
-     * @RequestParam gets the "address" value from the URL.
-     *
-     * Example:
-     * address = Hyderabad
-     *
-     * The request is passed to PropertyService, which then
-     * communicates with PropertyRepository.
-     */
-    @GetMapping("/search")
-    public ResponseEntity<List<Property>> search(
-            @RequestParam String address) {
+	@GetMapping("/search")
+	public ResponseEntity<List<Property>> search(@RequestParam String address) {
+		List<Property> results = propertyService.searchByAddress(address);
+		return ResponseEntity.ok(results);
+	}
 
-        /*
-         * Call the service layer to search for properties
-         * matching the given address.
-         */
-        List<Property> results =
-                propertyService.searchByAddress(address);
+	@PostMapping("/validate-address")
+	public ResponseEntity<AddressValidationResponse> validateAddress(@RequestBody AddressValidationRequest request) {
+		AddressValidationResponse response = propertyService.validateAddress(request.getAddress());
+		return ResponseEntity.ok(response);
+	}
 
-        /*
-         * Return HTTP 200 OK along with the list of properties.
-         *
-         * Spring automatically converts the List<Property>
-         * into JSON.
-         */
-        return ResponseEntity.ok(results);
-    }
+	/**
+	 * Test endpoint proving role-based access control works.
+	 * Only users with the ADMINISTRATOR role can access this successfully.
+	 */
+	@GetMapping("/admin-check")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	public ResponseEntity<String> adminOnlyCheck() {
+		return ResponseEntity.ok("You are an administrator — access granted.");
+	}
 }
-
