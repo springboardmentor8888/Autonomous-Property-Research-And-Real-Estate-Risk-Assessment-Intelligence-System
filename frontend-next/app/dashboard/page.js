@@ -65,6 +65,64 @@ export default function DashboardPage() {
         <section className="bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
           <AddressValidator />
         </section>
+                {/* Flood Details */}
+        <section className="mt-6 bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#4f9cf9]">
+                Flood Zone Assessment
+              </p>
+              <h2 className="text-xl font-semibold text-white mt-1">
+                Flood Details
+              </h2>
+            </div>
+
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-400/20">
+              ✓ Low Risk
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Flood Zone
+              </p>
+              <p className="text-white font-medium mt-2">
+                Zone X
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Risk Level
+              </p>
+              <p className="text-green-400 font-medium mt-2">
+                Low
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Floodplain Status
+              </p>
+              <p className="text-white font-medium mt-2">
+                Not Located in Floodplain
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Last Assessment
+              </p>
+              <p className="text-white font-medium mt-2">
+                07 September 2026
+              </p>
+            </div>
+
+          </div>
+        </section>
       </div>
     </main>
   )
