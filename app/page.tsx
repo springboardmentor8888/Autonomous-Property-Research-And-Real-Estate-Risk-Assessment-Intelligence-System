@@ -1,24 +1,38 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { authApi } from '@/lib/api';
+import { setSession } from '@/lib/session';
+import { toastError, toastSuccess } from '@/lib/useToast';
 
 export default function Login() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!email || !password) {
-      alert("Please enter email and password.");
+      toastError('Please enter email and password.');
       return;
     }
 
-    // Login successful
-    router.push("/dashboard");
+    setLoading(true);
+    try {
+      const res = await authApi.login(email, password);
+      setSession(res.token, res.email);
+      toastSuccess('Login successful!');
+      router.push('/dashboard');
+      router.refresh();
+    } catch (err: any) {
+      toastError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,6 +71,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-slate-500"
+                disabled={loading}
               />
             </div>
 
@@ -73,15 +88,17 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-slate-500"
+                disabled={loading}
               />
             </div>
 
             {/* Login Button */}
             <button
               type="submit"
-              className="w-full mt-7 bg-slate-900 text-white py-3 rounded-lg font-semibold hover:bg-slate-800 transition"
+              disabled={loading}
+              className="w-full mt-7 bg-slate-900 text-white py-3 rounded-lg font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
 
           </form>
@@ -92,7 +109,7 @@ export default function Login() {
 
             <button
               type="button"
-              onClick={() => router.push("/register")}
+              onClick={() => router.push('/register')}
               className="text-blue-600 font-semibold hover:underline"
             >
               Create Account

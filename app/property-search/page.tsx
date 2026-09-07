@@ -1,31 +1,63 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { isAuthenticated } from '@/lib/session';
+import { propertyApi } from '@/lib/api';
+import { toastError, toastSuccess } from '@/lib/useToast';
 
 export default function PropertySearch() {
   const router = useRouter();
 
-  const [address, setAddress] = useState("");
-  const [error, setError] = useState("");
+  const [address, setAddress] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
 
-  const handleSearch = () => {
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push('/');
+    }
+  }, [router]);
+
+  const handleSearch = async () => {
     const trimmedAddress = address.trim();
 
-    // Empty check
     if (!trimmedAddress) {
-      setError("Please enter a property address.");
+      toastError('Please enter a property address.');
       return;
     }
 
-    // Clear error
-    setError("");
+    setLoading(true);
+    setResult(null);
 
-    // Send the entered address to Property Details page
-    router.push(
-      `/property-details?property=${encodeURIComponent(trimmedAddress)}`
-    );
+    try {
+      const res = await propertyApi.searchByAddress(trimmedAddress);
+      setResult(res);
+
+      if (res.data?.status === 'VALID') {
+        toastSuccess('Property found! Redirecting to details...');
+        const firstResult = res.data?.results?.[0];
+        const propertyId = firstResult?.propertyId;
+        const formattedAddress = firstResult?.formattedAddress ?? trimmedAddress;
+        const target = propertyId
+          ? `/property-details?propertyId=${propertyId}&property=${encodeURIComponent(formattedAddress)}`
+          : `/property-details?property=${encodeURIComponent(trimmedAddress)}`;
+        setTimeout(() => {
+          router.push(target);
+        }, 1500);
+      } else if (res.data?.status === 'INVALID') {
+        toastError(res.message || 'Invalid address. Please check and try again.');
+      } else {
+        toastError(res.message || 'Search failed. Please try again.');
+      }
+    } catch (err: any) {
+      toastError(err.message || 'Search failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (!isAuthenticated()) return null;
 
   return (
     <main className="min-h-screen bg-slate-100 p-6">
@@ -47,6 +79,7 @@ export default function PropertySearch() {
 
           <p className="mt-2 text-gray-600">
             Enter the property address to search for due diligence information.
+            The address will be validated using Mappls API.
           </p>
 
           {/* Input */}
@@ -58,19 +91,11 @@ export default function PropertySearch() {
             <input
               type="text"
               value={address}
-              onChange={(e) => {
-                setAddress(e.target.value);
-                setError("");
-              }}
-              placeholder="Enter property address"
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Enter property address (e.g., 123 Main St, Mumbai, Maharashtra)"
               className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-slate-500"
+              disabled={loading}
             />
-
-            {error && (
-              <p className="mt-2 text-sm text-red-600">
-                {error}
-              </p>
-            )}
           </div>
 
           {/* Buttons */}
@@ -79,20 +104,31 @@ export default function PropertySearch() {
             <button
               type="button"
               onClick={handleSearch}
-              className="bg-slate-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-800"
+              disabled={loading}
+              className="bg-slate-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Search Property
+              {loading ? 'Searching...' : 'Search Property'}
             </button>
 
             <button
               type="button"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push('/dashboard')}
               className="bg-gray-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300"
             >
               Back to Dashboard
             </button>
 
           </div>
+
+          {/* Result Display */}
+          {result && (
+            <div className="mt-8 p-4 bg-gray-50 rounded-lg border">
+              <h3 className="font-semibold text-slate-900 mb-2">Search Result</h3>
+              <pre className="text-sm text-gray-700 overflow-auto max-h-64">
+                {JSON.stringify(result, null, 2)}
+              </pre>
+            </div>
+          )}
 
         </div>
       </div>

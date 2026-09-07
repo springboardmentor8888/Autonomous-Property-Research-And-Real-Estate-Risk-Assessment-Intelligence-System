@@ -4,6 +4,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.duedilligenceagent.backend.dto.AuthResponse;
 import com.duedilligenceagent.backend.dto.LoginRequest;
@@ -32,6 +33,7 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -58,6 +60,13 @@ public class AuthService {
         );
     }
 
+    /**
+     * Login is @Transactional so the lazy {@code Role} association can
+     * be initialised while the Hibernate session is still open. Without
+     * this, {@code user.getRole().getName()} throws
+     * {@code LazyInitializationException}.
+     */
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
 
         authenticationManager.authenticate(

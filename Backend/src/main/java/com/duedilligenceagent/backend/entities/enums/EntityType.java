@@ -1,0 +1,22 @@
+package com.duedilligenceagent.backend.entities.enums;
+
+public enum EntityType {
+    USER,
+    USER_PROFILE,
+    PROPERTY,
+    OWNERSHIP,
+    TAX,
+    BUILDING_PERMIT,
+    ZONING,
+    FLOOD_ZONE,
+    ENVIRONMENTAL,
+    UTILITY,
+    PROPERTY_HISTORY,
+    RISK_ASSESSMENT,
+    COMPARABLE_PROPERTY,
+    MARKET_TREND,
+    DUE_DILIGENCE_REPORT,
+    SUPPORTING_DOCUMENT,
+    PROPERTY_MONITORING,
+    NOTIFICATION
+}

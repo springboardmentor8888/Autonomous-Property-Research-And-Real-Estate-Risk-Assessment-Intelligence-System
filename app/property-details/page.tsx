@@ -1,168 +1,128 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { isAuthenticated } from '@/lib/session';
+import { propertyApi } from '@/lib/api';
+import { toastError } from '@/lib/useToast';
 
 export default function PropertyDetails() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const propertyId = searchParams.get('propertyId');
+  const fallbackAddress = searchParams.get('property');
 
-  // Get property address from URL
-  const property = searchParams.get("property");
+  const [details, setDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Use entered property, otherwise show default property
-  const propertyName =
-    property?.trim() || "Seshadri Rao Gudlavalleru Engineering College";
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push('/');
+      return;
+    }
+    if (!propertyId) return;
 
-  const propertyData = {
-    address: propertyName,
-    city: "Krishna District",
-    state: "Andhra Pradesh",
-    type: "Educational / Institutional Property",
-  };
+    setLoading(true);
+    propertyApi.getById(propertyId)
+      .then((data) => setDetails(data))
+      .catch((err) => toastError(err.message || 'Failed to load property details.'))
+      .finally(() => setLoading(false));
+  }, [propertyId, router]);
+
+  if (!isAuthenticated()) return null;
 
   return (
     <main className="min-h-screen bg-slate-100 p-6">
+      <div className="max-w-4xl mx-auto">
 
-      {/* Header */}
-      <header className="bg-slate-900 text-white px-8 py-6">
-        <h1 className="text-2xl font-bold">
-          Real Estate Due Diligence Agent
-        </h1>
-      </header>
-
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto mt-8">
-
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-
-          {/* Title */}
-          <h1 className="text-3xl font-bold text-slate-900">
+        {/* Header */}
+        <div className="bg-slate-900 text-white p-6 rounded-lg mb-8">
+          <h1 className="text-2xl font-bold">
             Property Details
           </h1>
+        </div>
 
-          <p className="mt-2 text-gray-600">
-            Property information retrieved for due diligence review.
-          </p>
+        {/* Property Info Card */}
+        <div className="bg-white rounded-2xl shadow-lg p-8">
 
-          {/* Property Information */}
-          <div className="grid md:grid-cols-2 gap-6 mt-8">
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Property Address
-              </p>
-
-              <p className="font-semibold text-slate-900 mt-1">
-                {propertyData.address}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                City
-              </p>
-
-              <p className="font-semibold text-slate-900 mt-1">
-                {propertyData.city}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                State
-              </p>
-
-              <p className="font-semibold text-slate-900 mt-1">
-                {propertyData.state}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Property Type
-              </p>
-
-              <p className="font-semibold text-slate-900 mt-1">
-                {propertyData.type}
-              </p>
-            </div>
-
-          </div>
-
-          {/* Due Diligence */}
-          <h2 className="text-xl font-bold text-slate-900 mt-10 mb-4">
-            Due Diligence Information
+          <h2 className="text-3xl font-bold text-slate-900">
+            Property Information
           </h2>
 
-          <div className="space-y-4">
+          {loading && (
+            <p className="mt-6 text-gray-500">Loading property details...</p>
+          )}
 
-            {/* Ownership */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h3 className="font-bold text-slate-900">
-                Ownership Information
-              </h3>
+          {!loading && details && (
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <DetailRow label="Property ID" value={details.propertyId} />
+              <DetailRow label="Address" value={details.address} />
+              <DetailRow label="City" value={details.city} />
+              <DetailRow label="State" value={details.state} />
+              <DetailRow label="Postal Code" value={details.postalCode} />
+              <DetailRow
+                label="Coordinates"
+                value={
+                  details.latitude != null && details.longitude != null
+                    ? `${details.latitude}, ${details.longitude}`
+                    : null
+                }
+              />
+              <DetailRow label="Property Type" value={details.propertyType} />
+            </div>
+          )}
 
-              <p className="text-gray-600 mt-2">
-                Ownership and title information will be displayed here.
+          {!loading && !details && fallbackAddress && (
+            <div className="mt-6">
+              <p className="text-lg text-gray-700">
+                <strong>Address:</strong> {fallbackAddress}
+              </p>
+              <p className="mt-4 text-gray-500">
+                Property details could not be loaded from the server.
               </p>
             </div>
+          )}
 
-            {/* Legal */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h3 className="font-bold text-slate-900">
-                Legal Information
-              </h3>
-
-              <p className="text-gray-600 mt-2">
-                Legal and registration information will be displayed here.
+          {!loading && !details && !fallbackAddress && (
+            <div className="mt-6">
+              <p className="text-lg text-gray-700">
+                No property address provided. Please search for a property first.
               </p>
+              <button
+                onClick={() => router.push('/property-search')}
+                className="mt-4 bg-slate-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-800"
+              >
+                Search Property
+              </button>
             </div>
+          )}
 
-            {/* Financial */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h3 className="font-bold text-slate-900">
-                Financial Information
-              </h3>
-
-              <p className="text-gray-600 mt-2">
-                Financial and valuation information will be displayed here.
-              </p>
-            </div>
-
-            {/* History */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h3 className="font-bold text-slate-900">
-                Property History
-              </h3>
-
-              <p className="text-gray-600 mt-2">
-                Historical property information will be displayed here.
-              </p>
-            </div>
-
-          </div>
-
-          {/* Buttons */}
-          <div className="flex gap-3 mt-8">
-
-            <Link
-              href="/property-search"
-              className="bg-gray-200 text-slate-900 px-5 py-3 rounded-lg font-semibold hover:bg-gray-300"
+          <div className="mt-8 flex gap-3">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="bg-gray-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300"
             >
-              ← Back to Search
-            </Link>
-
-            <Link
-              href="/dashboard"
-              className="bg-slate-900 text-white px-5 py-3 rounded-lg font-semibold hover:bg-slate-800"
+              Back to Dashboard
+            </button>
+            <button
+              onClick={() => router.push('/property-search')}
+              className="bg-slate-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-800"
             >
-              Dashboard
-            </Link>
-
+              Search Another Property
+            </button>
           </div>
 
         </div>
       </div>
     </main>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div>
+      <p className="text-sm font-medium text-gray-500">{label}</p>
+      <p className="text-lg text-slate-900">{value ?? '—'}</p>
+    </div>
   );
 }

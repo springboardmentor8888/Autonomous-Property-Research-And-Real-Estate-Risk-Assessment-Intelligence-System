@@ -1,44 +1,59 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { authApi } from '@/lib/api';
+import { setSession } from '@/lib/session';
+import { toastError, toastSuccess } from '@/lib/useToast';
 
 export default function Register() {
   const router = useRouter();
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!name || !email || !password) {
+      toastError('Please fill in all fields.');
+      return;
+    }
+
     if (password !== confirmPassword) {
-      alert("Passwords do not match");
+      toastError('Passwords do not match.');
       return;
     }
 
-    if (!password || !confirmPassword) {
-      alert("Please enter your password");
+    if (password.length < 6) {
+      toastError('Password must be at least 6 characters.');
       return;
     }
 
-    // For Milestone 1: go to dashboard after registration
-    router.push("/dashboard");
+    setLoading(true);
+    try {
+      const res = await authApi.register({ email, password, name });
+      setSession(res.token, res.email);
+      toastSuccess('Registration successful!');
+      router.push('/dashboard');
+      router.refresh();
+    } catch (err: any) {
+      toastError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-lg overflow-hidden grid md:grid-cols-2">
 
-        {/* LEFT - IMAGE */}
-        <div className="hidden md:block">
-          <img
-            src="/real-estate.jpg"
-            alt="Real Estate Property"
-            className="w-full h-full object-cover"
-          />
-        </div>
+      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl overflow-hidden grid md:grid-cols-2">
 
-        {/* RIGHT - REGISTER FORM */}
-        <div className="p-8">
+        {/* LEFT - REGISTER FORM */}
+        <div className="p-8 md:p-10 flex flex-col justify-center">
 
           <div className="text-center">
             <h1 className="text-3xl font-bold text-slate-900">
@@ -46,19 +61,16 @@ export default function Register() {
             </h1>
 
             <p className="mt-2 text-gray-500">
-              Register for the Real Estate Due Diligence Agent
+              Join Real Estate Due Diligence Agent
             </p>
           </div>
 
           <form
+            onSubmit={handleRegister}
             className="mt-8"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleRegister();
-            }}
           >
 
-            {/* Full Name */}
+            {/* Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Full Name
@@ -66,9 +78,12 @@ export default function Register() {
 
               <input
                 type="text"
-                placeholder="Enter your full name"
                 required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-slate-500"
+                disabled={loading}
               />
             </div>
 
@@ -80,9 +95,12 @@ export default function Register() {
 
               <input
                 type="email"
-                placeholder="Enter your email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-slate-500"
+                disabled={loading}
               />
             </div>
 
@@ -94,11 +112,12 @@ export default function Register() {
 
               <input
                 type="password"
-                placeholder="Create a password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create a password (min 6 chars)"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-slate-500"
+                disabled={loading}
               />
             </div>
 
@@ -110,56 +129,33 @@ export default function Register() {
 
               <input
                 type="password"
-                placeholder="Confirm your password"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-slate-500"
+                disabled={loading}
               />
-            </div>
-
-            {/* Role */}
-            <div className="mt-5">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Role
-              </label>
-
-              <select
-                required
-                defaultValue=""
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 bg-white outline-none focus:ring-2 focus:ring-slate-500"
-              >
-                <option value="" disabled>
-                  Select your role
-                </option>
-
-                <option value="buyer">Buyer</option>
-                <option value="agent">Real Estate Agent</option>
-                <option value="legal-reviewer">Legal Reviewer</option>
-                <option value="financial-institution">
-                  Financial Institution
-                </option>
-                <option value="administrator">
-                  Administrator
-                </option>
-              </select>
             </div>
 
             {/* Register Button */}
             <button
               type="submit"
-              className="w-full mt-7 bg-slate-900 text-white py-3 rounded-lg font-semibold hover:bg-slate-800"
+              disabled={loading}
+              className="w-full mt-7 bg-slate-900 text-white py-3 rounded-lg font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Register
+              {loading ? 'Creating account...' : 'Create Account'}
             </button>
 
           </form>
 
-          {/* Login */}
+          {/* Login Link */}
           <p className="text-center mt-6 text-gray-600">
             Already have an account?{" "}
+
             <button
-              onClick={() => router.push("/")}
+              type="button"
+              onClick={() => router.push('/')}
               className="text-blue-600 font-semibold hover:underline"
             >
               Login
@@ -167,7 +163,36 @@ export default function Register() {
           </p>
 
         </div>
+
+        {/* RIGHT - IMAGE */}
+        <div className="relative hidden md:block min-h-[550px]">
+
+          <img
+            src="/real-estate.jpg"
+            alt="Real Estate Property"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-8">
+
+            <div className="text-white text-center">
+
+              <h2 className="text-4xl font-bold">
+                Real Estate
+              </h2>
+
+              <p className="mt-4 text-lg">
+                Secure and smarter property due diligence
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
+
     </main>
   );
 }
