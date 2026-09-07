@@ -61,11 +61,130 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Address Validator */}
+                {/* Address Validator */}
         <section className="bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
           <AddressValidator />
         </section>
-      </div>
+
+        {/* Permit Details */}
+        <section className="mt-6 bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#4f9cf9]">
+                Permit &amp; Compliance
+              </p>
+
+              <h2 className="text-xl font-semibold text-white mt-1">
+                Permit Details
+              </h2>
+            </div>
+
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-400/20">
+              ✓ Compliant
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Permit ID
+              </p>
+              <p className="text-white font-medium mt-2">
+                PERMIT-2026-00871
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Permit Type
+              </p>
+              <p className="text-white font-medium mt-2">
+                Residential Building Permit
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Issue Date
+              </p>
+              <p className="text-white font-medium mt-2">
+                12 February 2024
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Permit Status
+              </p>
+              <p className="text-green-400 font-medium mt-2">
+                Approved
+              </p>
+            </div>
+
+          </div>
+        </section>
+                {/* Utility Details */}
+        <section className="mt-6 bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#4f9cf9]">
+                Environmental &amp; Utility
+              </p>
+
+              <h2 className="text-xl font-semibold text-white mt-1">
+                Utility Details
+              </h2>
+            </div>
+
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-400/20">
+              ✓ Connected
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Electricity
+              </p>
+              <p className="text-white font-medium mt-2">
+                Connected
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Water Supply
+              </p>
+              <p className="text-white font-medium mt-2">
+                Municipal
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Gas Connection
+              </p>
+              <p className="text-white font-medium mt-2">
+                Available
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Sewerage
+              </p>
+              <p className="text-white font-medium mt-2">
+                Municipal
+              </p>
+            </div>
+
+          </div>
+        </section>
+        </div>
     </main>
   )
 }
