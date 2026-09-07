@@ -44,15 +44,15 @@ export default function Dashboard() {
         </div>
 
         {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-7 items-stretch">
 
           {/* Search Property */}
-          <div className="bg-white rounded-2xl shadow-sm border p-7">
+          <div className="bg-white rounded-2xl shadow-sm border p-7 flex flex-col h-full min-h-[260px]">
             <h3 className="text-2xl font-bold text-slate-900">
               Search Property
             </h3>
 
-            <p className="mt-5 text-lg text-slate-600">
+            <p className="mt-5 text-lg text-slate-600 flex-1">
               Search for a property using its address with Mappls validation.
             </p>
 
@@ -65,12 +65,12 @@ export default function Dashboard() {
           </div>
 
           {/* Due Diligence Reports */}
-          <div className="bg-white rounded-2xl shadow-sm border p-7">
+          <div className="bg-white rounded-2xl shadow-sm border p-7 flex flex-col h-full min-h-[260px]">
             <h3 className="text-2xl font-bold text-slate-900">
               Due Diligence Reports
             </h3>
 
-            <p className="mt-5 text-lg text-slate-600">
+            <p className="mt-5 text-lg text-slate-600 flex-1">
               View property due diligence reports.
             </p>
 
@@ -83,12 +83,12 @@ export default function Dashboard() {
           </div>
 
           {/* Property History */}
-          <div className="bg-white rounded-2xl shadow-sm border p-7">
+          <div className="bg-white rounded-2xl shadow-sm border p-7 flex flex-col h-full min-h-[260px]">
             <h3 className="text-2xl font-bold text-slate-900">
               Property History
             </h3>
 
-            <p className="mt-5 text-lg text-slate-600">
+            <p className="mt-5 text-lg text-slate-600 flex-1">
               Review historical property information.
             </p>
 

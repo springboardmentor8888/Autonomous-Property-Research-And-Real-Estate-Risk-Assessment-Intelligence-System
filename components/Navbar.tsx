@@ -1,14 +1,24 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { getAuthEmail, clearSession, isAuthenticated } from '@/lib/session';
+import { getAuthEmail, clearSession } from '@/lib/session';
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const email = getAuthEmail();
+
+  // Render the same shell on server and first client paint to avoid
+  // hydration mismatches; populate auth state after mount.
+  const [mounted, setMounted] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    setEmail(getAuthEmail());
+  }, []);
 
   const handleLogout = () => {
     clearSession();
@@ -23,6 +33,8 @@ export default function Navbar() {
     { href: '/reports', label: 'Reports' },
   ];
 
+  const isLoggedIn = mounted && email !== null;
+
   return (
     <header className="bg-slate-900 text-white px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -31,7 +43,7 @@ export default function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-6">
-          {isAuthenticated() && (
+          {isLoggedIn && (
             <>
               {navLinks.map((link) => (
                 <Link

@@ -35,16 +35,13 @@ export default function PropertySearch() {
       setResult(res);
 
       if (res.data?.status === 'VALID') {
-        toastSuccess('Property found! Redirecting to details...');
         const firstResult = res.data?.results?.[0];
         const propertyId = firstResult?.propertyId;
-        const formattedAddress = firstResult?.formattedAddress ?? trimmedAddress;
-        const target = propertyId
-          ? `/property-details?propertyId=${propertyId}&property=${encodeURIComponent(formattedAddress)}`
-          : `/property-details?property=${encodeURIComponent(trimmedAddress)}`;
-        setTimeout(() => {
-          router.push(target);
-        }, 1500);
+        if (propertyId) {
+          router.push(`/property-details?propertyId=${propertyId}`);
+        } else {
+          router.push('/property-details');
+        }
       } else if (res.data?.status === 'INVALID') {
         toastError(res.message || 'Invalid address. Please check and try again.');
       } else {
@@ -121,13 +118,8 @@ export default function PropertySearch() {
           </div>
 
           {/* Result Display */}
-          {result && (
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="font-semibold text-slate-900 mb-2">Search Result</h3>
-              <pre className="text-sm text-gray-700 overflow-auto max-h-64">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
+          {result && result.data?.status === 'INVALID' && (
+            <p className="mt-6 text-lg text-slate-900">Invalid address</p>
           )}
 
         </div>

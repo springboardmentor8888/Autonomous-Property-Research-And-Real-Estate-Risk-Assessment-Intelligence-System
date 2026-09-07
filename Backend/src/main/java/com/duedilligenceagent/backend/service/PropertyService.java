@@ -2,7 +2,6 @@ package com.duedilligenceagent.backend.service;
 
 import java.util.List;
 
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.duedilligenceagent.backend.dto.PropertyResponse;
@@ -18,7 +17,10 @@ public class PropertyService {
         this.propertyRepository = propertyRepository;
     }
 
-    @Cacheable("properties")
+    // @Cacheable intentionally omitted: Redis is not configured for local dev,
+    // and the previous RedisCacheManager bean caused ClassCastExceptions when
+    // Spring DevTools restarted the JVM with a fresh classloader. Re-add
+    // @Cacheable once a real Redis instance is wired up.
     public List<PropertyResponse> getAllProperties() {
         return propertyRepository.findAll()
                 .stream()
@@ -26,7 +28,6 @@ public class PropertyService {
                 .toList();
     }
 
-    @Cacheable(value = "property", key = "#id")
     public PropertyResponse getPropertyById(Long id) {
         Property property = propertyRepository.findById(id)
                 .orElseThrow(() ->
