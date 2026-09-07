@@ -65,6 +65,64 @@ export default function DashboardPage() {
         <section className="bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
           <AddressValidator />
         </section>
+                {/* Ownership Details */}
+        <section className="mt-6 bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#00E5FF]">
+                Ownership Details
+              </p>
+              <h2 className="text-xl font-semibold text-white mt-1">
+                Property Ownership Information
+              </h2>
+            </div>
+
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-400/20">
+              ✓ Verified
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Owner ID
+              </p>
+              <p className="text-white font-medium mt-2">
+                OWN-2026-00124
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Ownership Since
+              </p>
+              <p className="text-white font-medium mt-2">
+                15 March 2019
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Registry Source
+              </p>
+              <p className="text-white font-medium mt-2">
+                State Property Registry
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Verification Method
+              </p>
+              <p className="text-white font-medium mt-2">
+                Official Registry Check
+              </p>
+            </div>
+
+          </div>
+        </section>
       </div>
     </main>
   )
