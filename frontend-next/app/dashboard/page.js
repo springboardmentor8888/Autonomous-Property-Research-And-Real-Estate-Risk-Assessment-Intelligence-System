@@ -65,6 +65,64 @@ export default function DashboardPage() {
         <section className="bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
           <AddressValidator />
         </section>
+                {/* Zoning Details */}
+        <section className="mt-6 bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#E040FB]">
+                Property Zoning
+              </p>
+              <h2 className="text-xl font-semibold text-white mt-1">
+                Zoning Details
+              </h2>
+            </div>
+
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-400/20">
+              ✓ Compliant
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Zoning Code
+              </p>
+              <p className="text-white font-medium mt-2">
+                R-2 Residential
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Zoning Type
+              </p>
+              <p className="text-white font-medium mt-2">
+                Residential
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Permitted Use
+              </p>
+              <p className="text-white font-medium mt-2">
+                Single Family Residential
+              </p>
+            </div>
+
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider">
+                Zoning Status
+              </p>
+              <p className="text-green-400 font-medium mt-2">
+                Compliant
+              </p>
+            </div>
+
+          </div>
+        </section>
       </div>
     </main>
   )
