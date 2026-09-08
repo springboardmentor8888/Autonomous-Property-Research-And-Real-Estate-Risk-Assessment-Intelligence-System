@@ -112,4 +112,12 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .body(ex.getMessage());
     }
+    @ExceptionHandler(PropertyHistoryNotFoundException.class)
+    public ResponseEntity<String> handlePropertyHistoryNotFound(
+            PropertyHistoryNotFoundException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ex.getMessage());
+    }
 }
