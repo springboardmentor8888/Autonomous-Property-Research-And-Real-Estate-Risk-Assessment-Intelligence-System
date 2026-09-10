@@ -8,6 +8,7 @@ import com.duedilligenceagent.backend.dto.Property.PropertySearchResponse.Resolv
 import com.duedilligenceagent.backend.entities.Property;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import com.duedilligenceagent.backend.services.AddressValidationStrategy;
+import com.duedilligenceagent.backend.services.GooglePlacesDetailsService;
 import com.duedilligenceagent.backend.services.PropertyTypeClassifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class PropertySearchService {
 
     private final AddressValidationStrategy addressValidationStrategy;
     private final PropertyRepository propertyRepository;
+    private final GooglePlacesDetailsService placesDetailsService;
 
     @Value("${google.address-validation.strategy:geocoding}")
     private String activeStrategy;
@@ -94,6 +96,12 @@ public class PropertySearchService {
         // Take the first (best) candidate
         GoogleCandidate bestCandidate = candidates.get(0);
 
+        // Geocoding match-types could not classify it — ask Places API (New)
+        // for Google's own classification of the same place resource.
+        if (bestCandidate.getPropertyType() == null) {
+            enrichPropertyTypeFromPlaces(bestCandidate);
+        }
+
         // Persist the best candidate (rely solely on geocoding API for all property data)
         Property saved = persist(bestCandidate, requestedAddress);
 
@@ -138,5 +146,25 @@ public class PropertySearchService {
 
     private static BigDecimal toBigDecimal(Double v) {
         return v == null ? null : BigDecimal.valueOf(v);
+    }
+
+    /**
+     * Fallback classifier: resolves the geocoded place via Places API (New)
+     * and maps Google's {@code primaryType}/{@code types} onto our
+     * {@link com.duedilligenceagent.backend.entities.enums.PropertyType}.
+     * Never throws — an unresolvable type simply stays null.
+     */
+    private void enrichPropertyTypeFromPlaces(GoogleCandidate candidate) {
+        placesDetailsService.fetchDetails(candidate.getPlaceId()).ifPresent(details -> {
+            String type = PropertyTypeClassifier.fromPlaces(details.getPrimaryType(), details.getTypes());
+            if (type != null) {
+                candidate.setPropertyType(type);
+                log.info("Places enrichment classified '{}' as '{}' (primaryType={})",
+                        candidate.getFormattedAddress(), type, details.getPrimaryType());
+            } else {
+                log.debug("Places enrichment had no mapping for primaryType={} of '{}'",
+                        details.getPrimaryType(), candidate.getPlaceId());
+            }
+        });
     }
 }
