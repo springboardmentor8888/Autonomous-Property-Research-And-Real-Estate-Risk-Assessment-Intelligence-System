@@ -1,108 +1,89 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { isAuthenticated, getAuthEmail, clearSession } from '@/lib/session';
-import { toastError } from '@/lib/useToast';
+import { useEffect, useState } from 'react';
+import { useAuthGuard } from '@/lib/useAuth';
 
 export default function Dashboard() {
   const router = useRouter();
+  const [email, setEmail] = useState<string | null>(null);
+
+  const authReady = useAuthGuard({ loginPath: '/' });
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/');
-    }
-  }, [router]);
+    if (!authReady) return;
+    setEmail(localStorage.getItem('auth_email'));
+  }, [authReady]);
 
-  const handleLogout = () => {
-    clearSession();
-    router.push('/');
-    router.refresh();
-  };
+  if (!authReady || email === null) return null;
 
-  if (!isAuthenticated()) return null;
+  const cards = [
+    {
+      title: 'Search Property',
+      description: 'Validate any Indian address with the Mappls geocoder and surface property details.',
+      cta: 'Search a property',
+      href: '/property-search',
+      pill: 'Recommended',
+    },
+    {
+      title: 'Due Diligence Reports',
+      description: 'Review generated reports on ownership, permits, environmental and zoning risk.',
+      cta: 'View reports',
+      href: '/reports',
+    },
+    {
+      title: 'Property History',
+      description: 'Track previously searched properties and revisit any past investigation.',
+      cta: 'View history',
+      href: '/history',
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-100">
-
-      {/* Dashboard Content */}
-      <section className="max-w-7xl mx-auto mt-12 px-6 pb-12">
-
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-4xl font-bold text-slate-900">
-              Dashboard
-            </h2>
-            <p className="mt-2 text-lg text-slate-600">
-              Welcome to your property due diligence workspace.
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Logged in as</p>
-            <p className="font-medium text-slate-900">{getAuthEmail()}</p>
-          </div>
+    <main className="mx-auto max-w-7xl px-6 py-10">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">
+            Welcome back{email ? `, ${email}` : ''}. Pick a workflow to get started.
+          </p>
         </div>
+        <span className="pill bg-emerald-50 text-emerald-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          Signed in
+        </span>
+      </header>
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-7 items-stretch">
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-3 items-stretch">
+        {cards.map((card) => (
+          <article
+            key={card.href}
+            className="card flex h-full min-h-[260px] flex-col p-7 transition-shadow hover:shadow-md"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+                {card.title}
+              </h2>
+              {card.pill && (
+                <span className="pill bg-slate-100 text-slate-700">
+                  {card.pill}
+                </span>
+              )}
+            </div>
 
-          {/* Search Property */}
-          <div className="bg-white rounded-2xl shadow-sm border p-7 flex flex-col h-full min-h-[260px]">
-            <h3 className="text-2xl font-bold text-slate-900">
-              Search Property
-            </h3>
-
-            <p className="mt-5 text-lg text-slate-600 flex-1">
-              Search for a property using its address with Mappls validation.
+            <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
+              {card.description}
             </p>
 
             <button
-              onClick={() => router.push('/property-search')}
-              className="mt-7 bg-slate-900 text-white px-6 py-4 rounded-lg font-semibold hover:bg-slate-800 transition w-full"
+              onClick={() => router.push(card.href)}
+              className="btn-primary mt-6 w-full"
             >
-              Search Property
+              {card.cta}
             </button>
-          </div>
-
-          {/* Due Diligence Reports */}
-          <div className="bg-white rounded-2xl shadow-sm border p-7 flex flex-col h-full min-h-[260px]">
-            <h3 className="text-2xl font-bold text-slate-900">
-              Due Diligence Reports
-            </h3>
-
-            <p className="mt-5 text-lg text-slate-600 flex-1">
-              View property due diligence reports.
-            </p>
-
-            <button
-              onClick={() => router.push('/reports')}
-              className="mt-7 bg-slate-900 text-white px-6 py-4 rounded-lg font-semibold hover:bg-slate-800 transition w-full"
-            >
-              View Reports
-            </button>
-          </div>
-
-          {/* Property History */}
-          <div className="bg-white rounded-2xl shadow-sm border p-7 flex flex-col h-full min-h-[260px]">
-            <h3 className="text-2xl font-bold text-slate-900">
-              Property History
-            </h3>
-
-            <p className="mt-5 text-lg text-slate-600 flex-1">
-              Review historical property information.
-            </p>
-
-            <button
-              onClick={() => router.push('/history')}
-              className="mt-7 bg-slate-900 text-white px-6 py-4 rounded-lg font-semibold hover:bg-slate-800 transition w-full"
-            >
-              View History
-            </button>
-          </div>
-
-        </div>
+          </article>
+        ))}
       </section>
-
-    </div>
+    </main>
   );
 }

@@ -1,25 +1,22 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { isAuthenticated } from '@/lib/session';
+import { useState } from 'react';
+import { useAuthGuard } from '@/lib/useAuth';
 import { propertyApi } from '@/lib/api';
-import { toastError, toastSuccess } from '@/lib/useToast';
+import { toastError } from '@/lib/useToast';
 
 export default function PropertySearch() {
   const router = useRouter();
 
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [invalid, setInvalid] = useState(false);
 
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/');
-    }
-  }, [router]);
+  const authReady = useAuthGuard({ loginPath: '/' });
 
-  const handleSearch = async () => {
+  const handleSearch = async (e?: React.FormEvent<HTMLFormElement>) => {
+    e?.preventDefault();
     const trimmedAddress = address.trim();
 
     if (!trimmedAddress) {
@@ -28,24 +25,21 @@ export default function PropertySearch() {
     }
 
     setLoading(true);
-    setResult(null);
+    setInvalid(false);
 
     try {
       const res = await propertyApi.searchByAddress(trimmedAddress);
-      setResult(res);
 
       if (res.data?.status === 'VALID') {
         const firstResult = res.data?.results?.[0];
         const propertyId = firstResult?.propertyId;
-        if (propertyId) {
-          router.push(`/property-details?propertyId=${propertyId}`);
-        } else {
-          router.push('/property-details');
-        }
+        router.push(propertyId ? `/property-details?propertyId=${propertyId}` : '/property-details');
       } else if (res.data?.status === 'INVALID') {
-        toastError(res.message || 'Invalid address. Please check and try again.');
+        // Genuinely invalid address (e.g. ZERO_RESULTS from Google)
+        setInvalid(true);
       } else {
-        toastError(res.message || 'Search failed. Please try again.');
+        // ERROR state (e.g. Google API key invalid, service unavailable)
+        toastError(res.message || 'Address validation service is currently unavailable. Please try again later.');
       }
     } catch (err: any) {
       toastError(err.message || 'Search failed. Please try again.');
@@ -54,76 +48,73 @@ export default function PropertySearch() {
     }
   };
 
-  if (!isAuthenticated()) return null;
+  if (!authReady) return null;
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6">
-      <div className="max-w-3xl mx-auto">
-
-        {/* Header */}
-        <div className="bg-slate-900 text-white p-6 rounded-lg">
-          <h1 className="text-2xl font-bold">
-            Real Estate Due Diligence Agent
-          </h1>
-        </div>
-
-        {/* Search Card */}
-        <div className="bg-white mt-8 rounded-2xl shadow-lg p-8">
-
-          <h2 className="text-3xl font-bold text-slate-900">
-            Search Property
-          </h2>
-
-          <p className="mt-2 text-gray-600">
-            Enter the property address to search for due diligence information.
-            The address will be validated using Mappls API.
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <header className="page-header">
+        <div>
+          <nav className="text-xs font-medium text-slate-500">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="hover:text-slate-900"
+            >
+              Dashboard
+            </button>
+            <span className="mx-2 text-slate-300">/</span>
+            <span className="text-slate-700">Search Property</span>
+          </nav>
+          <h1 className="page-title mt-2">Search Property</h1>
+          <p className="page-subtitle">
+            Validate an Indian address with the Mappls geocoder and load property details.
           </p>
+        </div>
+      </header>
 
-          {/* Input */}
-          <div className="mt-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Property Address
-            </label>
-
+      <section className="card p-8">
+        <form onSubmit={handleSearch} className="space-y-5">
+          <div>
+            <label htmlFor="address" className="label-base">Property address</label>
             <input
+              id="address"
               type="text"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Enter property address (e.g., 123 Main St, Mumbai, Maharashtra)"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-slate-500"
+              onChange={(e) => {
+                setAddress(e.target.value);
+                if (invalid) setInvalid(false);
+              }}
+              placeholder="e.g. 237 Okhla Industrial Estate Phase 3, New Delhi 110020"
+              className="input-base"
               disabled={loading}
+              autoFocus
             />
+            <p className="mt-1.5 text-xs text-slate-500">
+              Include city, state, and PIN code for the most accurate match.
+            </p>
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-3 mt-6">
-
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              type="button"
-              onClick={handleSearch}
+              type="submit"
               disabled={loading}
-              className="bg-slate-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary"
             >
-              {loading ? 'Searching...' : 'Search Property'}
+              {loading ? 'Searching…' : 'Search Property'}
             </button>
-
             <button
               type="button"
               onClick={() => router.push('/dashboard')}
-              className="bg-gray-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300"
+              className="btn-secondary"
             >
-              Back to Dashboard
+              Cancel
             </button>
-
           </div>
 
-          {/* Result Display */}
-          {result && result.data?.status === 'INVALID' && (
-            <p className="mt-6 text-lg text-slate-900">Invalid address</p>
+          {invalid && (
+            <p className="text-sm font-medium text-rose-600">Invalid address</p>
           )}
-
-        </div>
-      </div>
+        </form>
+      </section>
     </main>
   );
 }

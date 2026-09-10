@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
-import ToastHost from '@/components/ToastHost';
+import ToastHostClient from '@/components/ToastHostClient';
 
 export const metadata: Metadata = {
   title: 'Real Estate Due Diligence Agent',
@@ -15,10 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-100">
+      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
         <Navbar />
-        <main>{children}</main>
-        <ToastHost />
+        {children}
+        <ToastHostClient />
       </body>
     </html>
   );

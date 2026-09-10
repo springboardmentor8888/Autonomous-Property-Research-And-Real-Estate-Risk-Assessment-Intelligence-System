@@ -39,17 +39,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
 
         // Authentication endpoints do not require JWT.
-        if (path.startsWith("/api/auth/")) {
+        if (path.startsWith("/api/auth/") || path.startsWith("/api/health") || 
+            path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") ||
+            path.equals("/error")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String authHeader = request.getHeader("Authorization");
+        System.out.println("Authorization header: " + authHeader);
 
         if (authHeader == null ||
                 !authHeader.startsWith("Bearer ")) {
 
-            filterChain.doFilter(request, response);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"Authorization header missing or invalid\"}");
             return;
         }
 
@@ -60,8 +65,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (username != null &&
                     SecurityContextHolder
-                            .getContext()
-                            .getAuthentication() == null) {
+                    .getContext()
+                    .getAuthentication() == null) {
 
                 UserDetails userDetails =
                         userDetailsService.loadUserByUsername(username);
@@ -69,25 +74,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (jwtService.isTokenValid(jwt, userDetails)) {
 
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
 
                     authentication.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                    .buildDetails(request)
+                    new WebAuthenticationDetailsSource()
+                            .buildDetails(request)
                     );
 
                     SecurityContextHolder
-                            .getContext()
-                            .setAuthentication(authentication);
+                    .getContext()
+                    .setAuthentication(authentication);
+                } else {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\":\"Token expired or invalid\"}");
+                    return;
                 }
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"Token validation failed\"}");
+            return;
         }
 
         filterChain.doFilter(request, response);

@@ -51,16 +51,24 @@ Thumbs.db
 
 # ────────────────────────────────────────────────────────────
 #  Secrets — explicit deny-list as a safety net
-#  The canonical store for the Mappls API credential is
-#  Backend/src/main/resources/mappls-credentials.properties.
-#  Replace it with mappls-credentials.properties.example
-#  (a placeholder, no real token) when committing.
+#  The canonical store for the Google Maps API credential is
+#  Backend/src/main/resources/google-credentials.properties.
+#  Replace it with google-credentials.properties.example
+#  (a placeholder, no real key) when committing.
 # ────────────────────────────────────────────────────────────
-**/mappls-credentials.properties
+**/google-credentials.properties
 **/application-local.properties
 **/application-secret.properties
 **/.env
 
 # Allow the .example placeholder to be committed
-!**/mappls-credentials.properties.example
+!**/google-credentials.properties.example
 !**/.env.example
+
+# ────────────────────────────────────────────────────────────
+#  Runtime artifacts (local only)
+# ────────────────────────────────────────────────────────────
+*.pid
+*.log
+*.bak
+cookies.txt

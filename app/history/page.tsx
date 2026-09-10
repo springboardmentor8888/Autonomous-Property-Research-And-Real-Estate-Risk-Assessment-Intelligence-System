@@ -1,53 +1,65 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { isAuthenticated } from '@/lib/session';
+import { useAuthGuard } from '@/lib/useAuth';
 
 export default function History() {
   const router = useRouter();
+  const authReady = useAuthGuard({ loginPath: '/' });
 
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/');
-    }
-  }, [router]);
-
-  if (!isAuthenticated()) return null;
+  if (!authReady) return null;
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6">
-      <div className="max-w-4xl mx-auto">
-
-        {/* Header */}
-        <div className="bg-slate-900 text-white p-6 rounded-lg mb-8">
-          <h1 className="text-2xl font-bold">
-            Property History
-          </h1>
-        </div>
-
-        {/* History Content */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-
-          <h2 className="text-3xl font-bold text-slate-900">
-            Search History
-          </h2>
-
-          <p className="mt-4 text-gray-600">
-            Your property search history will appear here.
-          </p>
-
-          <div className="mt-8">
+    <main className="mx-auto max-w-4xl px-6 py-10">
+      <header className="page-header">
+        <div>
+          <nav className="text-xs font-medium text-slate-500">
             <button
               onClick={() => router.push('/dashboard')}
-              className="bg-gray-200 text-slate-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300"
+              className="hover:text-slate-900"
             >
-              Back to Dashboard
+              Dashboard
             </button>
-          </div>
-
+            <span className="mx-2 text-slate-300">/</span>
+            <span className="text-slate-700">Property History</span>
+          </nav>
+          <h1 className="page-title mt-2">Property History</h1>
+          <p className="page-subtitle">
+            Previously searched properties will appear here.
+          </p>
         </div>
-      </div>
+      </header>
+
+      <section className="card flex flex-col items-center justify-center px-8 py-16 text-center">
+        <div className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-slate-500">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="h-6 w-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+            />
+          </svg>
+        </div>
+        <h2 className="mt-4 text-base font-semibold text-slate-900">
+          No history yet
+        </h2>
+        <p className="mt-1 max-w-sm text-sm text-slate-500">
+          Search for a property and your results will be tracked here for future reference.
+        </p>
+        <button
+          onClick={() => router.push('/property-search')}
+          className="btn-primary mt-6"
+        >
+          Search a property
+        </button>
+      </section>
     </main>
   );
 }

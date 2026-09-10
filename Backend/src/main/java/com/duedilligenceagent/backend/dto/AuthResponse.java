@@ -7,7 +7,13 @@ import lombok.Getter;
 @AllArgsConstructor
 public class AuthResponse {
 
-    private String token;
+    private String accessToken;
+
+    private String refreshToken;
+
+    private String email;
+
+    private String role;
 
     private String message;
 }
