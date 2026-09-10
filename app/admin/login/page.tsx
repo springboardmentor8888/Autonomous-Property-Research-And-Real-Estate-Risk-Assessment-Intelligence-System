@@ -1,46 +1,15 @@
-'use client';
+import type { Metadata } from 'next';
+import AdminLoginForm from './AdminLoginForm';
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { authApi } from '@/lib/api';
-import { setSession } from '@/lib/session';
-import { toastError } from '@/lib/useToast';
+// Server-rendered page shell: no auth state, no client JS except the form.
+// Deliberately NOT linked from the user login/register pages — reachable
+// only via its URL or a redirect from /admin/dashboard when not signed in.
+export const metadata: Metadata = {
+  title: 'Administrator Login | Real Estate Due Diligence Agent',
+  robots: { index: false, follow: false },
+};
 
-export default function AdminLogin() {
-  const router = useRouter();
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!email || !password) {
-      toastError('Please enter email and password.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await authApi.login(email, password);
-      
-      // Verify the user has ADMINISTRATOR role
-      if (res.role !== 'ADMINISTRATOR') {
-        toastError('Access denied. Administrator privileges required.');
-        return;
-      }
-      
-      setSession(res.token, res.email, res.role);
-      router.push('/admin/dashboard');
-      router.refresh();
-    } catch (err: any) {
-      toastError(err.message || 'Login failed. Please check your credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+export default function AdminLoginPage() {
   return (
     <main className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
@@ -56,64 +25,7 @@ export default function AdminLogin() {
           </p>
         </div>
 
-        <div className="card p-8">
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label htmlFor="email" className="label-base">Email address</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@propertyrisk.com"
-                className="input-base"
-                disabled={loading}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="label-base">Password</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="input-base"
-                disabled={loading}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full"
-            >
-              {loading ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-slate-600">
-            <button
-              type="button"
-              onClick={() => router.push('/')}
-              className="font-medium text-slate-900 underline-offset-4 hover:underline"
-            >
-              Back to user login
-            </button>
-          </p>
-        </div>
-
-        <div className="mt-6 text-center text-xs text-slate-500">
-          <p>Pre-configured admin accounts:</p>
-          <p className="font-mono">admin1@propertyrisk.com</p>
-          <p className="font-mono">admin2@propertyrisk.com</p>
-          <p className="font-mono">Password: Admin@123</p>
-        </div>
+        <AdminLoginForm />
       </div>
     </main>
   );

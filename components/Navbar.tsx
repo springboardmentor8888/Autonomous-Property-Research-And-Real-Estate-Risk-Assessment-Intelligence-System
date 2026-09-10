@@ -64,8 +64,11 @@ export default function Navbar() {
 
   const isLoggedIn = mounted && email !== null && !isAuthPage;
 
-  // Don't render user menu on auth pages
+  // Render an isolated shell (brand only) on auth pages: user-facing auth
+  // pages get Sign in / Get Started links; the admin login stays separate
+  // with no links toward user-facing surfaces.
   if (isAuthPage) {
+    const isAdminLoginPage = pathname === '/admin/login';
     return (
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
@@ -79,18 +82,22 @@ export default function Navbar() {
           </Link>
 
           <nav className="flex items-center gap-1">
-            <Link
-              href="/login"
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-md px-3 py-1.5 text-sm font-medium bg-slate-900 text-white transition-colors hover:bg-slate-800"
-            >
-              Get Started
-            </Link>
+            {!isAdminLoginPage && (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-md px-3 py-1.5 text-sm font-medium bg-slate-900 text-white transition-colors hover:bg-slate-800"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>

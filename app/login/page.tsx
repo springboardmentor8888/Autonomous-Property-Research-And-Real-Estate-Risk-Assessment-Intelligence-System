@@ -112,17 +112,6 @@ export default function Login() {
               Create one
             </button>
           </p>
-          
-          <p className="mt-4 text-center text-sm text-slate-600">
-            Administrator?{' '}
-            <button
-              type="button"
-              onClick={() => router.push('/admin/login')}
-              className="font-medium text-slate-900 underline-offset-4 hover:underline"
-            >
-              Admin Login
-            </button>
-          </p>
         </div>
 
         {/* RIGHT - IMAGE PANEL */}

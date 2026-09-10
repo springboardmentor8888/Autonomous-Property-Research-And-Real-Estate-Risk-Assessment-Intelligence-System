@@ -1,8 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getAuthEmail, clearSession } from '@/lib/session';
+import { getAuthEmail } from '@/lib/session';
 import { useAuthGuard } from '@/lib/useAuth';
 import { adminApi } from '@/lib/api';
 import { toastError } from '@/lib/useToast';
@@ -16,7 +15,6 @@ interface User {
 }
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,12 +56,6 @@ export default function AdminDashboard() {
     } finally {
       setDeletingId(null);
     }
-  };
-
-  const handleLogout = () => {
-    clearSession();
-    router.push('/admin/login');
-    router.refresh();
   };
 
   const formatDate = (dateString: string) => {
@@ -117,9 +109,6 @@ export default function AdminDashboard() {
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Admin: {email}
           </span>
-          <button onClick={handleLogout} className="btn-secondary">
-            Logout
-          </button>
         </div>
       </header>
 
