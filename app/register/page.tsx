@@ -13,6 +13,57 @@ const ROLE_OPTIONS = [
   { value: 'FINANCIAL_INSTITUTION', label: 'Financial Institution' },
 ];
 
+// Mirror of the backend RegisterRequest constraints (email format,
+// password >= 8 chars) plus form-level checks.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+type FieldName = 'name' | 'email' | 'password' | 'confirmPassword' | 'role';
+type Errors = Partial<Record<FieldName, string>>;
+
+interface Values {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  role: string;
+}
+
+function validate(v: Values): Errors {
+  const errors: Errors = {};
+
+  if (!v.name.trim()) {
+    errors.name = 'Full name is required.';
+  } else if (v.name.trim().length < 2) {
+    errors.name = 'Name must be at least 2 characters.';
+  } else if (v.name.trim().length > 60) {
+    errors.name = 'Name must be 60 characters or fewer.';
+  }
+
+  if (!v.email.trim()) {
+    errors.email = 'Email is required.';
+  } else if (!EMAIL_RE.test(v.email.trim())) {
+    errors.email = 'Please enter a valid email address.';
+  }
+
+  if (!v.password) {
+    errors.password = 'Password is required.';
+  } else if (v.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters.';
+  }
+
+  if (!v.confirmPassword) {
+    errors.confirmPassword = 'Please confirm your password.';
+  } else if (v.password !== v.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match.';
+  }
+
+  if (!ROLE_OPTIONS.some((o) => o.value === v.role)) {
+    errors.role = 'Please select a valid role.';
+  }
+
+  return errors;
+}
+
 export default function Register() {
   const router = useRouter();
 
@@ -23,21 +74,22 @@ export default function Register() {
   const [role, setRole] = useState('BUYER');
   const [loading, setLoading] = useState(false);
 
+  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
+  const [attempted, setAttempted] = useState(false);
+
+  const errors = validate({ name, email, password, confirmPassword, role });
+  const showError = (field: FieldName) =>
+    (touched[field] || attempted) && errors[field] ? errors[field] : undefined;
+
+  const markTouched = (field: FieldName) =>
+    setTouched((t) => ({ ...t, [field]: true }));
+
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!name || !email || !password) {
-      toastError('Please fill in all fields.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toastError('Passwords do not match.');
-      return;
-    }
-
-    if (password.length < 6) {
-      toastError('Password must be at least 6 characters.');
+    setAttempted(true);
+    if (Object.keys(errors).length > 0) {
+      toastError('Please fix the highlighted fields.');
       return;
     }
 
@@ -45,8 +97,8 @@ export default function Register() {
     try {
       // Clear any expired session before registration attempt
       clearSession();
-      
-      const res = await authApi.register({ email, password, name, role });
+
+      const res = await authApi.register({ email: email.trim(), password, name: name.trim(), role });
       setSession(res.token, res.email, res.role);
       router.push('/dashboard');
       router.refresh();
@@ -76,7 +128,7 @@ export default function Register() {
             </p>
           </div>
 
-          <form onSubmit={handleRegister} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4" noValidate>
             <div>
               <label htmlFor="name" className="label-base">Full name</label>
               <input
@@ -86,10 +138,15 @@ export default function Register() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onBlur={() => markTouched('name')}
                 placeholder="Jane Doe"
-                className="input-base"
+                aria-invalid={!!showError('name')}
+                className={`input-base ${showError('name') ? 'border-red-400' : ''}`}
                 disabled={loading}
               />
+              {showError('name') && (
+                <p className="mt-1 text-xs text-red-600">{showError('name')}</p>
+              )}
             </div>
 
             <div>
@@ -101,10 +158,15 @@ export default function Register() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => markTouched('email')}
                 placeholder="you@company.com"
-                className="input-base"
+                aria-invalid={!!showError('email')}
+                className={`input-base ${showError('email') ? 'border-red-400' : ''}`}
                 disabled={loading}
               />
+              {showError('email') && (
+                <p className="mt-1 text-xs text-red-600">{showError('email')}</p>
+              )}
             </div>
 
             <div>
@@ -113,6 +175,7 @@ export default function Register() {
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
+                onBlur={() => markTouched('role')}
                 className="input-base"
                 disabled={loading}
                 required
@@ -136,13 +199,18 @@ export default function Register() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  minLength={6}
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 6 characters"
-                  className="input-base"
+                  onBlur={() => markTouched('password')}
+                  placeholder="Min. 8 characters"
+                  aria-invalid={!!showError('password')}
+                  className={`input-base ${showError('password') ? 'border-red-400' : ''}`}
                   disabled={loading}
                 />
+                {showError('password') && (
+                  <p className="mt-1 text-xs text-red-600">{showError('password')}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="confirm" className="label-base">Confirm</label>
@@ -153,10 +221,15 @@ export default function Register() {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  onBlur={() => markTouched('confirmPassword')}
                   placeholder="Repeat password"
-                  className="input-base"
+                  aria-invalid={!!showError('confirmPassword')}
+                  className={`input-base ${showError('confirmPassword') ? 'border-red-400' : ''}`}
                   disabled={loading}
                 />
+                {showError('confirmPassword') && (
+                  <p className="mt-1 text-xs text-red-600">{showError('confirmPassword')}</p>
+                )}
               </div>
             </div>
 
