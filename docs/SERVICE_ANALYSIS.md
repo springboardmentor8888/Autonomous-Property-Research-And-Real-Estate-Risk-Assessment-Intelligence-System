@@ -1,5 +1,13 @@
 # Address Validation and Property Search Services Analysis
 
+> **Status note:** The Places and Address Validation strategies described
+> below were removed as dead code — Google Geocoding v4 alone now backs the
+> pipeline (`GoogleGeocodingStrategy`, selected unconditionally in
+> `AddressValidationStrategyConfig`). The `AddressValidationStrategy`
+> interface remains, so adding a strategy back only requires an
+> implementation + config registration. Property-type inference uses the
+> shared `PropertyTypeClassifier` with the `PropertyType` enum.
+
 ## Overview
 This document provides a detailed analysis of the address validation and property search services in the Autonomous Property Research and Real Estate Risk Assessment Intelligence System. These services form the core functionality for validating user-provided addresses using Google Maps APIs and persisting validated properties to the database.
 
