@@ -8,6 +8,7 @@ import com.duedilligenceagent.backend.dto.Property.PropertySearchResponse.Resolv
 import com.duedilligenceagent.backend.entities.Property;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import com.duedilligenceagent.backend.services.AddressValidationStrategy;
+import com.duedilligenceagent.backend.services.PropertyTypeClassifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -130,7 +131,7 @@ public class PropertySearchService {
                 .postalCode(c.getPostalCode())
                 .latitude(toBigDecimal(c.getLatitude()))
                 .longitude(toBigDecimal(c.getLongitude()))
-                .propertyType(c.getPropertyType()) // Can be null - inferred from address types
+                .propertyType(PropertyTypeClassifier.normalize(c.getPropertyType()))
                 .build();
         return propertyRepository.save(row);
     }

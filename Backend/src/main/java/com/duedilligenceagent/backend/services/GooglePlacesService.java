@@ -117,38 +117,7 @@ public class GooglePlacesService {
     }
 
     private String mapPrimaryTypeToPropertyType(String primaryType, List<String> types) {
-        if (primaryType != null) {
-            switch (primaryType) {
-                case "residential":
-                case "apartment_complex":
-                case "condominium":
-                case "housing_complex":
-                    return "Residential";
-                case "commercial":
-                case "office_building":
-                case "shopping_mall":
-                case "store":
-                case "restaurant":
-                case "hotel":
-                    return "Commercial";
-                case "farm":
-                case "ranch":
-                    return "Agricultural";
-                case "industrial":
-                case "warehouse":
-                case "factory":
-                    return "Industrial";
-            }
-        }
-        if (types != null) {
-            if (types.contains("residential") || types.contains("apartment_complex") || types.contains("condominium")) {
-                return "Residential";
-            }
-            if (types.contains("commercial") || types.contains("establishment") || types.contains("point_of_interest")) {
-                return "Commercial";
-            }
-        }
-        return null;
+        return PropertyTypeClassifier.fromPlaces(primaryType, types);
     }
 
     /**

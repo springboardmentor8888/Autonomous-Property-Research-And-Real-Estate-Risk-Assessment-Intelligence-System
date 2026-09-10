@@ -130,17 +130,7 @@ public class GoogleGeocodingService {
     }
 
     private String inferPropertyType(List<String> types) {
-        if (types == null) return null;
-        if (types.contains("premise") || types.contains("subpremise")) {
-            return "Residential";
-        }
-        if (types.contains("establishment") || types.contains("point_of_interest")) {
-            return "Commercial";
-        }
-        if (types.contains("street_address")) {
-            return "Land";
-        }
-        return null;
+        return PropertyTypeClassifier.fromGeocodingTypes(types);
     }
 
     public static class GoogleApiException extends RuntimeException {
