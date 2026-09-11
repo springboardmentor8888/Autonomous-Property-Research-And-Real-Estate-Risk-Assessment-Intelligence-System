@@ -11,6 +11,12 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import com.duedilligenceagent.backend.security.JwtAuthenticationFilter;
 
+/**
+ * Filter-chain definition: auth/health/docs endpoints are public,
+ * /api/admin/** requires the ADMINISTRATOR role, everything else needs a
+ * valid access token (see {@link com.duedilligenceagent.backend.security.JwtAuthenticationFilter}).
+ * Sessions are stateless — the JWT itself is the whole session.
+ */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {

@@ -13,6 +13,8 @@ import com.duedilligenceagent.backend.entities.RefreshToken;
 import com.duedilligenceagent.backend.entities.Role;
 import com.duedilligenceagent.backend.entities.User;
 import com.duedilligenceagent.backend.entities.enums.RoleName;
+import com.duedilligenceagent.backend.exception.InvalidAuthRequestException;
+import com.duedilligenceagent.backend.exception.UserAlreadyExistsException;
 import com.duedilligenceagent.backend.repositories.RoleRepository;
 import com.duedilligenceagent.backend.repositories.UserRepository;
 import com.duedilligenceagent.backend.security.JwtService;
@@ -20,6 +22,16 @@ import com.duedilligenceagent.backend.security.JwtService;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Set;
 
+/**
+ * Use-cases behind {@code /api/auth/register|login|logout}.
+ * <p>
+ * Registration issues the account (BCrypt-hashed password) and immediately
+ * signs the user in; login delegates credential checking to Spring
+ * Security's {@link AuthenticationManager} so we never compare hashes by
+ * hand. In both cases the access token goes to the client in the response
+ * body while the refresh token is stored server-side and handed over only
+ * as an HttpOnly cookie.
+ */
 @Service
 public class AuthService {
 
@@ -58,18 +70,18 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new com.duedilligenceagent.backend.exception.UserAlreadyExistsException("Email already registered");
+            throw new UserAlreadyExistsException("Email already registered");
         }
 
         // Validate role - ADMINISTRATOR not allowed for self-registration
         RoleName requestedRole = request.getRole();
         if (requestedRole == null || !ALLOWED_REGISTRATION_ROLES.contains(requestedRole)) {
-            throw new com.duedilligenceagent.backend.exception.InvalidAuthRequestException(
+            throw new InvalidAuthRequestException(
                     "Invalid role selected. Administrator role cannot be self-registered.");
         }
 
         Role role = roleRepository.findByName(requestedRole.name())
-                .orElseThrow(() -> new com.duedilligenceagent.backend.exception.InvalidAuthRequestException(
+                .orElseThrow(() -> new InvalidAuthRequestException(
                         "Role not found: " + requestedRole.name()));
 
         User user = new User();
@@ -83,7 +95,7 @@ public class AuthService {
 
         String roleName = role.getName();
 
-        // Use the role we already fetched - no need to re-query
+        // Build the token from the role we already resolved - no second query.
         String accessToken = jwtService.generateAccessToken(
                 org.springframework.security.core.userdetails.User
                         .withUsername(user.getEmail())
@@ -93,13 +105,13 @@ public class AuthService {
                         .build()
         );
 
-        // Create and store refresh token - pass roleName explicitly to avoid lazy loading
+        // Create and store refresh token - pass roleName explicitly to avoid lazy loading.
+        // It is delivered ONLY as an HttpOnly cookie, never in the response body.
         RefreshToken refreshToken = refreshTokenService.createRefreshTokenForRegistration(user, roleName);
         refreshTokenService.setRefreshTokenCookie(response, refreshToken.getToken());
 
         return new AuthResponse(
                 accessToken,
-                refreshToken.getToken(),
                 user.getEmail(),
                 roleName,
                 "User registered successfully"
@@ -124,7 +136,9 @@ public class AuthService {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found")
+                        // Defensive: authenticate() above already rejects unknown
+                        // users, so reaching here means a race with deletion.
+                        new InvalidAuthRequestException("Invalid email or password")
                 );
 
         String roleName = user.getRole().getName();
@@ -145,13 +159,16 @@ public class AuthService {
 
         return new AuthResponse(
                 accessToken,
-                refreshToken.getToken(),
                 user.getEmail(),
                 roleName,
                 "Login successful"
         );
     }
 
+    /**
+     * Clears both auth cookies. Actual refresh-token revocation happens in
+     * {@code AuthController#logout} (it owns the request, hence the cookie).
+     */
     @Transactional
     public void logout(HttpServletResponse response) {
         refreshTokenService.clearRefreshTokenCookie(response);

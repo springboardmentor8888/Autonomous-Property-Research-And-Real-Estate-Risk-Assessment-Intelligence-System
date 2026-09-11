@@ -12,6 +12,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
+/**
+ * Lookup/rotation helpers for persisted refresh tokens. Revocation is a
+ * flag update, not a delete, so the {@code replaced_by_token} audit chain
+ * survives logout.
+ */
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
     Optional<RefreshToken> findByToken(String token);

@@ -13,6 +13,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.stream.Collectors;
 
+/**
+ * Issues and verifies the two JWT flavours used by the auth system:
+ * short-lived {@code type=access} tokens (sent as Bearer headers) and
+ * long-lived {@code type=refresh} tokens (sent only via HttpOnly cookies).
+ * Both are HMAC-signed with a single secret and carry the user's e-mail as
+ * subject plus a comma-joined {@code roles} claim.
+ */
 @Service
 public class JwtService {
 

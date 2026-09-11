@@ -5,6 +5,12 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * A validated property snapshot (geocoded search result).
+ * Address fields come from Google; {@code propertyType} holds one of the six
+ * {@link com.duedilligenceagent.backend.entities.enums.PropertyType} labels,
+ * or null when the type could not be determined with confidence.
+ */
 @Entity
 @Table(name = "property_details")
 @Getter

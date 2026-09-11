@@ -12,7 +12,6 @@ import com.duedilligenceagent.backend.services.GooglePlacesDetailsService;
 import com.duedilligenceagent.backend.services.PropertyTypeClassifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,9 +36,6 @@ public class PropertySearchService {
     private final AddressValidationStrategy addressValidationStrategy;
     private final PropertyRepository propertyRepository;
     private final GooglePlacesDetailsService placesDetailsService;
-
-    @Value("${google.address-validation.strategy:geocoding}")
-    private String activeStrategy;
 
     @Transactional
     public PropertySearchApiResponse searchByAddress(PropertyDetailsRequest request) {

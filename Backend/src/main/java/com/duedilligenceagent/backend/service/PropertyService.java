@@ -8,6 +8,10 @@ import com.duedilligenceagent.backend.dto.PropertyResponse;
 import com.duedilligenceagent.backend.entities.Property;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 
+/**
+ * Plain CRUD reads over persisted {@link Property} rows.
+ * Search orchestration lives in {@link PropertySearchService} instead.
+ */
 @Service
 public class PropertyService {
 

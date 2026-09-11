@@ -200,7 +200,7 @@ Secrets are resolved from env vars, falling back to the **gitignored** `Backend/
 ### Auth
 - **`RegisterRequest`**: `email` (@Email, @NotBlank), `password` (@Size min=8), `role` (RoleName, @NotNull)
 - **`LoginRequest`**: `email`, `password`
-- **`AuthResponse`**: `accessToken`, `refreshToken`, `email`, `role`, `message`
+- **`AuthResponse`**: `accessToken`, `email`, `role`, `message` (the refresh token is never in the body — cookie only)
 
 ### Property
 - **`PropertyDetailsRequest`**: `address`
@@ -214,8 +214,7 @@ Secrets are resolved from env vars, falling back to the **gitignored** `Backend/
 
 ### Admin & User
 - **`DashboardResponse`**: `totalUsers`, `totalProperties`, `totalAdmins`
-- **`UserAdminResponse`** (inline record): `userId`, `email`, `roleName`, `isActive`, `createdAt`
-- `UserRegisterRequest`, `UserRegisterResponse`, `UserPortfolioResponse`
+- **`UserAdminResponse`** (inline record in `AdminController`): `userId`, `email`, `roleName`, `isActive`, `createdAt`
 
 ## Data Flow
 
@@ -268,12 +267,11 @@ npm install && npm run dev
 
 ## Known Limitations
 
-1. **Redis caching disabled** — `spring.cache.type=none`; `@Cacheable` commented out in `PropertyService` due to Spring DevTools classloader conflict
-2. **`System.out.println`** in `JwtAuthenticationFilter` logs the Authorization header — replace with SLF4J before production
-3. **`cookie.setSecure(false)`** in `RefreshTokenService` — must be `true` in production (HTTPS)
-4. Risk/due diligence entities fully modeled but **no controllers or services yet** — data-layer scaffolding only
-5. Every search creates a new `Property` record (no deduplication)
-6. Property type is only ever one of the 6 `PropertyType` categories; Google's ~3,700 raw place types are mapped down (the raw value is not yet stored — see Future Enhancements)
+1. **Redis caching disabled** — `spring.cache.type=none` and caching is intentionally not wired; `@Cacheable` omitted in `PropertyService` (the old RedisConfig bean was removed — re-add a cache config together with a real Redis)
+2. **`cookie.setSecure(false)`** in `RefreshTokenService` — must be `true` in production (HTTPS)
+3. Risk/due diligence entities fully modeled but **no controllers or services yet** — data-layer scaffolding only
+4. Every search creates a new `Property` record (no deduplication)
+5. Property type is only ever one of the 6 `PropertyType` categories; Google's ~3,700 raw place types are mapped down (the raw value is not yet stored — see Future Enhancements)
 
 ## Resolved Issues
 1. **Hydration Mismatch** — Fixed in Navbar by deferring auth check to client mount
@@ -289,6 +287,7 @@ npm install && npm run dev
 11. **CORS "Access denied" on non-default frontend ports** — `allowedOriginPatterns` accepts any localhost port
 12. **Hardcoded secrets in `application.properties`** — externalized to env vars / gitignored `google-credentials.properties`
 13. **Two sign-out buttons / admin exposed on user pages** — separate server-rendered `/admin/login`, single Navbar control
+14. **Refresh token echoed in response body** — `AuthResponse` no longer carries it (HttpOnly cookie only); dead `System.out.println` and unused `revokeAllUserTokens`/repo methods removed as part of a dead-code cleanup pass
 
 ## Project Structure
 
@@ -308,12 +307,10 @@ npm install && npm run dev
 │   │   ├── dto/
 │   │   │   ├── Google/                       # Google API response DTOs
 │   │   │   ├── Property/                     # Property request/response DTOs
-│   │   │   ├── User/                         # User DTOs
 │   │   │   ├── AuthResponse.java
 │   │   │   ├── DashboardResponse.java
 │   │   │   ├── LoginRequest.java
 │   │   │   ├── PropertyResponse.java
-│   │   │   ├── RefreshTokenRequest.java
 │   │   │   └── RegisterRequest.java
 │   │   ├── entities/
 │   │   │   ├── enums/                        # RoleName, RiskLevel, ReportStatus, etc.

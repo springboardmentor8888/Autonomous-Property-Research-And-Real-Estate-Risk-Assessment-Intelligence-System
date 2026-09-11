@@ -23,23 +23,19 @@ export function useToast() {
     return () => window.removeEventListener(TOAST_EVENT, handler as EventListener);
   }, []);
 
-  const showToast = useCallback((type: ToastType, message: string) => {
-    const toast: Toast = {
-      id: Math.random().toString(36).slice(2),
-      type,
-      message,
-    };
-    window.dispatchEvent(new CustomEvent(TOAST_EVENT, { detail: toast }));
-  }, []);
-
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  return { toasts, showToast, dismissToast };
+  return { toasts, dismissToast };
 }
 
-export function toast(type: ToastType, message: string) {
+/**
+ * Fire a toast from anywhere (not just components). It broadcasts a global
+ * event that the mounted <ToastHost> listens for, so callers don't need to
+ * share React context. `toastError` below is the only wrapper the app uses.
+ */
+function toast(type: ToastType, message: string) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(
     new CustomEvent(TOAST_EVENT, {
@@ -52,6 +48,4 @@ export function toast(type: ToastType, message: string) {
   );
 }
 
-export const toastSuccess = (message: string) => toast('success', message);
 export const toastError = (message: string) => toast('error', message);
-export const toastInfo = (message: string) => toast('info', message);

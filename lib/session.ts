@@ -28,12 +28,6 @@ function decodeToken(token: string): JwtPayload | null {
   }
 }
 
-function isTokenExpired(token: string): boolean {
-  const payload = decodeToken(token);
-  if (!payload?.exp) return true;
-  return Date.now() >= payload.exp * 1000;
-}
-
 // In-memory access token (from api.ts)
 let memoryAccessToken: string | null = null;
 let memoryTokenExpiry: number | null = null;
@@ -81,15 +75,6 @@ export function clearSession(): void {
   localStorage.removeItem('auth_role');
 }
 
-export function getSession(): { token: string | null; email: string | null; role: string | null } {
-  if (typeof window === 'undefined') return { token: null, email: null, role: null };
-  return {
-    token: getMemoryToken(),
-    email: localStorage.getItem('auth_email'),
-    role: localStorage.getItem('auth_role'),
-  };
-}
-
 export function isAuthenticated(): boolean {
   const token = getMemoryToken();
   return !!token;
@@ -108,20 +93,6 @@ export function getAuthRole(): string | null {
 export function isAdmin(): boolean {
   const role = getAuthRole();
   return role === 'ADMINISTRATOR';
-}
-
-export function getTokenExpiry(): Date | null {
-  const token = getMemoryToken();
-  if (!token) return null;
-  const payload = decodeToken(token);
-  if (!payload?.exp) return null;
-  return new Date(payload.exp * 1000);
-}
-
-export function getTimeUntilExpiry(): number | null {
-  const expiry = getTokenExpiry();
-  if (!expiry) return null;
-  return Math.max(0, expiry.getTime() - Date.now());
 }
 
 // Export for api.ts to use

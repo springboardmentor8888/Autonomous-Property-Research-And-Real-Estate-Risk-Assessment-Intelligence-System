@@ -1,19 +1,27 @@
 package com.duedilligenceagent.backend.service;
 
-import com.duedilligenceagent.backend.entities.RefreshToken;
-import com.duedilligenceagent.backend.entities.User;
+import com.duedilligenceagent.backend.entities.RefreshToken;import com.duedilligenceagent.backend.entities.User;
 import com.duedilligenceagent.backend.repositories.RefreshTokenRepository;
 import com.duedilligenceagent.backend.repositories.UserRepository;
 import com.duedilligenceagent.backend.security.JwtService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+/**
+ * Server-side lifecycle of refresh tokens: issue, rotate, revoke.
+ * <p>
+ * A refresh token is a JWT ({@code type=refresh}) that is ALSO persisted in
+ * {@code refresh_tokens} — the DB row is the source of truth, which is what
+ * makes logout and rotation actually take effect. The token itself only ever
+ * moves between server and browser inside an HttpOnly cookie (path
+ * {@code /api/auth}, so both /refresh and /logout receive it); JavaScript
+ * can never read it.
+ */
 @Service
 public class RefreshTokenService {
 
@@ -29,6 +37,10 @@ public class RefreshTokenService {
         this.jwtService = jwtService;
     }
 
+    /**
+     * Issue a refresh token on login. Any previous tokens for the user are
+     * revoked first, so a browser is only ever holding one valid session.
+     */
     @Transactional
     public RefreshToken createRefreshToken(User user, String roleName) {
         // Revoke all existing refresh tokens for this user (token rotation)
@@ -51,6 +63,8 @@ public class RefreshTokenService {
         return refreshTokenRepository.save(refreshToken);
     }
 
+    /** Same as {@link #createRefreshToken} but for first-time registration,
+     *  where there can be no earlier tokens to rotate. */
     @Transactional
     public RefreshToken createRefreshTokenForRegistration(User user, String roleName) {
         String refreshTokenValue = jwtService.generateRefreshToken(
@@ -70,6 +84,12 @@ public class RefreshTokenService {
         return refreshTokenRepository.save(refreshToken);
     }
 
+    /**
+     * Rotate: validate the presented token against the DB, revoke it, mint a
+     * replacement, and set it as the new HttpOnly cookie. Returns a fresh
+     * access token on success, or empty if the presented token is unknown,
+     * revoked or expired (caller answers 401 and the frontend logs out).
+     */
     @Transactional
     public Optional<String> refreshAccessToken(String refreshTokenValue, HttpServletResponse response) {
         // Find the refresh token in database
@@ -141,11 +161,6 @@ public class RefreshTokenService {
             token.setRevoked(true);
             refreshTokenRepository.save(token);
         }
-    }
-
-    @Transactional
-    public void revokeAllUserTokens(Long userId) {
-        refreshTokenRepository.revokeAllForUser(userId);
     }
 
     public void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {

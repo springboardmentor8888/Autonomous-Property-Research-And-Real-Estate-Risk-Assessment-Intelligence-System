@@ -16,17 +16,17 @@ import java.util.Optional;
  * Spring Data wires the implementation at startup — no manual code needed.
  */
 @Repository
+/**
+ * User lookups by e-mail (the login identifier) and admin joins.
+ */
 public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Look up by email (used during registration to enforce uniqueness). */
     Optional<User> findByEmail(String email);
 
     /** Look up by email with role eagerly loaded. */
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.role WHERE u.email = :email")
-    Optional<User> findByEmailWithRole(String email);
 
     /** Used by registration to short-circuit before a DB constraint violation. */
-    boolean existsByEmail(String email);
 
     /** Fetch all users with roles eagerly loaded to avoid LazyInitializationException. */
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.role")

@@ -83,28 +83,32 @@ async function tryRefreshToken(): Promise<boolean> {
   return false;
 }
 
+// Shape returned by /api/auth/login and /api/auth/register.
+// The refresh token is NOT part of this body — it only travels as an
+// HttpOnly cookie that JavaScript can neither read nor tamper with.
+type AuthPayload = {
+  accessToken: string;
+  email: string;
+  role: string;
+  message: string;
+};
+
 export const authApi = {
   async login(email: string, password: string) {
-    const res = await fetchWithAuth<{ 
-      accessToken: string; 
-      refreshToken: string; 
-      email: string; 
-      role: string; 
-      message: string 
-    }>(
+    const res = await fetchWithAuth<AuthPayload>(
       '/auth/login',
       {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }
     );
-    
-    // Store access token in memory
+
+    // Keep the access token in memory only; page reloads recover it via
+    // the refresh cookie (see initializeAuth in session.ts).
     if (res.accessToken) {
       setMemoryToken(res.accessToken);
     }
-    
-    // Return compatible format for existing code
+
     return {
       token: res.accessToken,
       email: res.email,
@@ -114,26 +118,18 @@ export const authApi = {
   },
 
   async register(data: { email: string; password: string; name?: string; role: string }) {
-    const res = await fetchWithAuth<{ 
-      accessToken: string; 
-      refreshToken: string; 
-      email: string; 
-      role: string; 
-      message: string 
-    }>(
+    const res = await fetchWithAuth<AuthPayload>(
       '/auth/register',
       {
         method: 'POST',
         body: JSON.stringify(data),
       }
     );
-    
-    // Store access token in memory
+
     if (res.accessToken) {
       setMemoryToken(res.accessToken);
     }
-    
-    // Return compatible format for existing code
+
     return {
       token: res.accessToken,
       email: res.email,
@@ -149,10 +145,6 @@ export const authApi = {
     );
     clearSession();
   },
-
-  getAccessToken(): string | null {
-    return getMemoryToken();
-  },
 };
 
 export const propertyApi = {
@@ -161,10 +153,6 @@ export const propertyApi = {
       method: 'POST',
       body: JSON.stringify({ address }),
     });
-  },
-
-  async getAll() {
-    return fetchWithAuth<any[]>('/properties');
   },
 
   async getById(id: number | string) {

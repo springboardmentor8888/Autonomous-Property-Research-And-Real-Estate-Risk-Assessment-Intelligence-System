@@ -17,6 +17,9 @@ import com.duedilligenceagent.backend.dto.PropertyResponse;
 import com.duedilligenceagent.backend.service.PropertySearchService;
 import com.duedilligenceagent.backend.service.PropertyService;
 
+/**
+ * Property endpoints — search/CRUD, all requiring a valid access token.
+ */
 @RestController
 @RequestMapping("/api/properties")
 public class PropertyController {
@@ -47,7 +50,8 @@ public class PropertyController {
     }
 
     /**
-     * Address-based search backed by Mappls. Returns a stable JSON envelope:
+     * Address-based search backed by Google Geocoding v4 (+ Places details
+     * fallback for the property type). Returns a stable JSON envelope:
      * <pre>
      * { "success": bool, "message": string, "data": { "status": "VALID|INVALID|ERROR", ... } }
      * </pre>

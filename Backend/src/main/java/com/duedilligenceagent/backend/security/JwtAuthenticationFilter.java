@@ -2,6 +2,8 @@ package com.duedilligenceagent.backend.security;
 
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,8 +17,21 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Gatekeeper for every protected {@code /api/**} route.
+ * <p>
+ * Runs once per request: public paths (auth endpoints, health, Swagger)
+ * pass straight through; everything else must carry
+ * {@code Authorization: Bearer <access token>} where the token's {@code type}
+ * claim is {@code "access"} — a refresh token used here is rejected, since
+ * its only valid destination is {@code /api/auth/refresh}. Failures answer
+ * with a plain 401 JSON body so the frontend can trigger its silent-refresh
+ * flow instead of seeing an HTML error page.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -47,7 +62,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String authHeader = request.getHeader("Authorization");
-        System.out.println("Authorization header: " + authHeader);
 
         if (authHeader == null ||
                 !authHeader.startsWith("Bearer ")) {
@@ -106,6 +120,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
+            // Signature/expiry/claim problems — never echo the token or cause back.
+            log.debug("JWT rejected for {} {}: {}", request.getMethod(), path, e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"message\":\"Token validation failed\"}");

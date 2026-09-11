@@ -9,6 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.duedilligenceagent.backend.entities.User;
 import com.duedilligenceagent.backend.repositories.UserRepository;
 
+/**
+ * Bridges our {@code users} table into Spring Security for authentication.
+ * The {@code @Transactional} read keeps the lazy Role association usable.
+ */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 

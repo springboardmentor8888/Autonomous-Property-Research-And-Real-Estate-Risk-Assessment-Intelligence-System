@@ -17,6 +17,10 @@ import com.duedilligenceagent.backend.repositories.UserRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Admin-only statistics and user management. Role enforcement happens in
+ * {@link com.duedilligenceagent.backend.config.SecurityConfig}.
+ */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {

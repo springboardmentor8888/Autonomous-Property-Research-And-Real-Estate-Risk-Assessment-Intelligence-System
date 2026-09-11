@@ -2,7 +2,6 @@ package com.duedilligenceagent.backend.controller;
 
 import com.duedilligenceagent.backend.dto.AuthResponse;
 import com.duedilligenceagent.backend.dto.LoginRequest;
-import com.duedilligenceagent.backend.dto.RefreshTokenRequest;
 import com.duedilligenceagent.backend.dto.RegisterRequest;
 import com.duedilligenceagent.backend.service.AuthService;
 import com.duedilligenceagent.backend.service.RefreshTokenService;
@@ -12,9 +11,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Public auth entry points: register / login / refresh / logout.
+ * <p>
+ * Refresh and logout read the refresh token straight from the HttpOnly
+ * cookie (not the JSON body) so JavaScript never has to handle it.
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -56,8 +62,8 @@ public class AuthController {
         String refreshToken = extractRefreshTokenFromCookie(request);
         
         if (refreshToken == null) {
-            return ResponseEntity.status(401).body(
-                    new AuthResponse(null, null, null, null, "Refresh token not found")
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    new AuthResponse(null, null, null, "Refresh token not found")
             );
         }
 
@@ -66,10 +72,10 @@ public class AuthController {
                     // Get user info from refresh token
                     String email = refreshTokenService.extractEmailFromToken(refreshToken);
                     String role = refreshTokenService.extractRoleFromToken(refreshToken);
-                    return ResponseEntity.ok(new AuthResponse(newAccessToken, null, email, role, "Token refreshed"));
+                    return ResponseEntity.ok(new AuthResponse(newAccessToken, email, role, "Token refreshed"));
                 })
-                .orElseGet(() -> ResponseEntity.status(401).body(
-                        new AuthResponse(null, null, null, null, "Invalid or expired refresh token")
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                        new AuthResponse(null, null, null, "Invalid or expired refresh token")
                 ));
     }
 
@@ -83,7 +89,7 @@ public class AuthController {
             refreshTokenService.revokeRefreshToken(refreshToken);
         }
         authService.logout(response);
-        return ResponseEntity.ok(new AuthResponse(null, null, null, null, "Logged out successfully"));
+        return ResponseEntity.ok(new AuthResponse(null, null, null, "Logged out successfully"));
     }
 
     private String extractRefreshTokenFromCookie(HttpServletRequest request) {

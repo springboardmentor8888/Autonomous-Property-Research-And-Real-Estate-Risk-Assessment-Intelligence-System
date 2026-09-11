@@ -3,7 +3,6 @@ package com.duedilligenceagent.backend.entities;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "ownership_details")
