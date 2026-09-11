@@ -61,6 +61,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
 
         try {
+            // Only access tokens may be used as Bearer credentials;
+            // refresh tokens are valid solely at /api/auth/refresh.
+            if (!jwtService.isAccessToken(jwt)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"message\":\"Invalid token type\"}");
+                return;
+            }
+
             String username = jwtService.extractUsername(jwt);
 
             if (username != null &&
