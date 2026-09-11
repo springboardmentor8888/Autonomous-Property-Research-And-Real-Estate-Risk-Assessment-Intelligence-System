@@ -3,6 +3,7 @@ package com.realestate.duediligence.service;
 import com.realestate.duediligence.dto.AuthResponse;
 import com.realestate.duediligence.dto.LoginRequest;
 import com.realestate.duediligence.dto.RegisterRequest;
+import com.realestate.duediligence.entity.Role;
 import com.realestate.duediligence.entity.User;
 import com.realestate.duediligence.repository.UserRepository;
 import com.realestate.duediligence.security.JwtUtil;
@@ -40,6 +41,13 @@ public class UserService {
 
 		if (userRepository.findByEmail(request.getEmail()).isPresent()) {
 			throw new IllegalArgumentException("Email is already registered");
+		}
+		
+		// Prevent public self-registration as ADMINISTRATOR.
+		// Admin accounts must be created separately, never through open
+		// registration, to avoid unrestricted privilege escalation.
+		if (request.getRole() == Role.ADMINISTRATOR) {
+		    throw new IllegalArgumentException("Administrator accounts cannot be self-registered.");
 		}
 
 		User user = new User();
