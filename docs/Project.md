@@ -1,16 +1,14 @@
 # Autonomous Property Research and Real Estate Risk Assessment Intelligence System
 
 ## Overview
-This system provides property search, validation, and comprehensive due diligence capabilities using Google Maps APIs for address verification and a Spring Boot backend with a Next.js frontend. Users can search for Indian addresses, validate them through various Google APIs, and view property details stored in a database. The system also includes an extensive risk assessment data model covering ownership, tax, zoning, environmental, flood zone, utility, building permits, market trends, and comparable property data.
+This system provides property search, validation, and comprehensive due diligence capabilities using the Google Geocoding API for address verification (with a Places API (New) details fallback for property-type classification) and a Spring Boot backend with a Next.js frontend. Users can search for Indian addresses, validate them through Google, and view property details stored in a database. The system also includes an extensive risk assessment data model covering ownership, tax, zoning, environmental, flood zone, utility, building permits, market trends, and comparable property data.
 
 ## Key Features
 
 ### Property Search & Validation
-- Address validation using multiple Google Maps Platform APIs:
-  - Google Geocoding API (default - simple geocoding with generous free tier)
-  - Google Places API (New) Text Search (rich place metadata)
-  - Google Address Validation API (most comprehensive - validates, standardizes, and geocodes)
-- Configurable strategy selection via `google.address-validation.strategy` property
+- Address validation via **Google Geocoding API v4** (`geocode.googleapis.com`) — the single wired strategy
+- **Places API (New) fallback enrichment**: when geocoding match types leave the property type undetermined, one details call on the geocoded `places/ChIJ…` resource resolves Google's authoritative `primaryType`
+- Property type classified into the fixed `PropertyType` enum (Residential, Commercial, Industrial, Agricultural, Mixed Use, Land) by the shared `PropertyTypeClassifier`; persistence is hard-gated through `normalize()` so only supported values are stored (undetermined stays null rather than guessing)
 - Automatic persistence of validated properties to database
 - Graceful handling of API errors, invalid addresses, and network issues
 - Mock fallback geocoder for development when API keys are missing/dummy
@@ -42,51 +40,56 @@ A fully scaffolded domain model for multi-dimensional property risk assessment:
 - **Notifications** — user notification entity
 
 ### Authentication & Security
-- JWT-based authentication system with **access + refresh token pair**
-- Access tokens (1 hour) carry `sub` (email), `roles`, `type=access`, and a UUID `jti`
-- Refresh tokens (7 days) stored in DB (`refresh_tokens` table) and delivered as **HttpOnly, SameSite=Lax cookies** (path: `/api/auth/refresh`)
+- JWT-based authentication system with **access + refresh token pair** (standard 2-token scheme)
+- Access tokens (1 hour) carry `sub` (email), `roles`, `type=access`, and a UUID `jti`; kept **only in JS memory** on the frontend (never localStorage)
+- Refresh tokens (7 days) carry `type=refresh` + `roles`, are stored in DB (`refresh_tokens` table), and delivered as **HttpOnly, SameSite=Lax cookies** (path: `/api/auth` so both `/refresh` and `/logout` receive them)
 - **Token rotation** — every refresh revokes the old token and issues a new one; `replaced_by_token` column tracks the chain
+- **Token-type enforcement** — `JwtAuthenticationFilter` rejects any Bearer token whose `type` claim isn't `access`, so a refresh token can never be replayed as an access credential
 - Self-registration blocked for `ADMINISTRATOR` role; only `BUYER`, `REAL_ESTATE_AGENT`, `LEGAL_REVIEWER`, `FINANCIAL_INSTITUTION` may register
 - Role-based access control: `/api/admin/**` requires `ADMINISTRATOR` role; all other endpoints require authentication
 - Password hashing with BCrypt (strength 10)
 - Pre-seeded admin account: `admin@example.com` / `Admin@123`
 - Stateless session management (`SessionCreationPolicy.STATELESS`)
 - Method-level security enabled (`@EnableMethodSecurity`)
+- CORS allows any localhost/127.0.0.1 port (`allowedOriginPatterns` with `[*]`) with credentials enabled
 
 ### User Interface
-- Modern Next.js 13+ frontend with App Router
+- Modern Next.js 15 frontend with App Router, React 18, TypeScript
 - Responsive design using Tailwind CSS
 - Dashboard with quick access to: Property Search, Due Diligence Reports, Property History
-- Admin area: `/admin/dashboard` and `/admin/login` pages
+- **Backend-owned auth on the client**: access token lives in JS memory only; `initializeAuth()`/memoized `ensureAuthInitialized()` silently restore the session via `/api/auth/refresh` on every page load (no more logout-on-refresh)
+- Shared `useAuthGuard` hook awaits session restore before redirecting — fixes the guard/restore race that bounced logged-in admins to the login page
+- **Separate admin login** at `/admin/login` (server-rendered, `noindex`, no links from user login/register pages); single Sign-out control in the Navbar
+- Register form has full client-side validation mirroring backend rules (name 2–60, email format, password ≥8, confirm match, allowed roles)
 - Clean property details display with loading states
 - Navigation between pages with proper authentication guards
 
 ## Technical Architecture
 
 ### Frontend
-- **Framework**: Next.js 13+ (App Router), React 18, TypeScript
+- **Framework**: Next.js 15 (App Router), React 18, TypeScript
 - **Styling**: Tailwind CSS
-- **State Management**: React hooks (useState, useEffect)
-- **API Communication**: Custom fetch wrapper with automatic JWT attachment
-- **Routing**: Client-side navigation with useRouter/useSearchParams
+- **State Management**: React hooks (useState, useEffect) + shared auth hooks (`lib/session.ts`, `lib/useAuth.ts`)
+- **API Communication**: `fetchWithAuth` wrapper — attaches in-memory JWT, `credentials: 'include'`, auto-refresh + retry once on 401
+- **Routing**: Client-side navigation with useRouter/useSearchParams; dev server proxies `/api/:path*` → backend :9090 (`next.config.mjs`)
 
 ### Backend
-- **Framework**: Spring Boot 3.x, Java 17+
+- **Framework**: Spring Boot 4.1.1 (Spring 7, Hibernate 7.4), Java 17
 - **Architecture**: RESTful API with layered architecture (Controllers, Services, Repositories, Entities, DTOs)
 - **Database**:
   - Default: H2 in-memory — `jdbc:h2:mem:backenddb;MODE=PostgreSQL`
   - Configurable: PostgreSQL (via `SPRING_PROFILES_ACTIVE=postgres`)
   - Schema: Auto-generated via `spring.jpa.hibernate.ddl-auto=create-drop`
   - Seed data: `data.sql` (roles + admin user) runs on every startup
-- **External Integrations**: Google Maps Platform APIs (Geocoding, Places, Address Validation) via RestClient
+- **External Integrations**: Google Geocoding API v4 (validation) + Places API (New) details (type enrichment fallback) via RestClient
 - **Security**: JWT access+refresh token rotation, HttpOnly cookie for refresh token, BCrypt hashing
 - **API Documentation**: OpenAPI/Swagger UI at `/swagger-ui.html`, API docs at `/v3/api-docs`
 - **H2 Console**: Available at `/h2-console` (dev only)
 
 ### Build & Deployment
 - Backend: Maven (`mvnw`), port **9090**
-- Frontend: npm, port **3000**
-- JWT secret and expiration configured in `application.properties` (move to env vars for production)
+- Frontend: npm, port **3000** (any localhost port works — CORS accepts all)
+- Secrets come from env vars or the **gitignored** `Backend/src/main/resources/google-credentials.properties` (loaded via `spring.config.import`); see `google-credentials.properties.example`
 
 ## Configuration
 
@@ -95,20 +98,25 @@ A fully scaffolded domain model for multi-dimensional property risk assessment:
 |---------|-------|
 | Server port | 9090 |
 | Database | `jdbc:h2:mem:backenddb;MODE=PostgreSQL` |
-| JPA DDL | `create-drop` |
+| JPA DDL | `create-drop` (wipes all users on every restart — reseeded by `data.sql`) |
 | Flyway | Disabled (local H2) |
 | Google Geocoding base URL | `https://geocode.googleapis.com` |
-| Google Geocoding API Key | `google.geocoding.api-key` (in properties) |
+| Google Geocoding API Key | `google.geocoding.api-key` ← `$GOOGLE_GEOCODING_API_KEY` or gitignored `google-credentials.properties` |
+| Google Places API Key | `google.places.api-key` (defaults to the geocoding key) |
+| Secrets import | `spring.config.import=optional:classpath:google-credentials.properties` |
 | Jackson | `NON_NULL` inclusion; Spring Boot 4.1 / Jackson 3.x |
 | Redis | Disabled (`spring.cache.type=none`) |
+| JWT secret | `app.security.jwt-secret` ← `$JWT_SECRET` (dev fallback in properties) |
 | JWT access expiry | 3,600,000 ms (1 hour) |
 | JWT refresh expiry | 604,800,000 ms (7 days) |
+| CORS | `allowedOriginPatterns` = any `localhost`/`127.0.0.1` port, credentials enabled |
 | Logging | DEBUG for `com.duedilligenceagent`, INFO for Spring Security |
 
-### Environment Variables (for Production)
+### Environment Variables / Local Secrets
+Secrets are resolved from env vars, falling back to the **gitignored** `Backend/src/main/resources/google-credentials.properties` (copied from `google-credentials.properties.example`):
 - `JWT_SECRET` — signing secret (min 32 chars)
-- `GOOGLE_GEOCODING_API_KEY`, `GOOGLE_PLACES_API_KEY`, `GOOGLE_ADDRESS_VALIDATION_API_KEY`
-- `SPRING_PROFILES_ACTIVE=postgres`
+- `GOOGLE_GEOCODING_API_KEY`, `GOOGLE_PLACES_API_KEY` (optional; defaults to the geocoding key)
+- `SPRING_PROFILES_ACTIVE=postgres` (production DB)
 
 ## Database Schema
 
@@ -146,6 +154,7 @@ A fully scaffolded domain model for multi-dimensional property risk assessment:
 | Enum | Purpose |
 |------|---------|
 | `RoleName` | BUYER, REAL_ESTATE_AGENT, LEGAL_REVIEWER, FINANCIAL_INSTITUTION, ADMINISTRATOR |
+| `PropertyType` | RESIDENTIAL, COMMERCIAL, INDUSTRIAL, AGRICULTURAL, MIXED_USE, LAND (with display labels + `fromValue()` lenient lookup) |
 | `RiskLevel` | LOW, MEDIUM, HIGH |
 | `ReportStatus` | PENDING, IN_PROGRESS, COMPLETED, etc. |
 | `PaymentStatus` | PAID, DUE, OVERDUE, etc. |
@@ -200,7 +209,8 @@ A fully scaffolded domain model for multi-dimensional property risk assessment:
 
 ### Google API DTOs (`dto/Google/`)
 - **`GoogleCandidate`**: `placeId`, `formattedAddress`, `latitude`, `longitude`, `city`, `state`, `postalCode`, `propertyType`
-- `GoogleGeocodingResponse`, `GooglePlacesResponse`, `GoogleAddressValidationResponse`
+- **`GoogleGeocodingResponse`**: Geocoding v4 response (address descriptors, navigation points, place types)
+- **`GooglePlacesDetailsResponse`**: Places API (New) details response (`primaryType`, `types`)
 
 ### Admin & User
 - **`DashboardResponse`**: `totalUsers`, `totalProperties`, `totalAdmins`
@@ -211,18 +221,19 @@ A fully scaffolded domain model for multi-dimensional property risk assessment:
 
 ### Property Search
 1. Frontend POSTs address to `/api/properties/search` with JWT bearer header
-2. `JwtAuthenticationFilter` validates token → sets `SecurityContext`
+2. `JwtAuthenticationFilter` validates token (must be `type=access`) → sets `SecurityContext`
 3. `PropertyController` → `PropertySearchService`
-4. Strategy (default `GoogleGeocodingStrategy`) calls Google API → `GoogleCandidate` list
-5. Optional enrichment via `GooglePlacesService` for property type
-6. Best candidate persisted → `PropertyRepository` → returns `ResolvedPlace` with `propertyId`
+4. `GoogleGeocodingStrategy` calls Google Geocoding v4 → `GoogleCandidate` list; `PropertyTypeClassifier.fromGeocodingTypes()` maps match types to a `PropertyType`
+5. If type undetermined → `GooglePlacesDetailsService` one-call enrichment on the geocoded `place` resource → `PropertyTypeClassifier.fromPlaces(primaryType, types)` (silent degradation on any failure)
+6. Best candidate persisted through `PropertyTypeClassifier.normalize()` hard gate → `PropertyRepository` → returns `ResolvedPlace` with `propertyId`
 7. Frontend redirects to `/property-details?propertyId={id}` on VALID; shows error on INVALID/ERROR
 
 ### Authentication Flow
-1. **Register** → BCrypt hash → save `User` → generate access+refresh JWT → set HttpOnly cookie → `AuthResponse`
-2. **Login** → `AuthenticationManager` → generate tokens → rotate refresh token in DB → set cookie → `AuthResponse`
-3. **Refresh** → read HttpOnly cookie → validate DB token (`isValid()`) → rotate → new access token returned
-4. **Logout** → revoke DB token → clear both cookies
+1. **Register** → client-side validation mirrors backend (`@Size(min=8)` etc.) → BCrypt hash → save `User` → generate access+refresh JWT → set HttpOnly cookie (`Path=/api/auth`) → `AuthResponse`. Duplicate email → **409**, no stack trace
+2. **Login** → `AuthenticationManager` → bad credentials → clean **401**; else generate tokens → rotate refresh token in DB → set cookie → `AuthResponse` (accessToken + email + role)
+3. **Refresh** → read HttpOnly cookie → validate DB token (`isValid()`) → rotate → new access token + email + role returned (refresh JWT carries the `roles` claim)
+4. **Logout** → revoke DB token (cookie path `/api/auth` ensures the server receives it) → clear cookie
+5. **Frontend restore** → on load, `ensureAuthInitialized()` POSTs `/api/auth/refresh` once (memoized) to repopulate the in-memory access token before guards run
 
 ### Per-Request Token Validation
 - `JwtAuthenticationFilter` skips: `/api/auth/**`, `/api/health`, `/swagger-ui/**`, `/v3/api-docs/**`, `/error`
@@ -258,12 +269,11 @@ npm install && npm run dev
 ## Known Limitations
 
 1. **Redis caching disabled** — `spring.cache.type=none`; `@Cacheable` commented out in `PropertyService` due to Spring DevTools classloader conflict
-2. **JWT secret hardcoded** in `application.properties` — must move to env var before production
+2. **`System.out.println`** in `JwtAuthenticationFilter` logs the Authorization header — replace with SLF4J before production
 3. **`cookie.setSecure(false)`** in `RefreshTokenService` — must be `true` in production (HTTPS)
-4. **`System.out.println`** in `JwtAuthenticationFilter` leaks Authorization header — replace with SLF4J logger
-5. Risk/due diligence entities fully modeled but **no controllers or services yet** — data-layer scaffolding only
-6. Every search creates a new `Property` record (no deduplication)
-7. Limited property type inference from Google API responses
+4. Risk/due diligence entities fully modeled but **no controllers or services yet** — data-layer scaffolding only
+5. Every search creates a new `Property` record (no deduplication)
+6. Property type is only ever one of the 6 `PropertyType` categories; Google's ~3,700 raw place types are mapped down (the raw value is not yet stored — see Future Enhancements)
 
 ## Resolved Issues
 1. **Hydration Mismatch** — Fixed in Navbar by deferring auth check to client mount
@@ -271,6 +281,14 @@ npm install && npm run dev
 3. **Refresh Token Rotation** — Implemented with `replaced_by_token` chain and `revoked` flag
 4. **Inconsistent UI** — Dashboard cards uniform height with flex layouts
 5. **Navigation Flow** — Removed unnecessary 1.5s timeout after validation
+6. **Logout never revoked the token** — cookie path was `/api/auth/refresh`; widened to `/api/auth` so `/logout` receives it
+7. **Refresh returned `role: null`** — refresh JWTs now carry the `roles` claim
+8. **Duplicate-email register → 500 + stack trace** — typed exceptions + `GlobalExceptionHandler` now return clean 409/401/400 JSON
+9. **Guard/restore race (admin bounce, logout-on-refresh)** — memoized `ensureAuthInitialized()` + shared `useAuthGuard` await session restore before redirecting
+10. **Refresh token replayable as Bearer** — filter now enforces `type=access`
+11. **CORS "Access denied" on non-default frontend ports** — `allowedOriginPatterns` accepts any localhost port
+12. **Hardcoded secrets in `application.properties`** — externalized to env vars / gitignored `google-credentials.properties`
+13. **Two sign-out buttons / admin exposed on user pages** — separate server-rendered `/admin/login`, single Navbar control
 
 ## Project Structure
 
@@ -278,8 +296,10 @@ npm install && npm run dev
 ├── Backend/
 │   ├── src/main/java/com/duedilligenceagent/backend/
 │   │   ├── config/
+│   │   │   ├── AddressValidationStrategyConfig.java  # Wires Google Geocoding as sole strategy
 │   │   │   ├── PasswordConfig.java           # BCryptPasswordEncoder bean
-│   │   │   └── SecurityConfig.java           # Filter chain, role rules
+│   │   │   ├── SecurityConfig.java           # Filter chain, role rules
+│   │   │   └── WebConfig.java                # CORS (any localhost port + credentials)
 │   │   ├── controller/
 │   │   │   ├── AdminController.java          # /api/admin/**
 │   │   │   ├── AuthController.java           # /api/auth/**
@@ -333,39 +353,48 @@ npm install && npm run dev
 │   │   │   ├── PropertySearchService.java
 │   │   │   ├── PropertyService.java
 │   │   │   └── RefreshTokenService.java
-│   │   └── services/                         # Address validation strategies
+│   │   ├── exception/                        # GlobalExceptionHandler + typed auth exceptions
+│   │   └── services/                         # Geocoding strategy + Places enrichment + classifier
 │   │       ├── AddressValidationStrategy.java
-│   │       ├── GoogleAddressValidationService.java
-│   │       ├── GoogleAddressValidationStrategy.java
-│   │       ├── GoogleGeocodingService.java
 │   │       ├── GoogleGeocodingStrategy.java
-│   │       ├── GooglePlacesService.java
-│   │       └── GooglePlacesStrategy.java
+│   │       ├── GooglePlacesDetailsService.java
+│   │       └── PropertyTypeClassifier.java   # Shared Google→PropertyType mapping
 │   └── src/main/resources/
 │       ├── application.properties
+│       ├── google-credentials.properties.example  # Gitignored local-secrets template
 │       └── data.sql                          # Seed: roles + admin user
 ├── app/                                      # Next.js frontend (App Router)
+│   ├── admin/login/page.tsx                # Server-rendered, noindex (separate admin entry)
+│   ├── admin/login/AdminLoginForm.tsx
 │   ├── admin/dashboard/page.tsx
-│   ├── admin/login/page.tsx
 │   ├── dashboard/page.tsx
 │   ├── history/page.tsx
 │   ├── login/page.tsx
 │   ├── page.tsx
 │   ├── property-details/page.tsx
 │   ├── property-search/page.tsx
-│   ├── register/page.tsx
+│   ├── register/page.tsx                   # Client-side validation mirrors backend rules
 │   ├── reports/page.tsx
 │   ├── layout.tsx
 │   └── globals.css
+├── components/
+│   ├── Navbar.tsx                          # Page-aware shell, single Sign-out control
+│   ├── ToastHost.tsx
+│   └── ToastHostClient.tsx
+├── lib/
+│   ├── api.ts                              # fetchWithAuth: Bearer + 401→refresh→retry-once
+│   ├── session.ts                          # In-memory token, initializeAuth/ensureAuthInitialized
+│   ├── useAuth.ts                          # Shared useAuthGuard hook
+│   └── useToast.ts
 ├── docs/
 │   ├── Project.md
-│   └── SERVICE_ANALYSIS.md
+│   ├── SERVICE_ANALYSIS.md
+│   ├── Design-analysis.md
+│   ├── architecture.md
+│   └── README.md
 ├── public/
 ├── .gitignore
-├── README.md
-├── Design-analysis.md
-├── architecture.md
-├── next.config.mjs
+├── next.config.mjs                         # /api/:path* proxy → backend :9090
 ├── tailwind.config.ts
 ├── tsconfig.json
 └── package.json
@@ -377,7 +406,7 @@ npm install && npm run dev
 1. **Risk Assessment Services** — Implement service + controller layer for all scaffolded entities
 2. **Due Diligence Report PDF** — iText or Apache PDFBox export
 3. **Redis Caching** — Re-enable once properly configured (`spring.cache.type=redis`)
-4. **Security Hardening** — JWT secret to env var, `setSecure(true)`, replace `System.out.println` with SLF4J
+4. **Security Hardening** — `setSecure(true)` on the refresh cookie (HTTPS), replace `System.out.println` in `JwtAuthenticationFilter` with SLF4J (JWT secret/env-var externalization is done)
 5. **Flyway Migrations** — Replace `ddl-auto=create-drop` for production
 6. **Testing** — Unit and integration tests for core services
 
@@ -388,6 +417,8 @@ npm install && npm run dev
 4. Supporting documents file upload
 5. Surface `ActivityLog` / `ApiLog` in admin UI
 6. Comparable Properties & Market Trends API
+7. Store Google's raw `primaryType` alongside the mapped `PropertyType` (hybrid taxonomy column)
+8. Replace the classifier's substring heuristics with a generated mapping from Google's published Place Types list
 
 ## Conclusion
 The system has evolved from a property search foundation into a comprehensive real estate due diligence platform. The backend features 18+ JPA entities covering the full risk assessment domain, a secure access+refresh JWT token architecture with HttpOnly cookies and rotation, and clean layered architecture. The next phase is wiring up service and controller layers for the risk assessment domain entities.

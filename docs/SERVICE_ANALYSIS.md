@@ -36,54 +36,42 @@ public interface AddressValidationStrategy {
 ## 2. Strategy Implementations
 
 ### 2.1 GoogleGeocodingStrategy (Default)
-Uses Google Geocoding API (`/maps/api/geocode/json`)
+Uses Google Geocoding API v4 (`/v4/geocode/address/{address}` with `X-Goog-Api-Key`)
 
 **Strengths**:
 - Simple and reliable
 - Generous free tier ($200/month credit)
 - Good for development and testing
-- Returns structured address components
+- Returns structured address components plus match `types` granularity
 
 **Weaknesses**:
-- Limited metadata (no business/property type info)
+- Limited metadata (no business/property type info for generic POIs)
 - Less comprehensive validation than Address Validation API
 
 **Processing Flow**:
 1. Validate input (blank check)
 2. Development fallback (mock data if API key missing/dummy)
-3. Call Google Geocoding API with RestClient
+3. Call Google Geocoding v4 with RestClient
 4. Handle HTTP errors and API status codes
 5. Parse response into GoogleCandidate objects
 6. Extract address components (city, state, postal code)
-7. Infer property type from address types (premise=Residential, etc.)
+7. Infer property type via `PropertyTypeClassifier.fromGeocodingTypes()` (match/location types → `PropertyType` enum; null when undetermined)
 8. Return list of candidates (best match first)
 
-### 2.2 GooglePlacesStrategy
-Uses Google Places API (New) Text Search (`/places/v1:searchText`)
+### 2.2 GooglePlacesDetailsService (fallback enrichment — not a strategy)
+Uses Places API (New) Place Details (`GET /v1/places/{place_id}` with `X-Goog-FieldMask: primaryType,types`)
+
+Invoked by `PropertySearchService` only when the geocoding match leaves the property type undetermined. The geocoding response's `place: "places/ChIJ…"` resource name is reused directly, so no extra search call is needed.
 
 **Strengths**:
-- Rich place metadata including business types
-- Can infer property type directly from API response
-- Good for commercial property searches
+- Google's authoritative place classification (~3,700 raw types) for the geocoded place itself
+- Cheap (one field-masked call, only on undetermined matches)
+- Silent degradation: any failure just leaves the type null
 
 **Weaknesses**:
-- More expensive than Geocoding API
-- May over-match for residential addresses
-- Newer API (may have different rate limits)
+- Only helps when the geocoded result is a real place (roads/areas return nothing usable)
 
-### 2.3 GoogleAddressValidationStrategy
-Uses Google Address Validation API (`/v1:validateAddress`)
-
-**Strengths**:
-- Most comprehensive validation (standardizes, validates, geocodes)
-- Provides address confidence levels
-- Can detect and correct address errors
-- Authoritative address validation
-
-**Weaknesses**:
-- Most expensive option
-- May be overkill for simple geocoding needs
-- Requires addressing specific regional support
+> Earlier `GooglePlacesStrategy` (Text Search) and `GoogleAddressValidationStrategy` implementations were removed as dead code — Geocoding is the sole wired `AddressValidationStrategy`.
 
 ## 3. PropertySearchService
 
@@ -92,10 +80,10 @@ Orchestrates the property address search pipeline using the selected AddressVali
 
 ### Key Responsibilities
 1. **Request Validation**: Checks for blank/null addresses
-2. **Strategy Delegation**: Uses configured AddressValidationStrategy
+2. **Strategy Delegation**: Uses the wired `GoogleGeocodingStrategy` (via `AddressValidationStrategy`)
 3. **Error Handling**: Distinguishes between validation failures and API errors
-4. **Optional Enrichment**: Uses GooglePlacesService to add property type if missing
-5. **Persistence**: Saves validated address as Property entity
+4. **Fallback Enrichment**: When the geocoded match leaves the type undetermined, one Places API (New) details call resolves `primaryType` via `PropertyTypeClassifier.fromPlaces()`
+5. **Persistence**: Saves validated address as Property entity, with `propertyType` hard-gated through `PropertyTypeClassifier.normalize()` (only supported enum values persist; otherwise null)
 6. **Response Mapping**: Converts results to PropertySearchApiResponse
 
 ### Processing Flow (searchByAddress method)
@@ -112,14 +100,14 @@ Orchestrates the property address search pipeline using the selected AddressVali
 3. **Candidate Selection**:
    - Take first (best) candidate from results list
    
-4. **Optional Enrichment**:
-   - If propertyType is null, try GooglePlacesService
-   - Search text with original address
-   - If places API returns candidate with propertyType, use it
-   - Log enrichment failures as debug (non-critical)
+4. **Fallback Enrichment**:
+   - If `fromGeocodingTypes()` left propertyType null, call `GooglePlacesDetailsService.fetchDetails(placeId)`
+   - Map the returned `primaryType`/`types` via `PropertyTypeClassifier.fromPlaces()`
+   - Log enrichment failures as debug (non-critical — search still succeeds)
 
 5. **Persistence**:
    - Convert GoogleCandidate to Property entity
+   - Hard-gate `propertyType` through `PropertyTypeClassifier.normalize()`
    - Save via PropertyRepository
    - Convert saved Property to ResolvedPlace DTO
    
@@ -205,7 +193,7 @@ Normalized representation of address validation results from different Google AP
 - `city`: City name
 - `state`: State/province name
 - `postalCode`: Postal/ZIP code
-- `propertyType`: Type of property (residential, commercial, etc.)
+- `propertyType`: Mapped onto the `PropertyType` enum (Residential, Commercial, Industrial, Agricultural, Mixed Use, Land); null when undetermined
 
 ### Usage
 - Created by each AddressValidationStrategy implementation
@@ -213,33 +201,33 @@ Normalized representation of address validation results from different Google AP
 - Converted to Property entity for database storage
 - Converted to ResolvedPlace DTO for API response
 
+### PropertyTypeClassifier (`services/PropertyTypeClassifier.java`)
+Single source of truth for mapping Google data onto the `PropertyType` enum:
+- `fromGeocodingTypes(types)` — maps Geocoding v4 match/location types (e.g. `premise` + street context → Residential; `point_of_interest` category keywords → Commercial/Industrial/etc.); returns null when undetermined
+- `fromPlaces(primaryType, types)` — maps Places API (New) `primaryType` (e.g. `shopping_mall`, `home_goods_store`) to enum categories
+- `normalize(value)` — lenient validation used as the persistence gate: only the 6 supported labels survive; anything else is stored as null (undetermined beats wrong)
+- Verified with a 13-case jshell matrix covering roads, malls, farms, industrial parks, mixed-use towers, and generic addresses
+
 ## 7. Configuration and Extensibility
 
 ### Strategy Selection
-Configured via `google.address-validation.strategy` in `application.properties`:
-- `address-validation`: Google Address Validation API
-- `geocoding`: Google Geocoding API (default)
-- `places`: Google Places API (New) Text Search
+`AddressValidationStrategyConfig` wires **Google Geocoding API as the sole `@Primary` strategy**. The former `google.address-validation.strategy` property and the Places / Address Validation strategy beans were removed as dead code — Places remains available only as the details-enrichment helper, not a validation strategy.
 
 ### Adding New Strategies
 To add a new validation strategy:
 1. Implement `AddressValidationStrategy` interface
-2. Register as Spring `@Component` (or `@Service`)
-3. Update configuration to reference new strategy name
-4. No changes needed to PropertySearchService or controllers
+2. Register it as a `@Bean` in `AddressValidationStrategyConfig` and mark it `@Primary`
+3. No changes needed to PropertySearchService or controllers
 
 ### Dependency Injection
-Strategies are injected via constructor:
+Collaborators are injected via constructor:
 ```java
 @Service
-@RequiredArgsConstructor
 public class PropertySearchService {
     private final AddressValidationStrategy addressValidationStrategy;
-    private final GooglePlacesService googlePlacesService;
+    private final GooglePlacesDetailsService placesDetailsService;
     private final PropertyRepository propertyRepository;
-    
-    // ... constructor auto-generated by Lombok
-}
+    // ...
 }
 ```
 
@@ -256,9 +244,9 @@ public class PropertySearchService {
 
 ### Weaknesses and Improvement Areas
 1. **Redis Configuration**: Caching disabled due to DevTools conflicts (technical debt)
-2. **Property Type Inference**: Relies on heuristic mapping from address types
+2. **Property Type Inference**: Classifier maps Google's ~3,700 place types down to 6 enum categories via heuristics; no dedup of raw Google type
 3. **Single Candidate Focus**: Only uses first candidate; ignores alternatives
-4. **Limited Enrichment**: Only enriches property type from Places API
+4. **Enrichment Scope**: Places details fallback only fires when the geocoding match leaves the type undetermined
 5. **No Rate Limiting**: No protection against Google API quota exhaustion
 6. **Hardcoded Fallbacks**: Mock geocoder logic is simplistic
 7. **Database Writes**: Every search creates new Property record (potential duplicates)
@@ -267,9 +255,10 @@ public class PropertySearchService {
 
 ### Short-term
 1. **Address Duplicate Properties**: Add check for existing similar addresses before persisting
-2. **Enhance Property Type Detection**: Use more signals from Google API responses
+2. **Raw Google Type Storage**: Store the unmodified `primaryType` alongside the mapped `PropertyType` (hybrid column) for traceability
 3. **Add Search Deduplication**: Option to return existing property if recently searched
 4. **Improve Mock Data**: Make development fallback more realistic/configurable
+5. **Generated Classifier Mapping**: Replace substring heuristics in `PropertyTypeClassifier` with a mapping generated from Google's published Place Types list
 
 ### Medium-term
 1. **Redis Configuration**: Resolve DevTools conflict to re-enable caching
