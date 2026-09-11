@@ -16,13 +16,12 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                // React (CRA) and Vite default dev ports, plus a wildcard
-                // origin entry for tools like Postman / curl during local
-                // testing. Replace with the production domain when shipped.
-                .allowedOrigins(
-                        "http://localhost:3000", // CRA
-                        "http://localhost:5173", // Vite
-                        "http://localhost:4200"  // Angular
+                // Any localhost/127.0.0.1 port: dev servers pick 3000, 3001,
+                // 3002... depending on what's already in use. Tighten to the
+                // production domain when shipped.
+                .allowedOriginPatterns(
+                        "http://localhost:[*]",
+                        "http://127.0.0.1:[*]"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
