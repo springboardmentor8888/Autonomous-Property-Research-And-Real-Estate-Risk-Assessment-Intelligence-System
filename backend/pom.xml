@@ -1,129 +1,406 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Maven configuration file for the Real Estate Due Diligence Agent project.
+
+    This file defines:
+    1. Project information
+    2. Spring Boot version
+    3. Java version
+    4. Required dependencies
+    5. Build plugins and compiler configuration
+-->
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
-        <relativePath/>
-    </parent>
-    <groupId>com.realestate</groupId>
-    <artifactId>duediligence</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>duediligence</name>
-    <description>Real Estate Due Diligence Agent</description>
-    <properties>
-        <java.version>21</java.version>
-    </properties>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>0.12.6</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>0.12.6</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>0.12.6</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <annotationProcessorPaths>
-                                <path>
-                                    <groupId>org.projectlombok</groupId>
-                                    <artifactId>lombok</artifactId>
-                                </path>
-                            </annotationProcessorPaths>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>default-testCompile</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <configuration>
-                            <annotationProcessorPaths>
-                                <path>
-                                    <groupId>org.projectlombok</groupId>
-                                    <artifactId>lombok</artifactId>
-                                </path>
-                            </annotationProcessorPaths>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<!-- Maven POM model version -->
+	<modelVersion>4.0.0</modelVersion>
+
+
+	<!--
+		Spring Boot Parent
+
+		Provides default Maven configurations, dependency versions,
+		and common settings required for a Spring Boot project.
+	-->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.1.1</version>
+
+		<!--
+			Empty relativePath means Maven will download the parent
+			from the configured Maven repositories instead of looking
+			for a local parent POM.
+		-->
+		<relativePath />
+	</parent>
+
+
+	<!--
+		Project Information
+	-->
+
+	<!-- Organization/company/project group -->
+	<groupId>com.realestate</groupId>
+
+	<!-- Unique name of the Maven project -->
+	<artifactId>duediligence</artifactId>
+
+	<!-- Current project version -->
+	<version>0.0.1-SNAPSHOT</version>
+
+	<!-- Project name -->
+	<name>duediligence</name>
+
+	<!-- Short description of the project -->
+	<description>Real Estate Due Diligence Agent</description>
+
+
+	<!--
+		Project Properties
+	-->
+	<properties>
+
+		<!--
+			Java version used to compile and run the project.
+			This project is configured for Java 21.
+		-->
+		<java.version>21</java.version>
+
+	</properties>
+
+
+	<!--
+		Dependencies
+
+		Dependencies are external libraries required by the application.
+		Maven automatically downloads these libraries and adds them
+		to the project classpath.
+	-->
+	<dependencies>
+
+
+		<!--
+			Spring Data JPA
+
+			Used for database operations using JPA/Hibernate.
+			Provides repositories, entity management, and ORM support.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+
+		<!--
+			Spring Security
+
+			Provides authentication and authorization features.
+			Used in this project for securing APIs and JWT authentication.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+
+		<!--
+			Spring Validation
+
+			Provides validation support for request data.
+
+			Example:
+			@NotBlank
+			@Email
+			@Size
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+
+		<!--
+			Spring Web MVC
+
+			Used to create REST APIs and web controllers.
+
+			Provides features such as:
+			- @RestController
+			- @GetMapping
+			- @PostMapping
+			- Request/Response handling
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+
+
+		<!--
+			PostgreSQL Database Driver
+
+			Allows the Spring Boot application to communicate
+			with a PostgreSQL database.
+
+			"runtime" means the driver is required when the
+			application runs, but is not directly needed to compile
+			the application source code.
+		-->
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+
+		<!--
+			Lombok
+
+			Reduces boilerplate Java code by generating things such as:
+			- Getters
+			- Setters
+			- Constructors
+			- Builders
+
+			"optional" means this dependency is not required by
+			projects that use this application as a dependency.
+		-->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+
+		<!--
+			JJWT API
+
+			Provides the main Java API used to create and validate
+			JSON Web Tokens (JWT).
+		-->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.12.6</version>
+		</dependency>
+
+
+		<!--
+			JJWT Implementation
+
+			Contains the runtime implementation required by JJWT.
+			It is marked as "runtime" because the application needs
+			it while running rather than directly during compilation.
+		-->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.12.6</version>
+			<scope>runtime</scope>
+		</dependency>
+
+
+		<!--
+			JJWT Jackson
+
+			Provides JSON serialization/deserialization support for JJWT
+			using the Jackson library.
+
+			Used at runtime when working with JWT data.
+		-->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.12.6</version>
+			<scope>runtime</scope>
+		</dependency>
+
+
+		<!--
+			Spring Data JPA Test
+
+			Provides testing support for Spring Data JPA components.
+
+			"test" scope means this dependency is available only
+			when compiling and running tests.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+
+		<!--
+			Spring Security Test
+
+			Provides utilities for testing Spring Security features.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+
+		<!--
+			Spring Validation Test
+
+			Provides testing support for validation functionality.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+
+		<!--
+			Spring Web MVC Test
+
+			Provides testing support for Spring MVC controllers
+			and REST APIs.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+	</dependencies>
+
+
+	<!--
+		Build Configuration
+
+		This section controls how Maven builds and compiles
+		the Spring Boot application.
+	-->
+	<build>
+
+		<plugins>
+
+
+			<!--
+				Spring Boot Maven Plugin
+
+				Provides Maven commands for:
+				- Running the Spring Boot application
+				- Packaging the application
+				- Creating an executable JAR
+			-->
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+
+
+			<!--
+				Maven Compiler Plugin
+
+				Controls how Java source code is compiled.
+				It is also configured here to use Lombok's
+				annotation processor.
+			-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+
+
+				<!--
+					Compiler executions
+
+					Defines separate configurations for:
+					1. Main application compilation
+					2. Test code compilation
+				-->
+				<executions>
+
+
+					<!--
+						Main application compilation
+					-->
+					<execution>
+
+						<!-- Unique identifier for this compilation -->
+						<id>default-compile</id>
+
+						<!-- Runs during Maven's compile phase -->
+						<phase>compile</phase>
+
+						<!-- Compile Java source code -->
+						<goals>
+							<goal>compile</goal>
+						</goals>
+
+						<configuration>
+
+							<!--
+								Annotation processors used during compilation.
+								Lombok uses annotation processing to generate
+								boilerplate code automatically.
+							-->
+							<annotationProcessorPaths>
+
+								<!-- Lombok annotation processor -->
+								<path>
+									<groupId>org.projectlombok</groupId>
+									<artifactId>lombok</artifactId>
+								</path>
+
+							</annotationProcessorPaths>
+
+						</configuration>
+
+					</execution>
+
+
+					<!--
+						Test code compilation
+					-->
+					<execution>
+
+						<!-- Unique identifier for test compilation -->
+						<id>default-testCompile</id>
+
+						<!-- Runs during Maven's test-compile phase -->
+						<phase>test-compile</phase>
+
+						<!-- Compile test source code -->
+						<goals>
+							<goal>testCompile</goal>
+						</goals>
+
+						<configuration>
+
+							<!--
+								Allows Lombok annotations to work
+								when compiling test classes.
+							-->
+							<annotationProcessorPaths>
+
+								<!-- Lombok annotation processor -->
+								<path>
+									<groupId>org.projectlombok</groupId>
+									<artifactId>lombok</artifactId>
+								</path>
+
+							</annotationProcessorPaths>
+
+						</configuration>
+
+					</execution>
+
+				</executions>
+
+			</plugin>
+
+		</plugins>
+
+	</build>
+
 </project>
