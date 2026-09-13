@@ -43,7 +43,6 @@ const ROLES = [
   { value: 'REAL_ESTATE_AGENT',    label: 'Real Estate Agent',      description: 'Manage property listings with automated compliance verification & risk disclosures.', admin: false },
   { value: 'LEGAL_REVIEWER',       label: 'Legal Reviewer',         description: 'Perform deep deed title chain audits, encumbrance reviews, and legal risk scoring.', admin: false },
   { value: 'FINANCIAL_INSTITUTION',label: 'Financial Institution',  description: 'Access institutional property valuation, loan risk scoring, and mortgage pre-check tools.', admin: false },
-  { value: 'ADMINISTRATOR',        label: 'Administrator',          description: 'Full enterprise platform administration, security policies, and user role management.', admin: true },
 ]
 
 export default function RegisterPage() {
@@ -191,7 +190,7 @@ export default function RegisterPage() {
             <div className="flex flex-col gap-1.5">
               <label htmlFor="reg-role" className="text-xs font-bold tracking-widest uppercase text-white/50">Enterprise Access Role</label>
               <select id="reg-role" name="role" value={form.role} onChange={handleChange} className={`${inputClass} cursor-pointer`}>
-                {ROLES.map((role) => <option key={role.value} value={role.value} className="bg-[#0B132B]">{role.label} ({role.value})</option>)}
+                {ROLES.map((role) => <option key={role.value} value={role.value} className="bg-[#0B132B]">{role.label}</option>)}
               </select>
 
               <div className={`mt-1 px-4 py-3 rounded-lg text-sm border-l-2 ${selectedRole.admin ? 'bg-purple-500/10 border-[#E040FB] text-purple-200' : 'bg-[#4f9cf9]/10 border-[#4f9cf9] text-blue-200'}`}>

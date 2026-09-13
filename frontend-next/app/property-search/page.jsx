@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-const GEOAPIFY_API_KEY = "#_YOUR_GEOAPIFY_API_KEY_HERE_#";
+// Backend base URL — update if deployed elsewhere.
+const BASE_URL = "http://localhost:8080/api";
 
 export default function PropertySearchPage() {
     const [address, setAddress] = useState("");
@@ -34,186 +35,59 @@ export default function PropertySearchPage() {
             return;
         }
 
-        // -----------------------------
-        // API KEY CHECK
-        // -----------------------------
-
-        if (
-            !GEOAPIFY_API_KEY ||
-            GEOAPIFY_API_KEY ===
-            "#_YOUR_GEOAPIFY_API_KEY_HERE_#"
-        ) {
-            setError(
-                "Please add your Geoapify API key in page.jsx."
-            );
-            return;
-        }
-
         setLoading(true);
 
         try {
             // -----------------------------
-            // GEOAPIFY GEOCODING REQUEST
+            // CALL OUR BACKEND (which calls Geoapify server-side)
             // -----------------------------
 
-            const url =
-                "https://api.geoapify.com/v1/geocode/search" +
-                `?text=${encodeURIComponent(cleanAddress)}` +
-                `&apiKey=${encodeURIComponent(
-                    GEOAPIFY_API_KEY
-                )}`;
+            const token =
+                typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-            const response = await fetch(url, {
-                method: "GET",
+            const response = await fetch(`${BASE_URL}/properties/validate-address`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({ address: cleanAddress }),
             });
 
+            const data = await response.json().catch(() => null);
+
             // -----------------------------
-            // HTTP ERROR
+            // HTTP / BACKEND ERROR
             // -----------------------------
 
             if (!response.ok) {
-                const errorText = await response.text();
-
-                console.error(
-                    "Geoapify HTTP error:",
-                    response.status,
-                    errorText
-                );
-
                 throw new Error(
-                    `Geoapify request failed (${response.status}).`
+                    data?.error?.message || `Request failed (${response.status})`,
                 );
             }
 
             // -----------------------------
-            // PARSE RESPONSE
+            // CHECK IF ADDRESS WAS ACTUALLY VALID
             // -----------------------------
 
-            const data = await response.json();
-
-            console.log(
-                "Geoapify response:",
-                data
-            );
-
-            // -----------------------------
-            // CHECK RESULTS
-            // -----------------------------
-
-            if (
-                !data ||
-                !Array.isArray(data.features) ||
-                data.features.length === 0
-            ) {
-                throw new Error(
-                    "No matching address was found."
-                );
-            }
-
-            // Take the best matching result
-            const firstFeature = data.features[0];
-
-            const properties =
-                firstFeature.properties || {};
-
-            const geometry =
-                firstFeature.geometry || {};
-
-            const coordinates =
-                geometry.coordinates || [];
-
-            const longitude = coordinates[0];
-            const latitude = coordinates[1];
-
-            // -----------------------------
-            // CHECK COORDINATES
-            // -----------------------------
-
-            if (
-                typeof latitude !== "number" ||
-                typeof longitude !== "number"
-            ) {
-                throw new Error(
-                    "Location coordinates were not returned."
-                );
+            if (!data || data.valid === false) {
+                throw new Error("No matching address was found.");
             }
 
             // -----------------------------
             // BUILD PROPERTY RESULT
+            // (mapped to our backend's actual response field names)
             // -----------------------------
 
             const propertyResult = {
-                formattedAddress:
-                    properties.formatted ||
-                    cleanAddress,
-
-                houseNumber:
-                    properties.housenumber ||
-                    "Not available",
-
-                street:
-                    properties.street ||
-                    "Not available",
-
-                city:
-                    properties.city ||
-                    properties.town ||
-                    properties.village ||
-                    properties.municipality ||
-                    "Not available",
-
-                state:
-                    properties.state ||
-                    "Not available",
-
-                postalCode:
-                    properties.postcode ||
-                    "Not available",
-
-                country:
-                    properties.country ||
-                    "Not available",
-
-                countryCode:
-                    properties.country_code ||
-                    "Not available",
-
-                latitude,
-                longitude,
-
-                placeId:
-                    properties.place_id ||
-                    "Not available",
-
-                resultType:
-                    properties.result_type ||
-                    "Not available",
-
-                confidence:
-                    properties.rank?.confidence ??
-                    null,
-
-                confidenceCity:
-                    properties.rank?.confidence_city ??
-                    null,
-
-                confidenceStreet:
-                    properties.rank?.confidence_street ??
-                    null,
-
-                distance:
-                    properties.rank?.distance ??
-                    null,
-
-                categories:
-                    properties.categories || [],
-
-                datasource:
-                    properties.datasource || null,
-
-                originalAddress:
-                    cleanAddress,
-
+                formattedAddress: data.formattedAddress || cleanAddress,
+                city: data.city || "Not available",
+                state: data.state || "Not available",
+                postalCode: data.postalCode || "Not available",
+                country: data.country || "Not available",
+                latitude: data.latitude,
+                longitude: data.longitude,
+                originalAddress: cleanAddress,
                 rawResponse: data,
             };
 
@@ -336,7 +210,7 @@ export default function PropertySearchPage() {
                                 >
                                     {success
                                         ? "Address service ready"
-                                        : "Geoapify Geocoding"}
+                                        : "Backend Geocoding"}
                                 </span>
 
                             </span>
@@ -473,7 +347,7 @@ export default function PropertySearchPage() {
                             <InfoBlock
                                 number="02"
                                 title="Validate location"
-                                text="The address is resolved using the Geoapify Geocoding API."
+                                text="The address is resolved through our backend's geocoding service."
                             />
 
                             <InfoBlock
@@ -518,7 +392,7 @@ export default function PropertySearchPage() {
                                     </p>
 
                                     <p className="mt-1 text-sm text-white/30">
-                                        Resolving the address using Geoapify.
+                                        Resolving the address through our backend.
                                     </p>
 
                                 </div>
@@ -582,16 +456,6 @@ export default function PropertySearchPage() {
                             <div className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
 
                                 <DetailCard
-                                    label="House Number"
-                                    value={result.houseNumber}
-                                />
-
-                                <DetailCard
-                                    label="Street"
-                                    value={result.street}
-                                />
-
-                                <DetailCard
                                     label="City"
                                     value={result.city}
                                 />
@@ -609,25 +473,6 @@ export default function PropertySearchPage() {
                                 <DetailCard
                                     label="Country"
                                     value={result.country}
-                                />
-
-                                <DetailCard
-                                    label="Country Code"
-                                    value={result.countryCode}
-                                />
-
-                                <DetailCard
-                                    label="Result Type"
-                                    value={result.resultType}
-                                />
-
-                                <DetailCard
-                                    label="Confidence"
-                                    value={
-                                        result.confidence !== null
-                                            ? result.confidence
-                                            : "Not available"
-                                    }
                                 />
 
                             </div>
@@ -652,7 +497,7 @@ export default function PropertySearchPage() {
                                         </p>
 
                                         <p className="mt-2 text-lg text-white/80">
-                                            {result.latitude.toFixed(6)}
+                                            {result.latitude?.toFixed(6)}
                                         </p>
 
                                     </div>
@@ -665,7 +510,7 @@ export default function PropertySearchPage() {
                                         </p>
 
                                         <p className="mt-2 text-lg text-white/80">
-                                            {result.longitude.toFixed(6)}
+                                            {result.longitude?.toFixed(6)}
                                         </p>
 
                                     </div>
@@ -704,21 +549,6 @@ export default function PropertySearchPage() {
                             </div>
 
 
-                            {/* =================================
-                                PLACE ID
-                            ================================= */}
-
-                            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
-
-                                <p className="text-xs tracking-[0.25em] text-white/25">
-                                    PLACE ID
-                                </p>
-
-                                <p className="mt-4 break-all text-sm leading-6 text-white/50">
-                                    {result.placeId}
-                                </p>
-
-                            </div>
 
 
                             {/* =================================

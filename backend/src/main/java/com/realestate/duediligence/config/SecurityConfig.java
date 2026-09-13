@@ -121,9 +121,9 @@ public class SecurityConfig {
 				// and which endpoints require authentication.
 				.authorizeHttpRequests(auth -> auth
 
-						// Login, registration, and health-check endpoints
+						// Login, registration, health-check, and properties endpoints
 						// can be accessed without a JWT token.
-						.requestMatchers("/api/auth/**", "/api/health").permitAll()
+						.requestMatchers("/api/auth/**", "/api/health", "/api/properties/**").permitAll()
 
 						// All other API endpoints require authentication.
 						.anyRequest().authenticated())
