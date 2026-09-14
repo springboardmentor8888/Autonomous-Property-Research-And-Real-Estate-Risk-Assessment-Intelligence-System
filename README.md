@@ -175,6 +175,40 @@ git commit -m "feat(api): expose Property REST controllers, configure security, 
 
 ---
 
+## 📅 Milestone 2 — Day 12 (Sep 14, 2026): Permit, Tax, Flood & Zoning Validation Services & DTOs
+
+### 🎯 Objective
+Implement core business validation engines and DTO models for external property data aggregation (Permit validation, Tax liability checking, FEMA Flood Zone risk calculation, and Municipal Zoning compliance).
+
+### 💻 Git Commands Executed
+```bash
+# 1. Stage DTOs and Validation Services
+git add src/main/java/com/realestate/backend/dto/
+git add src/main/java/com/realestate/backend/service/
+
+# 2. Commit changes
+git commit -m "implement permit, tax, flood, and zoning validation services and DTOs"
+
+# 3. Push to team branch
+git push origin team-three
+```
+
+### 🛠️ Key Work Done
+* **DTO Layer (`src/main/java/com/realestate/backend/dto/`):**
+  * `PermitRecordDTO` & `PermitValidationResponseDTO`: Modeled municipal permit records (OPEN, CLOSED, EXPIRED, VIOLATION) and structured risk assessment responses.
+  * `TaxHistoryDTO` & `TaxValidationResponseDTO`: Structured property tax assessment histories, delinquent tax tracking, and tax lien risk responses.
+  * `FloodZoneDTO` & `FloodValidationResponseDTO`: Modeled FEMA flood zone classifications and mandatory flood insurance mandates.
+  * `ZoningInfoDTO` & `ZoningValidationResponseDTO`: Structured land use classifications, permitted uses, and ordinance compliance checking.
+* **Validation Service Layer (`src/main/java/com/realestate/backend/service/`):**
+  * `PermitValidationService` & `PermitValidationServiceImpl`: Automated risk tier calculation (LOW, MEDIUM, HIGH) based on open/expired permits and safety violations.
+  * `TaxValidationService` & `TaxValidationServiceImpl`: Detects delinquent tax accounts, calculates outstanding balances, and flags high-risk tax liens.
+  * `FloodValidationService` & `FloodValidationServiceImpl`: Evaluates high-hazard flood zones (AE, VE) and flags mandatory flood insurance requirements.
+  * `ZoningValidationService` & `ZoningValidationServiceImpl`: Verifies property usage compatibility against municipal zoning designations.
+* **Unit Testing:**
+  * Created `PermitValidationServiceTest` and `TaxValidationServiceTest` with 100% pass rate (8 of 8 total backend tests passing).
+
+---
+
 ## 🚀 Final Steps: Pushing to Remote & Pull Request (PR)
 
 When ready to submit your work to the team lead:
@@ -190,6 +224,7 @@ git add .
 git commit -m "feat(member-4): complete backend external data, property search, and address validation"
 
 # 4. Push to remote branch
-git push -u origin member4-backend-external-data
+git push -u origin team-three
 ```
+
 
