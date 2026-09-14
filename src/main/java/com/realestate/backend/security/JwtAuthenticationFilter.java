@@ -38,30 +38,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        // No JWT token
+       
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Remove "Bearer " from the token
+       
         String token = authHeader.substring(7);
 
         try {
 
-            // Get email from JWT
+          
             String email = jwtService.extractEmail(token);
 
-            // Check if user is not already authenticated
+          
             if (email != null &&
                     SecurityContextHolder.getContext()
                             .getAuthentication() == null) {
 
-                // Find user from database
+              
                 UserDetails userDetails =
                         userDetailsService.loadUserByUsername(email);
 
-                // Validate JWT
+              
                 if (jwtService.isTokenValid(token)) {
 
                     UsernamePasswordAuthenticationToken authentication =
@@ -76,14 +76,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     .buildDetails(request)
                     );
 
-                    // Set authenticated user
+                
                     SecurityContextHolder.getContext()
                             .setAuthentication(authentication);
                 }
             }
 
         } catch (Exception e) {
-            // Invalid token
+            
         }
 
         filterChain.doFilter(request, response);

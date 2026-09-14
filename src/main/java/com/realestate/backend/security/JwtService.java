@@ -16,14 +16,14 @@ public class JwtService {
     private static final String SECRET_KEY =
             "VGhpc0lzQVN1cGVyU2VjcmV0S2V5Rm9yUmVhbEVzdGF0ZUJhY2tlbmQ=";
 
-    private final long jwtExpiration = 86400000; // 24 hours
+    private final long jwtExpiration = 86400000; // 24 hr
 
     private SecretKey getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // Generate JWT token
+   
     public String generateToken(String email) {
 
         return Jwts.builder()
@@ -36,7 +36,7 @@ public class JwtService {
                 .compact();
     }
 
-    // Extract email from JWT
+  
     public String extractEmail(String token) {
 
         Claims claims = Jwts.parser()
@@ -48,7 +48,7 @@ public class JwtService {
         return claims.getSubject();
     }
 
-    // Validate JWT
+
     public boolean isTokenValid(String token) {
 
         try {

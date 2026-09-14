@@ -22,24 +22,24 @@ public class UserService {
 
     public User registerUser(RegisterRequest request) {
 
-        // Check whether email is already registered
+       
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already registered");
         }
 
-        // Create user
+       
         User user = new User();
 
         user.setName(request.getName());
         user.setEmail(request.getEmail());
 
-        // NEVER save the plain-text password
+       
         String encodedPassword =
                 passwordEncoder.encode(request.getPassword());
 
         user.setPassword(encodedPassword);
 
-        // Save user to database
+   
         return userRepository.save(user);
     }
 }

@@ -12,13 +12,21 @@ import java.util.List;
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, Long> {
 
+    List<Property> findByCity(String city);
+
     List<Property> findByCityIgnoreCase(String city);
+
+    List<Property> findByPriceLessThanEqual(BigDecimal maxPrice);
+
+    List<Property> findByCityAndPriceLessThanEqual(String city, BigDecimal maxPrice);
 
     List<Property> findByZipCode(String zipCode);
 
     List<Property> findByPropertyTypeIgnoreCase(String propertyType);
 
     List<Property> findByStatusIgnoreCase(String status);
+
+    List<Property> findByAddressContainingIgnoreCase(String address);
 
     @Query("SELECT p FROM Property p WHERE " +
            "(:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.address) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.city) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
@@ -44,3 +52,4 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             @Param("status") String status
     );
 }
+
