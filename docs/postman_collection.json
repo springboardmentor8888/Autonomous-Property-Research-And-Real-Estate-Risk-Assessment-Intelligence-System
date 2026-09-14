@@ -1,0 +1,180 @@
+{
+	"info": {
+		"_postman_id": "real-estate-api-collection",
+		"name": "Real Estate Backend API",
+		"description": "Postman collection for testing Property Management, Search, History, and Address Validation APIs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Create Property",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"title\": \"Modern Luxury Villa\",\n  \"address\": \"742 Evergreen Terrace\",\n  \"city\": \"Springfield\",\n  \"state\": \"IL\",\n  \"zipCode\": \"62704\",\n  \"country\": \"USA\",\n  \"price\": 450000.00,\n  \"bedrooms\": 4,\n  \"bathrooms\": 3,\n  \"squareFeet\": 2850.5,\n  \"propertyType\": \"SINGLE_FAMILY\",\n  \"yearBuilt\": 2021,\n  \"description\": \"Spacious 4-bedroom home with open layout, renovated kitchen, and private backyard pool.\",\n  \"status\": \"AVAILABLE\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/properties",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "properties"]
+				}
+			}
+		},
+		{
+			"name": "2. Get All Properties",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/properties",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "properties"]
+				}
+			}
+		},
+		{
+			"name": "3. Get Property by ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/properties/1",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "properties", "1"]
+				}
+			}
+		},
+		{
+			"name": "4. Search Properties (Filters)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/properties/search?query=Luxury&city=Springfield&minPrice=200000&maxPrice=500000&minBedrooms=3&status=AVAILABLE",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "properties", "search"],
+					"query": [
+						{ "key": "query", "value": "Luxury" },
+						{ "key": "city", "value": "Springfield" },
+						{ "key": "minPrice", "value": "200000" },
+						{ "key": "maxPrice", "value": "500000" },
+						{ "key": "minBedrooms", "value": "3" },
+						{ "key": "status", "value": "AVAILABLE" }
+					]
+				}
+			}
+		},
+		{
+			"name": "5. Update Property",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"title\": \"Modern Luxury Villa (Renovated)\",\n  \"address\": \"742 Evergreen Terrace\",\n  \"city\": \"Springfield\",\n  \"state\": \"IL\",\n  \"zipCode\": \"62704\",\n  \"country\": \"USA\",\n  \"price\": 475000.00,\n  \"bedrooms\": 4,\n  \"bathrooms\": 3,\n  \"squareFeet\": 2900.0,\n  \"propertyType\": \"SINGLE_FAMILY\",\n  \"yearBuilt\": 2021,\n  \"description\": \"Updated price and expanded patio deck.\",\n  \"status\": \"AVAILABLE\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/properties/1",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "properties", "1"]
+				}
+			}
+		},
+		{
+			"name": "6. Add Property History",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"eventDate\": \"2026-08-30\",\n  \"eventType\": \"PRICE_CHANGED\",\n  \"price\": 475000.00,\n  \"description\": \"Price increased due to newly installed swimming pool\",\n  \"source\": \"Agent Listing\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/properties/1/history",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "properties", "1", "history"]
+				}
+			}
+		},
+		{
+			"name": "7. Get Property History",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/properties/1/history",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "properties", "1", "history"]
+				}
+			}
+		},
+		{
+			"name": "8. Validate Address",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"streetAddress\": \"1600 Amphitheatre Pkwy\",\n  \"secondaryAddress\": \"Building 40\",\n  \"city\": \"Mountain View\",\n  \"state\": \"CA\",\n  \"zipCode\": \"94043\",\n  \"country\": \"USA\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/address/validate",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "address", "validate"]
+				}
+			}
+		},
+		{
+			"name": "9. Delete Property",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/properties/1",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "properties", "1"]
+				}
+			}
+		}
+	]
+}
