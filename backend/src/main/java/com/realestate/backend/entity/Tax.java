@@ -1,5 +1,6 @@
 package com.realestate.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,26 +16,28 @@ import java.time.LocalDate;
 @Table(name = "taxes")
 public class Tax {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Id
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "property_id", nullable = false)
-    private Property property;
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "property_id", nullable = false)
+@JsonIgnore
+private Property property;
 
-    @Column(name = "tax_year", nullable = false)
-    private Integer taxYear;
+@Column(name = "tax_year", nullable = false)
+private Integer taxYear;
 
-    @Column(name = "tax_amount", nullable = false, precision = 15, scale = 2)
-    private BigDecimal taxAmount;
+@Column(name = "tax_amount", nullable = false, precision = 15, scale = 2)
+private BigDecimal taxAmount;
 
-    @Column(name = "due_date")
-    private LocalDate dueDate;
+@Column(name = "due_date")
+private LocalDate dueDate;
 
-    @Column(length = 30)
-    private String status = "PENDING";
+@Column(length = 30)
+private String status = "PENDING";
 
-    @Column(length = 500)
-    private String description;
+@Column(length = 500)
+private String description;
+
 }

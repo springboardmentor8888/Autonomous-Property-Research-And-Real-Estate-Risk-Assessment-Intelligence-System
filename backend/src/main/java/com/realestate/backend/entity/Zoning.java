@@ -1,5 +1,6 @@
 package com.realestate.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,29 +15,31 @@ import java.time.LocalDate;
 @Table(name = "zoning")
 public class Zoning {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Id
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "property_id", nullable = false)
-    private Property property;
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "property_id", nullable = false)
+@JsonIgnore
+private Property property;
 
-    @Column(name = "zoning_code", nullable = false, length = 50)
-    private String zoningCode;
+@Column(name = "zoning_code", nullable = false, length = 50)
+private String zoningCode;
 
-    @Column(name = "zoning_type", length = 100)
-    private String zoningType;
+@Column(name = "zoning_type", length = 100)
+private String zoningType;
 
-    @Column(name = "allowed_use", length = 255)
-    private String allowedUse;
+@Column(name = "allowed_use", length = 255)
+private String allowedUse;
 
-    @Column(length = 500)
-    private String restrictions;
+@Column(length = 500)
+private String restrictions;
 
-    @Column(name = "effective_date")
-    private LocalDate effectiveDate;
+@Column(name = "effective_date")
+private LocalDate effectiveDate;
 
-    @Column(length = 30)
-    private String status = "ACTIVE";
+@Column(length = 30)
+private String status = "ACTIVE";
+
 }

@@ -1,31 +1,42 @@
 package com.realestate.backend.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty.Access;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
 @Entity
+@Table(name = "ownership")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "ownership")
 public class Ownership {
 
 @Id
 @GeneratedValue(strategy = GenerationType.IDENTITY)
 private Long id;
 
-@JsonIgnore
 @ManyToOne(fetch = FetchType.LAZY)
 @JoinColumn(name = "property_id", nullable = false)
+@JsonProperty(access = Access.WRITE_ONLY)
 private Property property;
 
-@Column(name = "owner_name", nullable = false, length = 150)
+@Column(name = "owner_name", nullable = false)
 private String ownerName;
 
 @Column(name = "ownership_percentage", precision = 5, scale = 2)
