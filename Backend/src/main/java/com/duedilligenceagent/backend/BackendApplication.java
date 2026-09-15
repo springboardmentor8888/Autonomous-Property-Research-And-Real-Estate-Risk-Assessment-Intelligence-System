@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.PropertySource;
 
 @SpringBootApplication
-@PropertySource("classpath:google-credentials.properties")
+@PropertySource(value = "classpath:google-credentials.properties", ignoreResourceNotFound = true)
 public class BackendApplication {
 
     public static void main(String[] args) {

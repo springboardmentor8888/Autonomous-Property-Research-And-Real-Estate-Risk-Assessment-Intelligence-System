@@ -46,6 +46,24 @@ public class Property {
     @Column(name = "property_type", length = 50)
     private String propertyType;
 
+    @Column(name = "google_place_id", length = 150)
+    private String googlePlaceId;
+
+    @Column(name = "validation_granularity", length = 40)
+    private String validationGranularity;
+
+    @Column(name = "geocode_granularity", length = 40)
+    private String geocodeGranularity;
+
+    @Column(name = "address_complete")
+    private Boolean addressComplete;
+
+    @Column(name = "government_identifier", length = 150)
+    private String governmentIdentifier;
+
+    @Column(name = "municipal_assessment_identifier", length = 150)
+    private String municipalAssessmentIdentifier;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

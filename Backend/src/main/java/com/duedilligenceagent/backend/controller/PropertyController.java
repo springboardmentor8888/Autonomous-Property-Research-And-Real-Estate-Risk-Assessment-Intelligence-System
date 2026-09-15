@@ -2,6 +2,8 @@ package com.duedilligenceagent.backend.controller;
 
 import java.util.List;
 
+import com.duedilligenceagent.backend.dto.AggregationRequest;
+import com.duedilligenceagent.backend.dto.AggregationResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +18,7 @@ import com.duedilligenceagent.backend.dto.Property.PropertySearchApiResponse;
 import com.duedilligenceagent.backend.dto.PropertyResponse;
 import com.duedilligenceagent.backend.service.PropertySearchService;
 import com.duedilligenceagent.backend.service.PropertyService;
+import com.duedilligenceagent.backend.service.AggregationService;
 
 /**
  * Property endpoints — search/CRUD, all requiring a valid access token.
@@ -26,11 +29,14 @@ public class PropertyController {
 
     private final PropertyService propertyService;
     private final PropertySearchService propertySearchService;
+    private final AggregationService aggregationService;
 
     public PropertyController(PropertyService propertyService,
-                              PropertySearchService propertySearchService) {
+                              PropertySearchService propertySearchService,
+                              AggregationService aggregationService) {
         this.propertyService = propertyService;
         this.propertySearchService = propertySearchService;
+        this.aggregationService = aggregationService;
     }
 
     @GetMapping
@@ -62,6 +68,13 @@ public class PropertyController {
     public ResponseEntity<PropertySearchApiResponse> searchByAddress(
             @RequestBody PropertyDetailsRequest request) {
         return ResponseEntity.ok(propertySearchService.searchByAddress(request));
+    }
+
+    @PostMapping("/{id}/aggregate")
+    public ResponseEntity<AggregationResponse> aggregateProperty(
+            @PathVariable Long id,
+            @RequestBody AggregationRequest request) {
+        return ResponseEntity.ok(aggregationService.aggregate(id, null, request));
     }
 
     @GetMapping("/search")

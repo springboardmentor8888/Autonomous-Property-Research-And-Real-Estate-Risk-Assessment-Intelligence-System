@@ -49,6 +49,22 @@ public class ComparablePropertyDetails {
     @Column(name = "rera_id", length = 50)
     private String reraId;
 
+    @Column(name = "age_years")
+    private Integer ageYears;
+
+    @Column(name = "floor")
+    private Integer floor;
+
+    @Column(name = "total_floors")
+    private Integer totalFloors;
+
+    @Column(name = "amenity_score", precision = 5, scale = 2)
+    private BigDecimal amenityScore;
+
+    @Column(name = "handoff_url", length = 500)
+    private String handoffUrl;
+
+    @Builder.Default
     @Column(name = "verified")
     private Boolean verified = false;
 
