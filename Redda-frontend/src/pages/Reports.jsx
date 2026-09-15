@@ -78,13 +78,11 @@ function Reports() {
 
   // Search + filter
   const filteredReports = reports.filter((report) => {
+    const searchValue = search.toLowerCase();
+
     const matchesSearch =
-      report.property
-        .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      report.location
-        .toLowerCase()
-        .includes(search.toLowerCase());
+      report.property.toLowerCase().includes(searchValue) ||
+      report.location.toLowerCase().includes(searchValue);
 
     const matchesRisk =
       riskFilter === "All" || report.risk === riskFilter;
@@ -105,6 +103,7 @@ function Reports() {
     return "bg-green-100 text-green-700 border-green-200";
   };
 
+  // Risk icon
   const getRiskIcon = (risk) => {
     if (risk === "High") {
       return <AlertTriangle size={15} />;
@@ -115,6 +114,19 @@ function Reports() {
     }
 
     return <CheckCircle size={15} />;
+  };
+
+  // Risk score color
+  const getScoreColor = (score) => {
+    if (score >= 70) {
+      return "bg-red-500";
+    }
+
+    if (score >= 40) {
+      return "bg-orange-500";
+    }
+
+    return "bg-green-500";
   };
 
   // Download report
@@ -140,6 +152,9 @@ ${report.owner}
 Documents Verified:
 ${report.documents}
 
+Report Status:
+${report.status}
+
 Report Date:
 ${report.date}
 
@@ -160,520 +175,673 @@ REDDA AI Property Intelligence System
       "-"
     )}-REDDA-Report.txt`;
 
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div>
+    <div
+      className="relative w-full min-h-screen bg-cover bg-center bg-no-repeat bg-fixed"
+      style={{
+        backgroundImage: "url('/p2.png')",
+      }}
+    >
+      <div className="relative z-10 w-full min-h-screen p-2 md:p-4">
 
-      {/* ================= HEADER ================= */}
-      <div className="mb-8">
+        {/* ================= HEADER ================= */}
 
-        <div className="flex items-center gap-3">
-
-          <div className="w-11 h-11 rounded-lg bg-green-100 flex items-center justify-center">
-            <FileText
-              size={24}
-              className="text-green-600"
-            />
-          </div>
-
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">
-              Reports
-            </h1>
-
-            <p className="mt-1 text-gray-500">
-              Review and manage AI-generated property due diligence reports.
-            </p>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* ================= AI SUMMARY ================= */}
-      <div className="bg-slate-900 rounded-xl p-6 text-white mb-6">
-
-        <div className="flex items-center gap-3">
-
-          <div className="w-11 h-11 rounded-lg bg-green-500/20 flex items-center justify-center">
-            <Sparkles
-              size={23}
-              className="text-green-400"
-            />
-          </div>
-
-          <div>
-            <h2 className="text-lg font-semibold">
-              AI Report Intelligence
-            </h2>
-
-            <p className="text-sm text-slate-400 mt-1">
-              REDDA automatically summarizes property risks,
-              ownership information and document findings.
-            </p>
-          </div>
-
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-
-          <div className="bg-white/5 rounded-lg p-4">
-            <p className="text-sm text-slate-400">
-              Total Reports
-            </p>
-
-            <p className="text-2xl font-bold mt-1">
-              {reports.length}
-            </p>
-          </div>
-
-          <div className="bg-white/5 rounded-lg p-4">
-            <p className="text-sm text-slate-400">
-              High Risk
-            </p>
-
-            <p className="text-2xl font-bold text-red-400 mt-1">
-              {reports.filter((r) => r.risk === "High").length}
-            </p>
-          </div>
-
-          <div className="bg-white/5 rounded-lg p-4">
-            <p className="text-sm text-slate-400">
-              AI Analysis
-            </p>
-
-            <p className="text-2xl font-bold text-green-400 mt-1">
-              100%
-            </p>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* ================= REPORTS CARD ================= */}
-      <div className="bg-white rounded-xl border shadow-sm">
-
-        {/* Toolbar */}
-        <div className="p-6 border-b">
-
-          <div className="flex flex-col lg:flex-row gap-4 justify-between">
-
-            {/* Search */}
-            <div className="flex items-center gap-3 border rounded-lg px-4 py-3 flex-1 max-w-xl">
-
-              <Search
-                size={19}
-                className="text-gray-400"
+        <div className="mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-lg bg-green-100 flex items-center justify-center">
+              <FileText
+                size={24}
+                className="text-green-600"
               />
+            </div>
 
-              <input
-                type="text"
-                value={search}
-                onChange={(e) =>
-                  setSearch(e.target.value)
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">
+                Reports
+              </h1>
+
+              <p className="mt-1 text-gray-500">
+                Review and manage AI-generated property due diligence
+                reports.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= AI SUMMARY ================= */}
+
+        <div className="bg-slate-900 rounded-xl p-6 text-white mb-6 shadow-lg">
+
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-lg bg-green-500/20 flex items-center justify-center">
+              <Sparkles
+                size={23}
+                className="text-green-400"
+              />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold">
+                AI Report Intelligence
+              </h2>
+
+              <p className="text-sm text-slate-400 mt-1">
+                REDDA automatically summarizes property risks,
+                ownership information and document findings.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+
+            <div className="bg-white/5 rounded-lg p-4">
+              <p className="text-sm text-slate-400">
+                Total Reports
+              </p>
+
+              <p className="text-2xl font-bold mt-1">
+                {reports.length}
+              </p>
+            </div>
+
+            <div className="bg-white/5 rounded-lg p-4">
+              <p className="text-sm text-slate-400">
+                High Risk
+              </p>
+
+              <p className="text-2xl font-bold text-red-400 mt-1">
+                {
+                  reports.filter(
+                    (report) => report.risk === "High"
+                  ).length
                 }
-                placeholder="Search property or location..."
-                className="outline-none w-full text-gray-700"
-              />
+              </p>
+            </div>
+
+            <div className="bg-white/5 rounded-lg p-4">
+              <p className="text-sm text-slate-400">
+                AI Analysis
+              </p>
+
+              <p className="text-2xl font-bold text-green-400 mt-1">
+                100%
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ================= REPORTS CARD ================= */}
+
+        <div className="bg-white rounded-xl border shadow-lg overflow-hidden">
+
+          {/* Toolbar */}
+
+          <div className="p-6 border-b">
+
+            <div className="flex flex-col lg:flex-row gap-4 justify-between">
+
+              {/* Search */}
+
+              <div className="flex items-center gap-3 border rounded-lg px-4 py-3 flex-1 max-w-xl focus-within:ring-2 focus-within:ring-green-500">
+
+                <Search
+                  size={19}
+                  className="text-gray-400 flex-shrink-0"
+                />
+
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) =>
+                    setSearch(e.target.value)
+                  }
+                  placeholder="Search property or location..."
+                  className="outline-none w-full text-gray-700 bg-transparent"
+                />
+
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="text-gray-400 hover:text-gray-700"
+                  >
+                    <X size={17} />
+                  </button>
+                )}
+
+              </div>
+
+              {/* Risk Filter */}
+
+              <select
+                value={riskFilter}
+                onChange={(e) =>
+                  setRiskFilter(e.target.value)
+                }
+                className="border rounded-lg px-4 py-3 outline-none text-gray-700 bg-white focus:ring-2 focus:ring-green-500"
+              >
+                <option value="All">
+                  All Risk Levels
+                </option>
+
+                <option value="Low">
+                  Low Risk
+                </option>
+
+                <option value="Medium">
+                  Medium Risk
+                </option>
+
+                <option value="High">
+                  High Risk
+                </option>
+              </select>
 
             </div>
 
-            {/* Risk Filter */}
-            <select
-              value={riskFilter}
-              onChange={(e) =>
-                setRiskFilter(e.target.value)
-              }
-              className="border rounded-lg px-4 py-3 outline-none text-gray-700"
-            >
-              <option value="All">
-                All Risk Levels
-              </option>
+            {/* Filter Result Count */}
 
-              <option value="Low">
-                Low Risk
-              </option>
-
-              <option value="Medium">
-                Medium Risk
-              </option>
-
-              <option value="High">
-                High Risk
-              </option>
-            </select>
+            <div className="mt-4 text-sm text-gray-500">
+              Showing{" "}
+              <span className="font-semibold text-gray-700">
+                {filteredReports.length}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-gray-700">
+                {reports.length}
+              </span>{" "}
+              reports
+            </div>
 
           </div>
 
+          {/* ================= TABLE ================= */}
+
+          <div className="overflow-x-auto">
+
+            <table className="w-full">
+
+              <thead className="bg-gray-50">
+
+                <tr>
+
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                    Property
+                  </th>
+
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                    Risk
+                  </th>
+
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                    Score
+                  </th>
+
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                    Ownership
+                  </th>
+
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                    Documents
+                  </th>
+
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                    Date
+                  </th>
+
+                  <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                    Actions
+                  </th>
+
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                {filteredReports.map((report) => (
+
+                  <tr
+                    key={report.id}
+                    className="border-t hover:bg-gray-50 transition"
+                  >
+
+                    {/* Property */}
+
+                    <td className="px-6 py-5">
+
+                      <p className="font-semibold text-gray-800">
+                        {report.property}
+                      </p>
+
+                      <p className="text-sm text-gray-500 mt-1">
+                        {report.location}
+                      </p>
+
+                    </td>
+
+                    {/* Risk */}
+
+                    <td className="px-6 py-5">
+
+                      <span
+                        className={`inline-flex items-center gap-1.5 border px-3 py-1 rounded-full text-xs font-medium ${getRiskStyle(
+                          report.risk
+                        )}`}
+                      >
+                        {getRiskIcon(report.risk)}
+                        {report.risk}
+                      </span>
+
+                    </td>
+
+                    {/* Score */}
+
+                    <td className="px-6 py-5">
+
+                      <div className="flex items-center gap-3">
+
+                        <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+
+                          <div
+                            className={`h-full rounded-full ${getScoreColor(
+                              report.score
+                            )}`}
+                            style={{
+                              width: `${report.score}%`,
+                            }}
+                          />
+
+                        </div>
+
+                        <span className="text-sm font-semibold text-gray-700">
+                          {report.score}
+                        </span>
+
+                      </div>
+
+                    </td>
+
+                    {/* Ownership */}
+
+                    <td className="px-6 py-5">
+
+                      <span
+                        className={
+                          report.owner === "Verified"
+                            ? "inline-flex items-center gap-1 text-green-600 text-sm font-medium"
+                            : "inline-flex items-center gap-1 text-orange-600 text-sm font-medium"
+                        }
+                      >
+
+                        {report.owner === "Verified" ? (
+                          <CheckCircle size={15} />
+                        ) : (
+                          <AlertTriangle size={15} />
+                        )}
+
+                        {report.owner}
+
+                      </span>
+
+                    </td>
+
+                    {/* Documents */}
+
+                    <td className="px-6 py-5 text-sm text-gray-600">
+                      {report.documents}
+                    </td>
+
+                    {/* Date */}
+
+                    <td className="px-6 py-5 text-sm text-gray-500 whitespace-nowrap">
+                      {report.date}
+                    </td>
+
+                    {/* Actions */}
+
+                    <td className="px-6 py-5">
+
+                      <div className="flex items-center justify-end gap-2">
+
+                        <button
+                          onClick={() =>
+                            setSelectedReport(report)
+                          }
+                          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition"
+                          title="View Report"
+                        >
+                          <Eye size={18} />
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            handleDownload(report)
+                          }
+                          className="p-2 rounded-lg text-gray-500 hover:bg-green-50 hover:text-green-600 transition"
+                          title="Download Report"
+                        >
+                          <Download size={18} />
+                        </button>
+
+                      </div>
+
+                    </td>
+
+                  </tr>
+
+                ))}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+          {/* No results */}
+
+          {filteredReports.length === 0 && (
+
+            <div className="p-12 text-center">
+
+              <FileText
+                size={40}
+                className="mx-auto text-gray-300"
+              />
+
+              <h3 className="mt-4 font-semibold text-gray-700">
+                No reports found
+              </h3>
+
+              <p className="text-sm text-gray-400 mt-1">
+                Try changing your search or risk filter.
+              </p>
+
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setRiskFilter("All");
+                }}
+                className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition"
+              >
+                Clear Filters
+              </button>
+
+            </div>
+
+          )}
+
         </div>
 
-        {/* ================= TABLE ================= */}
-        <div className="overflow-x-auto">
+        {/* ================= MODAL ================= */}
 
-          <table className="w-full">
+        {selectedReport && (
 
-            <thead className="bg-gray-50">
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedReport(null)}
+          >
 
-              <tr>
+            <div
+              className="bg-white rounded-2xl w-full max-w-2xl shadow-xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
 
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                  Property
-                </th>
+              {/* Modal Header */}
 
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                  Risk
-                </th>
+              <div className="flex items-center justify-between p-6 border-b">
 
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                  Score
-                </th>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">
+                    Property Risk Report
+                  </h2>
 
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                  Ownership
-                </th>
+                  <p className="text-sm text-gray-500 mt-1">
+                    AI-generated due diligence summary
+                  </p>
+                </div>
 
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                  Documents
-                </th>
-
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                  Date
-                </th>
-
-                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">
-                  Actions
-                </th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {filteredReports.map((report) => (
-
-                <tr
-                  key={report.id}
-                  className="border-t hover:bg-gray-50 transition"
+                <button
+                  onClick={() =>
+                    setSelectedReport(null)
+                  }
+                  className="p-2 rounded-lg hover:bg-gray-100 transition"
+                  title="Close"
                 >
+                  <X size={20} />
+                </button>
 
-                  {/* Property */}
-                  <td className="px-6 py-5">
+              </div>
 
-                    <p className="font-semibold text-gray-800">
-                      {report.property}
-                    </p>
+              {/* Modal Content */}
 
-                    <p className="text-sm text-gray-500 mt-1">
-                      {report.location}
-                    </p>
+              <div className="p-6">
 
-                  </td>
+                <div className="mb-6">
 
-                  {/* Risk */}
-                  <td className="px-6 py-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-800">
+                        {selectedReport.property}
+                      </h3>
+
+                      <p className="text-gray-500 mt-1">
+                        {selectedReport.location}
+                      </p>
+                    </div>
 
                     <span
-                      className={`inline-flex items-center gap-1.5 border px-3 py-1 rounded-full text-xs font-medium ${getRiskStyle(
-                        report.risk
+                      className={`w-fit inline-flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-xs font-semibold ${getRiskStyle(
+                        selectedReport.risk
                       )}`}
                     >
-                      {getRiskIcon(report.risk)}
-                      {report.risk}
+                      {getRiskIcon(selectedReport.risk)}
+                      {selectedReport.risk} Risk
                     </span>
 
-                  </td>
+                  </div>
 
-                  {/* Score */}
-                  <td className="px-6 py-5">
+                </div>
 
-                    <div className="flex items-center gap-3">
+                {/* Report Information */}
 
-                      <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                  <div className="border rounded-xl p-4">
+
+                    <p className="text-sm text-gray-500">
+                      Risk Level
+                    </p>
+
+                    <p className="font-bold text-lg mt-1 text-gray-800">
+                      {selectedReport.risk}
+                    </p>
+
+                  </div>
+
+                  <div className="border rounded-xl p-4">
+
+                    <p className="text-sm text-gray-500">
+                      Risk Score
+                    </p>
+
+                    <div className="flex items-center gap-3 mt-2">
+
+                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
 
                         <div
-                          className={`h-full rounded-full ${
-                            report.score >= 70
-                              ? "bg-red-500"
-                              : report.score >= 40
-                              ? "bg-orange-500"
-                              : "bg-green-500"
-                          }`}
+                          className={`h-full rounded-full ${getScoreColor(
+                            selectedReport.score
+                          )}`}
                           style={{
-                            width: `${report.score}%`,
+                            width: `${selectedReport.score}%`,
                           }}
                         />
 
                       </div>
 
-                      <span className="text-sm font-semibold text-gray-700">
-                        {report.score}
-                      </span>
-
-                    </div>
-
-                  </td>
-
-                  {/* Ownership */}
-                  <td className="px-6 py-5">
-
-                    <span
-                      className={
-                        report.owner === "Verified"
-                          ? "text-green-600 text-sm"
-                          : "text-orange-600 text-sm"
-                      }
-                    >
-                      {report.owner}
-                    </span>
-
-                  </td>
-
-                  {/* Documents */}
-                  <td className="px-6 py-5 text-sm text-gray-600">
-                    {report.documents}
-                  </td>
-
-                  {/* Date */}
-                  <td className="px-6 py-5 text-sm text-gray-500">
-                    {report.date}
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-6 py-5">
-
-                    <div className="flex items-center justify-end gap-2">
-
-                      <button
-                        onClick={() =>
-                          setSelectedReport(report)
-                        }
-                        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                        title="View Report"
-                      >
-                        <Eye size={18} />
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          handleDownload(report)
-                        }
-                        className="p-2 rounded-lg text-gray-500 hover:bg-green-50 hover:text-green-600"
-                        title="Download Report"
-                      >
-                        <Download size={18} />
-                      </button>
-
-                    </div>
-
-                  </td>
-
-                </tr>
-
-              ))}
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-        {/* No results */}
-        {filteredReports.length === 0 && (
-
-          <div className="p-12 text-center">
-
-            <FileText
-              size={40}
-              className="mx-auto text-gray-300"
-            />
-
-            <h3 className="mt-4 font-semibold text-gray-700">
-              No reports found
-            </h3>
-
-            <p className="text-sm text-gray-400 mt-1">
-              Try changing your search or risk filter.
-            </p>
-
-          </div>
-
-        )}
-
-      </div>
-
-      {/* ================= MODAL ================= */}
-      {selectedReport && (
-
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl">
-
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-
-              <div>
-
-                <h2 className="text-xl font-bold text-gray-800">
-                  Property Risk Report
-                </h2>
-
-                <p className="text-sm text-gray-500 mt-1">
-                  AI-generated due diligence summary
-                </p>
-
-              </div>
-
-              <button
-                onClick={() =>
-                  setSelectedReport(null)
-                }
-                className="p-2 rounded-lg hover:bg-gray-100"
-              >
-                <X size={20} />
-              </button>
-
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-
-              <div className="mb-6">
-
-                <h3 className="text-2xl font-bold text-gray-800">
-                  {selectedReport.property}
-                </h3>
-
-                <p className="text-gray-500 mt-1">
-                  {selectedReport.location}
-                </p>
-
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-
-                <div className="border rounded-xl p-4">
-
-                  <p className="text-sm text-gray-500">
-                    Risk Level
-                  </p>
-
-                  <p className="font-bold text-lg mt-1">
-                    {selectedReport.risk}
-                  </p>
-
-                </div>
-
-                <div className="border rounded-xl p-4">
-
-                  <p className="text-sm text-gray-500">
-                    Risk Score
-                  </p>
-
-                  <p className="font-bold text-lg mt-1">
-                    {selectedReport.score}/100
-                  </p>
-
-                </div>
-
-                <div className="border rounded-xl p-4">
-
-                  <p className="text-sm text-gray-500">
-                    Ownership
-                  </p>
-
-                  <p className="font-bold text-lg mt-1">
-                    {selectedReport.owner}
-                  </p>
-
-                </div>
-
-                <div className="border rounded-xl p-4">
-
-                  <p className="text-sm text-gray-500">
-                    Documents
-                  </p>
-
-                  <p className="font-bold text-lg mt-1">
-                    {selectedReport.documents}
-                  </p>
-
-                </div>
-
-              </div>
-
-              {/* AI Finding */}
-              <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-5">
-
-                <div className="flex gap-3">
-
-                  <Sparkles
-                    size={21}
-                    className="text-green-600 flex-shrink-0"
-                  />
-
-                  <div>
-
-                    <h3 className="font-semibold text-green-800">
-                      AI Summary
-                    </h3>
-
-                    <p className="text-sm text-green-700 mt-2">
-                      REDDA analyzed available ownership,
-                      document and property information. The
-                      current assessment indicates a{" "}
-                      <strong>
-                        {selectedReport.risk.toLowerCase()} risk
-                      </strong>{" "}
-                      level with a risk score of{" "}
-                      <strong>
+                      <p className="font-bold text-lg text-gray-800">
                         {selectedReport.score}/100
-                      </strong>.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  <div className="border rounded-xl p-4">
+
+                    <p className="text-sm text-gray-500">
+                      Ownership
+                    </p>
+
+                    <p
+                      className={`font-bold text-lg mt-1 ${
+                        selectedReport.owner === "Verified"
+                          ? "text-green-600"
+                          : "text-orange-600"
+                      }`}
+                    >
+                      {selectedReport.owner}
+                    </p>
+
+                  </div>
+
+                  <div className="border rounded-xl p-4">
+
+                    <p className="text-sm text-gray-500">
+                      Documents
+                    </p>
+
+                    <p className="font-bold text-lg mt-1 text-gray-800">
+                      {selectedReport.documents}
+                    </p>
+
+                  </div>
+
+                  <div className="border rounded-xl p-4">
+
+                    <p className="text-sm text-gray-500">
+                      Report Status
+                    </p>
+
+                    <p className="font-bold text-lg mt-1 text-green-600">
+                      {selectedReport.status}
+                    </p>
+
+                  </div>
+
+                  <div className="border rounded-xl p-4">
+
+                    <p className="text-sm text-gray-500">
+                      Report Date
+                    </p>
+
+                    <p className="font-bold text-lg mt-1 text-gray-800">
+                      {selectedReport.date}
                     </p>
 
                   </div>
 
                 </div>
 
+                {/* AI Finding */}
+
+                <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-5">
+
+                  <div className="flex gap-3">
+
+                    <Sparkles
+                      size={21}
+                      className="text-green-600 flex-shrink-0"
+                    />
+
+                    <div>
+
+                      <h3 className="font-semibold text-green-800">
+                        AI Summary
+                      </h3>
+
+                      <p className="text-sm text-green-700 mt-2 leading-6">
+                        REDDA analyzed available ownership,
+                        document and property information. The
+                        current assessment indicates a{" "}
+                        <strong>
+                          {selectedReport.risk.toLowerCase()} risk
+                        </strong>{" "}
+                        level with a risk score of{" "}
+                        <strong>
+                          {selectedReport.score}/100
+                        </strong>.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {/* Recommendation */}
+
+                <div className="mt-4 bg-gray-50 border rounded-xl p-5">
+
+                  <h3 className="font-semibold text-gray-800">
+                    Recommendation
+                  </h3>
+
+                  <p className="text-sm text-gray-600 mt-2 leading-6">
+
+                    {selectedReport.risk === "High"
+                      ? "Further legal, ownership and document verification is strongly recommended before proceeding with this property."
+                      : selectedReport.risk === "Medium"
+                      ? "Additional document and property verification is recommended before making a final decision."
+                      : "The available information indicates relatively low risk. Standard property verification should still be completed before final approval."}
+
+                  </p>
+
+                </div>
+
               </div>
 
-            </div>
+              {/* Modal Footer */}
 
-            {/* Modal Footer */}
-            <div className="flex justify-end gap-3 p-6 border-t">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 p-6 border-t">
 
-              <button
-                onClick={() =>
-                  setSelectedReport(null)
-                }
-                className="px-5 py-2.5 border rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
+                <button
+                  onClick={() =>
+                    setSelectedReport(null)
+                  }
+                  className="px-5 py-2.5 border rounded-lg text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Close
+                </button>
 
-              <button
-                onClick={() =>
-                  handleDownload(selectedReport)
-                }
-                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg"
-              >
-                <Download size={18} />
-                Download Report
-              </button>
+                <button
+                  onClick={() =>
+                    handleDownload(selectedReport)
+                  }
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+                >
+                  <Download size={18} />
+                  Download Report
+                </button>
+
+              </div>
 
             </div>
 
           </div>
 
-        </div>
+        )}
 
-      )}
-
+      </div>
     </div>
   );
 }
