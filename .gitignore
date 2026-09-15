@@ -1,0 +1,19 @@
+# Java / Maven (backend)
+backend/target/
+backend/.mvn/
+backend/*.class
+backend/.idea/
+backend/.settings/
+backend/.classpath
+backend/.project
+
+# Node / Next.js (frontend)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env
+frontend/.env.local
+
+# General
+.DS_Store
+*.log
