@@ -43,4 +43,24 @@ public class FloodZoneVerificationService {
         return floodZoneVerificationRepository
                 .findByPropertyId(propertyId);
     }
+    public FloodZoneVerification updateFloodZoneVerification(
+            Long id,
+            FloodZoneVerification floodZoneVerification) {
+
+        FloodZoneVerification existing =
+                floodZoneVerificationRepository.findById(id)
+                        .orElseThrow(() ->
+                                new FloodZoneVerificationNotFoundException(
+                                        "Flood Zone Verification not found"));
+
+        existing.setProperty(floodZoneVerification.getProperty());
+        existing.setFloodZone(floodZoneVerification.getFloodZone());
+        existing.setRiskLevel(floodZoneVerification.getRiskLevel());
+        existing.setStatus(floodZoneVerification.getStatus());
+        existing.setVerificationDate(
+                floodZoneVerification.getVerificationDate());
+        existing.setDescription(floodZoneVerification.getDescription());
+
+        return floodZoneVerificationRepository.save(existing);
+    }
 }

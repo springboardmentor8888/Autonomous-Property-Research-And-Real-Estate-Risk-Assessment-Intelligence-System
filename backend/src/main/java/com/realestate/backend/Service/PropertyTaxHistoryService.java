@@ -36,4 +36,23 @@ public class PropertyTaxHistoryService {
             Long propertyId) {
         return propertyTaxHistoryRepository.findByPropertyId(propertyId);
     }
+    public PropertyTaxHistory updateTaxHistory(
+            Long id,
+            PropertyTaxHistory taxHistory) {
+
+        PropertyTaxHistory existing =
+                propertyTaxHistoryRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Property Tax History not found"));
+
+        existing.setProperty(taxHistory.getProperty());
+        existing.setTaxYear(taxHistory.getTaxYear());
+        existing.setTaxAmount(taxHistory.getTaxAmount());
+        existing.setPaymentStatus(taxHistory.getPaymentStatus());
+        existing.setPaymentDate(taxHistory.getPaymentDate());
+        existing.setNotes(taxHistory.getNotes());
+
+        return propertyTaxHistoryRepository.save(existing);
+    }
 }

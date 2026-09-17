@@ -120,4 +120,16 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .body(ex.getMessage());
     }
+    @ExceptionHandler(RiskAssessmentNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleRiskAssessmentNotFound(
+            RiskAssessmentNotFoundException ex) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("status", 404);
+        response.put("error", "Risk Assessment Not Found");
+        response.put("message", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
 }

@@ -5,8 +5,8 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.realestate.backend.Entity.PropertyTaxHistory;
-import com.realestate.backend.Service.PropertyTaxHistoryService;
+import com.realestate.backend.Entity.RiskAssessment;
+import com.realestate.backend.Service.RiskAssessmentService;
 
 import java.util.List;
 
@@ -28,53 +28,46 @@ import com.realestate.backend.Service.PropertyService;
 import jakarta.validation.Valid;
 @CrossOrigin(origins="http://localhost:5173")
 @RestController
-@RequestMapping("/api/property-tax-history")
-public class PropertyTaxHistoryController {
+@RequestMapping("/api/risk-assessments")
+public class RiskAssessmentController {
 
-    private final PropertyTaxHistoryService propertyTaxHistoryService;
+    private final RiskAssessmentService riskAssessmentService;
 
-    public PropertyTaxHistoryController(
-            PropertyTaxHistoryService propertyTaxHistoryService) {
-        this.propertyTaxHistoryService = propertyTaxHistoryService;
+    public RiskAssessmentController(
+            RiskAssessmentService riskAssessmentService) {
+
+        this.riskAssessmentService = riskAssessmentService;
     }
 
     @PostMapping
-    public ResponseEntity<PropertyTaxHistory> createTaxHistory(
-            @RequestBody PropertyTaxHistory taxHistory) {
+    public ResponseEntity<RiskAssessment> createRiskAssessment(
+            @RequestBody RiskAssessment riskAssessment) {
 
         return ResponseEntity.ok(
-                propertyTaxHistoryService.createTaxHistory(taxHistory));
+                riskAssessmentService.createRiskAssessment(riskAssessment));
     }
 
     @GetMapping
-    public ResponseEntity<List<PropertyTaxHistory>> getAllTaxHistory() {
+    public ResponseEntity<List<RiskAssessment>> getAllRiskAssessments() {
 
         return ResponseEntity.ok(
-                propertyTaxHistoryService.getAllTaxHistory());
+                riskAssessmentService.getAllRiskAssessments());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PropertyTaxHistory> getTaxHistoryById(
+    public ResponseEntity<RiskAssessment> getRiskAssessmentById(
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-                propertyTaxHistoryService.getTaxHistoryById(id));
+                riskAssessmentService.getRiskAssessmentById(id));
     }
 
     @GetMapping("/property/{propertyId}")
-    public ResponseEntity<List<PropertyTaxHistory>> getTaxHistoryByPropertyId(
+    public ResponseEntity<RiskAssessment> getRiskAssessmentByPropertyId(
             @PathVariable Long propertyId) {
 
         return ResponseEntity.ok(
-                propertyTaxHistoryService
-                        .getTaxHistoryByPropertyId(propertyId));
-    }
-    @PutMapping("/{id}")
-    public ResponseEntity<PropertyTaxHistory> updateTaxHistory(
-            @PathVariable Long id,
-            @RequestBody PropertyTaxHistory taxHistory) {
-
-        return ResponseEntity.ok(
-                propertyTaxHistoryService.updateTaxHistory(id, taxHistory));
+                riskAssessmentService
+                        .getRiskAssessmentByPropertyId(propertyId));
     }
 }
