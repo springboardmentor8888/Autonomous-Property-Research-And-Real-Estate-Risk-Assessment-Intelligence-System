@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import ProfileGuard from '@/components/ProfileGuard';
 import ToastHostClient from '@/components/ToastHostClient';
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
         <Navbar />
+        <ProfileGuard />
         {children}
         <ToastHostClient />
       </body>

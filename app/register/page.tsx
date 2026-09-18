@@ -13,30 +13,39 @@ const ROLE_OPTIONS = [
   { value: 'FINANCIAL_INSTITUTION', label: 'Financial Institution' },
 ];
 
-// Mirror of the backend RegisterRequest constraints (email format,
-// password >= 8 chars) plus form-level checks.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const PHONE_RE = /^[+]?[0-9]{10,15}$/;
 
-type FieldName = 'name' | 'email' | 'password' | 'confirmPassword' | 'role';
+type FieldName = 'firstName' | 'lastName' | 'email' | 'password' | 'confirmPassword' | 'role' | 'phone';
 type Errors = Partial<Record<FieldName, string>>;
 
 interface Values {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirmPassword: string;
   role: string;
+  phone: string;
 }
 
 function validate(v: Values): Errors {
   const errors: Errors = {};
 
-  if (!v.name.trim()) {
-    errors.name = 'Full name is required.';
-  } else if (v.name.trim().length < 2) {
-    errors.name = 'Name must be at least 2 characters.';
-  } else if (v.name.trim().length > 60) {
-    errors.name = 'Name must be 60 characters or fewer.';
+  if (!v.firstName.trim()) {
+    errors.firstName = 'First name is required.';
+  } else if (v.firstName.trim().length < 2) {
+    errors.firstName = 'First name must be at least 2 characters.';
+  } else if (v.firstName.trim().length > 50) {
+    errors.firstName = 'First name must be 50 characters or fewer.';
+  }
+
+  if (!v.lastName.trim()) {
+    errors.lastName = 'Last name is required.';
+  } else if (v.lastName.trim().length < 2) {
+    errors.lastName = 'Last name must be at least 2 characters.';
+  } else if (v.lastName.trim().length > 50) {
+    errors.lastName = 'Last name must be 50 characters or fewer.';
   }
 
   if (!v.email.trim()) {
@@ -61,23 +70,30 @@ function validate(v: Values): Errors {
     errors.role = 'Please select a valid role.';
   }
 
+  if (v.phone && !PHONE_RE.test(v.phone)) {
+    errors.phone = 'Phone must be 10-15 digits, optionally starting with +';
+  }
+
   return errors;
 }
 
 export default function Register() {
   const router = useRouter();
 
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('BUYER');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
   const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
   const [attempted, setAttempted] = useState(false);
 
-  const errors = validate({ name, email, password, confirmPassword, role });
+  const values: Values = { firstName, lastName, email, password, confirmPassword, role, phone };
+  const errors = validate(values);
   const showError = (field: FieldName) =>
     (touched[field] || attempted) && errors[field] ? errors[field] : undefined;
 
@@ -98,7 +114,14 @@ export default function Register() {
       // Clear any expired session before registration attempt
       clearSession();
 
-      const res = await authApi.register({ email: email.trim(), password, name: name.trim(), role });
+      const res = await authApi.register({
+        email: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        role,
+        phone: phone.trim() || undefined,
+      });
       setSession(res.token, res.email, res.role);
       router.push('/dashboard');
       router.refresh();
@@ -129,24 +152,45 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4" noValidate>
-            <div>
-              <label htmlFor="name" className="label-base">Full name</label>
-              <input
-                id="name"
-                type="text"
-                autoComplete="name"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={() => markTouched('name')}
-                placeholder="Jane Doe"
-                aria-invalid={!!showError('name')}
-                className={`input-base ${showError('name') ? 'border-red-400' : ''}`}
-                disabled={loading}
-              />
-              {showError('name') && (
-                <p className="mt-1 text-xs text-red-600">{showError('name')}</p>
-              )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="firstName" className="label-base">First name</label>
+                <input
+                  id="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  onBlur={() => markTouched('firstName')}
+                  placeholder="Jane"
+                  aria-invalid={!!showError('firstName')}
+                  className={`input-base ${showError('firstName') ? 'border-red-400' : ''}`}
+                  disabled={loading}
+                />
+                {showError('firstName') && (
+                  <p className="mt-1 text-xs text-red-600">{showError('firstName')}</p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="lastName" className="label-base">Last name</label>
+                <input
+                  id="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  onBlur={() => markTouched('lastName')}
+                  placeholder="Doe"
+                  aria-invalid={!!showError('lastName')}
+                  className={`input-base ${showError('lastName') ? 'border-red-400' : ''}`}
+                  disabled={loading}
+                />
+                {showError('lastName') && (
+                  <p className="mt-1 text-xs text-red-600">{showError('lastName')}</p>
+                )}
+              </div>
             </div>
 
             <div>
@@ -166,6 +210,25 @@ export default function Register() {
               />
               {showError('email') && (
                 <p className="mt-1 text-xs text-red-600">{showError('email')}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="label-base">Phone number (optional)</label>
+              <input
+                id="phone"
+                type="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onBlur={() => markTouched('phone')}
+                placeholder="+91 98765 43210"
+                aria-invalid={!!showError('phone')}
+                className={`input-base ${showError('phone') ? 'border-red-400' : ''}`}
+                disabled={loading}
+              />
+              {showError('phone') && (
+                <p className="mt-1 text-xs text-red-600">{showError('phone')}</p>
               )}
             </div>
 
@@ -246,7 +309,7 @@ export default function Register() {
             Already have an account?{' '}
             <button
               type="button"
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/login')}
               className="font-medium text-slate-900 underline-offset-4 hover:underline"
             >
               Sign in

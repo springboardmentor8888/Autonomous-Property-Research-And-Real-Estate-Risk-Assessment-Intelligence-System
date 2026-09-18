@@ -103,7 +103,9 @@ export default function Navbar() {
 
   const isLoggedIn = mounted && email !== null && !isAuthPage;
 
-  const initials = profile?.initials || email?.charAt(0).toUpperCase() || 'U';
+  const initials = profile?.firstName && profile?.lastName
+    ? (profile.firstName[0] + profile.lastName[0]).toUpperCase()
+    : email?.charAt(0).toUpperCase() || 'U';
   const displayName = profile?.firstName && profile?.lastName
     ? `${profile.firstName} ${profile.lastName}`
     : email || 'User';

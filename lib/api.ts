@@ -117,7 +117,14 @@ export const authApi = {
     };
   },
 
-  async register(data: { email: string; password: string; name?: string; role: string }) {
+  async register(data: { 
+    email: string; 
+    password: string; 
+    firstName: string; 
+    lastName: string; 
+    role: string; 
+    phone?: string 
+  }) {
     const res = await fetchWithAuth<AuthPayload>(
       '/auth/register',
       {

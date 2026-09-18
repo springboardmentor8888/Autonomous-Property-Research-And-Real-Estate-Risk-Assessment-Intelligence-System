@@ -12,10 +12,12 @@ import com.duedilligenceagent.backend.dto.RegisterRequest;
 import com.duedilligenceagent.backend.entities.RefreshToken;
 import com.duedilligenceagent.backend.entities.Role;
 import com.duedilligenceagent.backend.entities.User;
+import com.duedilligenceagent.backend.entities.UserProfile;
 import com.duedilligenceagent.backend.entities.enums.RoleName;
 import com.duedilligenceagent.backend.exception.InvalidAuthRequestException;
 import com.duedilligenceagent.backend.exception.UserAlreadyExistsException;
 import com.duedilligenceagent.backend.repositories.RoleRepository;
+import com.duedilligenceagent.backend.repositories.UserProfileRepository;
 import com.duedilligenceagent.backend.repositories.UserRepository;
 import com.duedilligenceagent.backend.security.JwtService;
 
@@ -37,6 +39,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final UserProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -53,6 +56,7 @@ public class AuthService {
     public AuthService(
             UserRepository userRepository,
             RoleRepository roleRepository,
+            UserProfileRepository profileRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtService jwtService,
@@ -60,6 +64,7 @@ public class AuthService {
 
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.profileRepository = profileRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -92,6 +97,15 @@ public class AuthService {
         user.setRoleId(role.getId());
 
         userRepository.save(user);
+
+        // Create user profile with registration data
+        UserProfile profile = UserProfile.builder()
+                .userId(user.getUserId())
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phone(request.getPhone())
+                .build();
+        profileRepository.save(profile);
 
         String roleName = role.getName();
 
