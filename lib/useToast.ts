@@ -33,7 +33,7 @@ export function useToast() {
 /**
  * Fire a toast from anywhere (not just components). It broadcasts a global
  * event that the mounted <ToastHost> listens for, so callers don't need to
- * share React context. `toastError` below is the only wrapper the app uses.
+ * share React context.
  */
 function toast(type: ToastType, message: string) {
   if (typeof window === 'undefined') return;
@@ -49,3 +49,5 @@ function toast(type: ToastType, message: string) {
 }
 
 export const toastError = (message: string) => toast('error', message);
+export const toastSuccess = (message: string) => toast('success', message);
+export const toastInfo = (message: string) => toast('info', message);

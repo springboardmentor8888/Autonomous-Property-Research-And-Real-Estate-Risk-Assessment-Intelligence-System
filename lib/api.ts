@@ -171,3 +171,35 @@ export const adminApi = {
     });
   },
 };
+
+export const profileApi = {
+  async getProfile() {
+    return fetchWithAuth<ProfileResponse>('/profile');
+  },
+
+  async updateProfile(data: UpdateProfileRequest) {
+    return fetchWithAuth<ProfileResponse>('/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+export type ProfileResponse = {
+  userId: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  fullName?: string;
+  initials?: string;
+};
+
+export type UpdateProfileRequest = {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+};
