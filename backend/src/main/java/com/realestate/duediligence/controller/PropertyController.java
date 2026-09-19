@@ -2,6 +2,7 @@ package com.realestate.duediligence.controller;
 
 import com.realestate.duediligence.dto.AddressValidationRequest;
 import com.realestate.duediligence.dto.AddressValidationResponse;
+import com.realestate.duediligence.dto.PropertyDetailsResponse;
 import com.realestate.duediligence.entity.Property;
 import com.realestate.duediligence.service.PropertyService;
 import org.springframework.http.ResponseEntity;
@@ -147,4 +148,15 @@ public class PropertyController {
 		return ResponseEntity.ok(
 				"You are an administrator — access granted.");
 	}
+	
+    /**
+     * Returns the full due-diligence view of a single property —
+     * ownership, tax history, zoning, flood zone, and permits.
+     * Generates simulated data on first request if none exists yet.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<PropertyDetailsResponse> getPropertyDetails(@PathVariable Long id) {
+        PropertyDetailsResponse response = propertyService.getPropertyDetails(id);
+        return ResponseEntity.ok(response);
+    }
 }
