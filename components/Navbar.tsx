@@ -208,9 +208,6 @@ export default function Navbar() {
                   <div className="grid h-8 w-8 place-items-center rounded-full bg-slate-900 text-sm font-bold text-white">
                     {initials}
                   </div>
-                  <span className="hidden max-w-[180px] truncate sm:block">
-                    {displayName}
-                  </span>
                   <svg
                     className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
                     fill="none"
