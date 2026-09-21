@@ -9,4 +9,6 @@ import com.realestate.backend.Entity.PropertyHistory;
 public interface PropertyHistoryRepository extends JpaRepository<PropertyHistory, Long> {
 
     List<PropertyHistory> findByPropertyId(Long propertyId);
+
+    List<PropertyHistory> findByEventType(String eventType);
 }

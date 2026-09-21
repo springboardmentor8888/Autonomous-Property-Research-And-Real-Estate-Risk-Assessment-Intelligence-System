@@ -44,4 +44,22 @@ public class DueDiligenceService {
         return dueDiligenceRepository.findById(id)
                 .orElseThrow(() -> new DueDiligenceNotFoundException("Due Diligence not found"));
     }
+    public DueDiligence getDueDiligenceByPropertyId(Long propertyId) {
+
+        return dueDiligenceRepository.findByPropertyId(propertyId)
+                .orElseThrow(() -> new DueDiligenceNotFoundException(
+                        "Due Diligence not found for property: " + propertyId));
+    }
+    public DueDiligence completeDueDiligence(Long id) {
+
+        DueDiligence dueDiligence =
+                dueDiligenceRepository.findById(id)
+                        .orElseThrow(() -> new DueDiligenceNotFoundException(
+                                "Due Diligence not found with id: " + id));
+
+        dueDiligence.setStatus("COMPLETED");
+        dueDiligence.setCompletedAt(java.time.LocalDateTime.now());
+
+        return dueDiligenceRepository.save(dueDiligence);
+    }
 }

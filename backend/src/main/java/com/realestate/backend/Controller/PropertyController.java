@@ -15,33 +15,51 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.realestate.backend.Entity.Property;
+import com.realestate.backend.Service.NotificationService;
 import com.realestate.backend.Service.PropertyService;
 
 import jakarta.validation.Valid;
-@CrossOrigin(origins="http://localhost:5173")
+
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/properties")
 public class PropertyController {
 
     private final PropertyService propertyService;
+    private final NotificationService notificationService;
 
-    public PropertyController(PropertyService propertyService) {
+    public PropertyController(
+            PropertyService propertyService,
+            NotificationService notificationService) {
+
         this.propertyService = propertyService;
+        this.notificationService = notificationService;
     }
 
     @PostMapping
-    public ResponseEntity<Property> addProperty( @Valid @RequestBody Property property) {
-        return ResponseEntity.ok(propertyService.addProperty(property));
+    public ResponseEntity<Property> addProperty(
+            @Valid @RequestBody Property property) {
+
+        return ResponseEntity.ok(
+                propertyService.addProperty(property)
+        );
     }
 
     @GetMapping
     public ResponseEntity<List<Property>> getAllProperties() {
-        return ResponseEntity.ok(propertyService.getAllProperties());
+
+        return ResponseEntity.ok(
+                propertyService.getAllProperties()
+        );
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Property> getPropertyById(@PathVariable Long id) {
-        return ResponseEntity.ok(propertyService.getPropertyById(id));
+    public ResponseEntity<Property> getPropertyById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                propertyService.getPropertyById(id)
+        );
     }
 
     @PutMapping("/{id}")
@@ -49,16 +67,31 @@ public class PropertyController {
             @PathVariable Long id,
             @Valid @RequestBody Property property) {
 
-        return ResponseEntity.ok(
-                propertyService.updateProperty(id, property)
+        Property updatedProperty =
+                propertyService.updateProperty(id, property);
+
+        notificationService.createNotification(
+                updatedProperty.getId(),
+                "anju@example.com",
+                "PROPERTY_UPDATE",
+                "Property details were updated for: "
+                        + updatedProperty.getAddress()
         );
+
+        return ResponseEntity.ok(updatedProperty);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteProperty(@PathVariable Long id) {
+    public ResponseEntity<String> deleteProperty(
+            @PathVariable Long id) {
+
         propertyService.deleteProperty(id);
-        return ResponseEntity.ok("Property deleted successfully");
+
+        return ResponseEntity.ok(
+                "Property deleted successfully"
+        );
     }
+
     @GetMapping("/search")
     public ResponseEntity<List<Property>> searchByPropertyType(
             @RequestParam String propertyType) {
@@ -67,6 +100,7 @@ public class PropertyController {
                 propertyService.searchByPropertyType(propertyType)
         );
     }
+
     @GetMapping("/search/address")
     public ResponseEntity<List<Property>> searchByAddress(
             @RequestParam String address) {
@@ -75,6 +109,7 @@ public class PropertyController {
                 propertyService.searchByAddress(address)
         );
     }
+
     @GetMapping("/search/price")
     public ResponseEntity<List<Property>> searchByPriceRange(
             @RequestParam Double minPrice,
@@ -84,6 +119,7 @@ public class PropertyController {
                 propertyService.searchByPriceRange(minPrice, maxPrice)
         );
     }
+
     @GetMapping("/filter")
     public ResponseEntity<List<Property>> filterProperties(
             @RequestParam(required = false) String type,

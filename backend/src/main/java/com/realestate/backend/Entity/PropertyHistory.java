@@ -32,4 +32,6 @@ public class PropertyHistory {
 
     @Column(length = 2000)
     private String description;
+    @Column(nullable = false)
+    private boolean processed = false;
 }
