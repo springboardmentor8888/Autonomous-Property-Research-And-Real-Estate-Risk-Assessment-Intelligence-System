@@ -24,8 +24,8 @@ async function post(endpoint, body) {
 
   if (!res.ok) {
     throw new Error(
+      data?.error?.message ||
       data?.message ||
-      data?.error ||
       `Request failed (${res.status})`
     )
   }

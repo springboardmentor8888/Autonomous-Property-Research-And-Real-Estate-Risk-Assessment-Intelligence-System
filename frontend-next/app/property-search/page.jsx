@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 // Backend base URL — update if deployed elsewhere.
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = "/api";
 
 export default function PropertySearchPage() {
   const [address, setAddress] = useState("");
@@ -45,7 +45,7 @@ export default function PropertySearchPage() {
       const token =
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-      const response = await fetch(`${BASE_URL}/properties/validate-address`, {
+      const response = await fetch(`${BASE_URL}/properties/validate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -62,7 +62,9 @@ export default function PropertySearchPage() {
 
       if (!response.ok) {
         throw new Error(
-          data?.error?.message || `Request failed (${response.status})`,
+          data?.error?.message ||
+          data?.message ||
+          `Request failed (${response.status})`,
         );
       }
 
@@ -70,8 +72,10 @@ export default function PropertySearchPage() {
       // CHECK IF ADDRESS WAS ACTUALLY VALID
       // -----------------------------
 
-      if (!data || data.valid === false) {
-        throw new Error("No matching address was found.");
+      const payload = data?.data || data;
+
+      if (!payload || payload.isValid === false) {
+        throw new Error(payload?.message || "No matching address was found.");
       }
 
       // -----------------------------
@@ -80,15 +84,20 @@ export default function PropertySearchPage() {
       // -----------------------------
 
       const propertyResult = {
-        formattedAddress: data.formattedAddress || cleanAddress,
-        city: data.city || "Not available",
-        state: data.state || "Not available",
-        postalCode: data.postalCode || "Not available",
-        country: data.country || "Not available",
-        latitude: data.latitude,
-        longitude: data.longitude,
+        formattedAddress:
+          payload.formattedAddress ||
+          payload.validatedAddress ||
+          payload.address ||
+          cleanAddress,
+        city: payload.city || "Not available",
+        state: payload.state || "Not available",
+        postalCode: payload.postalCode || "Not available",
+        country: payload.country || "Not available",
+        latitude: payload.latitude ?? payload.lat ?? null,
+        longitude: payload.longitude ?? payload.lng ?? null,
+        propertyId: payload.propertyId || payload.id || null,
         originalAddress: cleanAddress,
-        rawResponse: data,
+        rawResponse: payload,
       };
 
       // -----------------------------
@@ -97,6 +106,13 @@ export default function PropertySearchPage() {
 
       setResult(propertyResult);
       setSuccess("Address successfully validated.");
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          "selectedProperty",
+          JSON.stringify(propertyResult)
+        );
+      }
     } catch (searchError) {
       console.error("Address validation error:", searchError);
 
@@ -193,8 +209,8 @@ export default function PropertySearchPage() {
                   </span>
                 ) : (
                   <span className="flex items-center gap-3">
-                    Search Property
-                    <span className="text-lg">↗</span>
+                    Validate Location
+                    <span className="text-lg">→</span>
                   </span>
                 )}
               </button>
@@ -301,25 +317,27 @@ export default function PropertySearchPage() {
                 <DetailCard label="Country" value={result.country} />
               </div>
 
-              <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
-                <p className="text-xs tracking-[0.25em] text-white/25">
-                  COORDINATES
-                </p>
-                <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-white/30">Latitude</p>
-                    <p className="mt-2 text-lg text-white/80">
-                      {result.latitude?.toFixed(6)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-white/30">Longitude</p>
-                    <p className="mt-2 text-lg text-white/80">
-                      {result.longitude?.toFixed(6)}
-                    </p>
+              {(result.latitude || result.longitude) && (
+                <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
+                  <p className="text-xs tracking-[0.25em] text-white/25">
+                    COORDINATES
+                  </p>
+                  <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                      <p className="text-sm text-white/30">Latitude</p>
+                      <p className="mt-2 text-lg text-white/80">
+                        {result.latitude?.toFixed(6) ?? "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-white/30">Longitude</p>
+                      <p className="mt-2 text-lg text-white/80">
+                        {result.longitude?.toFixed(6) ?? "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
                 <p className="text-xs tracking-[0.25em] text-white/25">
@@ -329,15 +347,18 @@ export default function PropertySearchPage() {
                   The address was successfully converted into geographic
                   coordinates.
                 </p>
-                
-                <a href={`https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=18/${result.latitude}/${result.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/20 px-6 py-3 text-sm transition hover:bg-white hover:text-black"
-                >
-                  Open Location on Map
-                  <span>↗</span>
-                </a>
+
+                {result.latitude && result.longitude && (
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=18/${result.latitude}/${result.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/20 px-6 py-3 text-sm transition hover:bg-white hover:text-black"
+                  >
+                    Open Location on Map
+                    <span>↗</span>
+                  </a>
+                )}
               </div>
 
               <div className="mt-20 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
