@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-const GEOAPIFY_API_KEY = "";
+// Backend base URL — update if deployed elsewhere.
+const BASE_URL = "http://localhost:8080/api";
 
 export default function PropertySearchPage() {
   const [address, setAddress] = useState("");
@@ -21,7 +22,7 @@ export default function PropertySearchPage() {
     const cleanAddress = address.trim();
 
     // -----------------------------
-    // BASIC ADDRESS VALIDATION
+    // BASIC ADDRESS VALIDATION (client-side)
     // -----------------------------
 
     if (!cleanAddress) {
@@ -34,133 +35,59 @@ export default function PropertySearchPage() {
       return;
     }
 
-    // -----------------------------
-    // API KEY CHECK
-    // -----------------------------
-
-    if (
-      !GEOAPIFY_API_KEY ||
-      GEOAPIFY_API_KEY === "#_YOUR_GEOAPIFY_API_KEY_HERE_#"
-    ) {
-      setError("Please add your Geoapify API key in page.jsx.");
-      return;
-    }
-
     setLoading(true);
 
     try {
       // -----------------------------
-      // GEOAPIFY GEOCODING REQUEST
+      // CALL OUR BACKEND (which calls Geoapify server-side)
       // -----------------------------
 
-      const url =
-        "https://api.geoapify.com/v1/geocode/search" +
-        `?text=${encodeURIComponent(cleanAddress)}` +
-        `&apiKey=${encodeURIComponent(GEOAPIFY_API_KEY)}`;
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-      const response = await fetch(url, {
-        method: "GET",
+      const response = await fetch(`${BASE_URL}/properties/validate-address`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ address: cleanAddress }),
       });
 
+      const data = await response.json().catch(() => null);
+
       // -----------------------------
-      // HTTP ERROR
+      // HTTP / BACKEND ERROR
       // -----------------------------
 
       if (!response.ok) {
-        const errorText = await response.text();
-
-        console.error("Geoapify HTTP error:", response.status, errorText);
-
-        throw new Error(`Geoapify request failed (${response.status}).`);
+        throw new Error(
+          data?.error?.message || `Request failed (${response.status})`,
+        );
       }
 
       // -----------------------------
-      // PARSE RESPONSE
+      // CHECK IF ADDRESS WAS ACTUALLY VALID
       // -----------------------------
 
-      const data = await response.json();
-
-      console.log("Geoapify response:", data);
-
-      // -----------------------------
-      // CHECK RESULTS
-      // -----------------------------
-
-      if (
-        !data ||
-        !Array.isArray(data.features) ||
-        data.features.length === 0
-      ) {
+      if (!data || data.valid === false) {
         throw new Error("No matching address was found.");
-      }
-
-      // Take the best matching result
-      const firstFeature = data.features[0];
-
-      const properties = firstFeature.properties || {};
-
-      const geometry = firstFeature.geometry || {};
-
-      const coordinates = geometry.coordinates || [];
-
-      const longitude = coordinates[0];
-      const latitude = coordinates[1];
-
-      // -----------------------------
-      // CHECK COORDINATES
-      // -----------------------------
-
-      if (typeof latitude !== "number" || typeof longitude !== "number") {
-        throw new Error("Location coordinates were not returned.");
       }
 
       // -----------------------------
       // BUILD PROPERTY RESULT
+      // (mapped to our backend's actual response field names)
       // -----------------------------
 
       const propertyResult = {
-        formattedAddress: properties.formatted || cleanAddress,
-
-        houseNumber: properties.housenumber || "Not available",
-
-        street: properties.street || "Not available",
-
-        city:
-          properties.city ||
-          properties.town ||
-          properties.village ||
-          properties.municipality ||
-          "Not available",
-
-        state: properties.state || "Not available",
-
-        postalCode: properties.postcode || "Not available",
-
-        country: properties.country || "Not available",
-
-        countryCode: properties.country_code || "Not available",
-
-        latitude,
-        longitude,
-
-        placeId: properties.place_id || "Not available",
-
-        resultType: properties.result_type || "Not available",
-
-        confidence: properties.rank?.confidence ?? null,
-
-        confidenceCity: properties.rank?.confidence_city ?? null,
-
-        confidenceStreet: properties.rank?.confidence_street ?? null,
-
-        distance: properties.rank?.distance ?? null,
-
-        categories: properties.categories || [],
-
-        datasource: properties.datasource || null,
-
+        formattedAddress: data.formattedAddress || cleanAddress,
+        city: data.city || "Not available",
+        state: data.state || "Not available",
+        postalCode: data.postalCode || "Not available",
+        country: data.country || "Not available",
+        latitude: data.latitude,
+        longitude: data.longitude,
         originalAddress: cleanAddress,
-
         rawResponse: data,
       };
 
@@ -169,7 +96,6 @@ export default function PropertySearchPage() {
       // -----------------------------
 
       setResult(propertyResult);
-
       setSuccess("Address successfully validated.");
     } catch (searchError) {
       console.error("Address validation error:", searchError);
@@ -185,34 +111,24 @@ export default function PropertySearchPage() {
 
   return (
     <main className="min-h-screen bg-[#0b0b0b] text-white">
-      {/* =========================================
-                BACKGROUND
-            ========================================= */}
-
+      {/* BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute left-[-200px] top-[5%] h-[550px] w-[550px] rounded-full bg-orange-500/[0.06] blur-[150px]" />
-
         <div className="absolute right-[-200px] top-[35%] h-[650px] w-[650px] rounded-full bg-blue-500/[0.05] blur-[170px]" />
-
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.035),transparent_45%)]" />
       </div>
 
-      {/* =========================================
-                HEADER
-            ========================================= */}
-
+      {/* HEADER */}
       <section className="border-b border-white/10 px-6 pb-20 pt-32 sm:px-10 md:px-16 lg:px-24">
         <div className="mx-auto max-w-[1400px]">
           <p className="mb-7 text-xs font-semibold tracking-[0.35em] text-white/35">
             PROPERTY SEARCH
           </p>
-
           <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
             Start with
             <br />
             <span className="text-white/35">the address.</span>
           </h1>
-
           <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
             Enter a property address to validate its location and begin the
             due-diligence journey.
@@ -220,18 +136,13 @@ export default function PropertySearchPage() {
         </div>
       </section>
 
-      {/* =========================================
-                SEARCH SECTION
-            ========================================= */}
-
+      {/* SEARCH SECTION */}
       <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
         <div className="mx-auto max-w-[1400px]">
           <form
             onSubmit={handleSearch}
             className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 backdrop-blur-xl md:p-8"
           >
-            {/* LABEL */}
-
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <label
                 htmlFor="property-address"
@@ -239,25 +150,21 @@ export default function PropertySearchPage() {
               >
                 PROPERTY ADDRESS
               </label>
-
               <span className="flex items-center gap-2 text-xs">
                 <span
                   className={`h-2 w-2 rounded-full ${
                     success ? "bg-emerald-400" : "bg-yellow-400"
                   }`}
                 />
-
                 <span
                   className={
                     success ? "text-emerald-400/70" : "text-yellow-400/70"
                   }
                 >
-                  {success ? "Address service ready" : "Geoapify Geocoding"}
+                  {success ? "Address service ready" : "Backend Geocoding"}
                 </span>
               </span>
             </div>
-
-            {/* INPUT + BUTTON */}
 
             <div className="flex flex-col gap-3 lg:flex-row">
               <input
@@ -266,7 +173,6 @@ export default function PropertySearchPage() {
                 value={address}
                 onChange={(event) => {
                   setAddress(event.target.value);
-
                   setError("");
                   setSuccess("");
                   setResult(null);
@@ -275,7 +181,6 @@ export default function PropertySearchPage() {
                 autoComplete="street-address"
                 className="min-h-[62px] flex-1 rounded-xl border border-white/10 bg-black/30 px-5 text-base text-white outline-none transition placeholder:text-white/20 focus:border-white/30 focus:bg-black/50"
               />
-
               <button
                 type="submit"
                 disabled={loading}
@@ -295,23 +200,14 @@ export default function PropertySearchPage() {
               </button>
             </div>
 
-            {/* =================================
-                            SUCCESS MESSAGE
-                        ================================= */}
-
             {success && (
               <div className="mt-5 flex items-center gap-3 text-sm text-emerald-400">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400/30">
                   ✓
                 </span>
-
                 {success}
               </div>
             )}
-
-            {/* =================================
-                            ERROR MESSAGE
-                        ================================= */}
 
             {error && (
               <div className="mt-5 rounded-xl border border-red-400/10 bg-red-400/[0.04] px-5 py-4">
@@ -319,7 +215,6 @@ export default function PropertySearchPage() {
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-red-400/40 text-xs text-red-400">
                     !
                   </span>
-
                   <p className="text-sm leading-6 text-red-300/80">{error}</p>
                 </div>
               </div>
@@ -328,10 +223,7 @@ export default function PropertySearchPage() {
         </div>
       </section>
 
-      {/* =========================================
-                EMPTY STATE
-            ========================================= */}
-
+      {/* EMPTY STATE */}
       {!result && !loading && (
         <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
           <div className="mx-auto max-w-[1400px]">
@@ -341,13 +233,11 @@ export default function PropertySearchPage() {
                 title="Enter an address"
                 text="Start with the full address of the property you want to research."
               />
-
               <InfoBlock
                 number="02"
                 title="Validate location"
-                text="The address is resolved using the Geoapify Geocoding API."
+                text="The address is resolved through our backend's geocoding service."
               />
-
               <InfoBlock
                 number="03"
                 title="Begin due diligence"
@@ -358,10 +248,7 @@ export default function PropertySearchPage() {
         </section>
       )}
 
-      {/* =========================================
-                LOADING
-            ========================================= */}
-
+      {/* LOADING */}
       {loading && (
         <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
           <div className="mx-auto max-w-[1400px]">
@@ -370,14 +257,12 @@ export default function PropertySearchPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10">
                   <div className="h-4 w-4 animate-spin rounded-full border border-white/20 border-t-white" />
                 </div>
-
                 <div>
                   <p className="text-lg font-light text-white/70">
                     Validating property address...
                   </p>
-
                   <p className="mt-1 text-sm text-white/30">
-                    Resolving the address using Geoapify.
+                    Resolving the address through our backend.
                   </p>
                 </div>
               </div>
@@ -386,34 +271,23 @@ export default function PropertySearchPage() {
         </section>
       )}
 
-      {/* =========================================
-                RESULT
-            ========================================= */}
-
+      {/* RESULT */}
       {result && (
         <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
           <div className="mx-auto max-w-[1400px]">
-            {/* VALIDATED HEADER */}
-
             <div className="border-t border-white/10 pt-16">
               <div className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400/30 text-xs text-emerald-400">
                   ✓
                 </span>
-
                 <span className="text-xs font-semibold tracking-[0.3em] text-emerald-400/70">
                   ADDRESS VALIDATED
                 </span>
               </div>
-
               <h2 className="mt-6 max-w-5xl text-4xl font-light leading-tight tracking-tight md:text-6xl">
                 {result.formattedAddress}
               </h2>
             </div>
-
-            {/* =================================
-                            LOCATION DETAILS
-                        ================================= */}
 
             <div className="mt-16">
               <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
@@ -421,76 +295,42 @@ export default function PropertySearchPage() {
               </p>
 
               <div className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
-                <DetailCard label="House Number" value={result.houseNumber} />
-
-                <DetailCard label="Street" value={result.street} />
-
                 <DetailCard label="City" value={result.city} />
-
                 <DetailCard label="State" value={result.state} />
-
                 <DetailCard label="Postal Code" value={result.postalCode} />
-
                 <DetailCard label="Country" value={result.country} />
-
-                <DetailCard label="Country Code" value={result.countryCode} />
-
-                <DetailCard label="Result Type" value={result.resultType} />
-
-                <DetailCard
-                  label="Confidence"
-                  value={
-                    result.confidence !== null
-                      ? result.confidence
-                      : "Not available"
-                  }
-                />
               </div>
-
-              {/* =================================
-                                COORDINATES
-                            ================================= */}
 
               <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
                 <p className="text-xs tracking-[0.25em] text-white/25">
                   COORDINATES
                 </p>
-
                 <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div>
                     <p className="text-sm text-white/30">Latitude</p>
-
                     <p className="mt-2 text-lg text-white/80">
-                      {result.latitude.toFixed(6)}
+                      {result.latitude?.toFixed(6)}
                     </p>
                   </div>
-
                   <div>
                     <p className="text-sm text-white/30">Longitude</p>
-
                     <p className="mt-2 text-lg text-white/80">
-                      {result.longitude.toFixed(6)}
+                      {result.longitude?.toFixed(6)}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* =================================
-                                MAP
-                            ================================= */}
-
               <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
                 <p className="text-xs tracking-[0.25em] text-white/25">
                   LOCATION
                 </p>
-
                 <p className="mt-4 text-sm leading-6 text-white/40">
                   The address was successfully converted into geographic
                   coordinates.
                 </p>
-
-                <a
-                  href={`https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=18/${result.latitude}/${result.longitude}`}
+                
+                <a href={`https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=18/${result.latitude}/${result.longitude}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/20 px-6 py-3 text-sm transition hover:bg-white hover:text-black"
@@ -500,35 +340,15 @@ export default function PropertySearchPage() {
                 </a>
               </div>
 
-              {/* =================================
-                                PLACE ID
-                            ================================= */}
-
-              <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
-                <p className="text-xs tracking-[0.25em] text-white/25">
-                  PLACE ID
-                </p>
-
-                <p className="mt-4 break-all text-sm leading-6 text-white/50">
-                  {result.placeId}
-                </p>
-              </div>
-
-              {/* =================================
-                                NEXT STEP
-                            ================================= */}
-
               <div className="mt-20 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-xs font-semibold tracking-[0.3em] text-white/25">
                     NEXT STEP
                   </p>
-
                   <p className="mt-3 text-xl font-light text-white/70">
                     Continue to property details and due diligence.
                   </p>
                 </div>
-
                 <button
                   type="button"
                   className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm font-medium transition duration-300 hover:bg-white hover:text-black"
@@ -545,14 +365,10 @@ export default function PropertySearchPage() {
         </section>
       )}
 
-      {/* =========================================
-                FOOTER
-            ========================================= */}
-
+      {/* FOOTER */}
       <footer className="border-t border-white/10 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
         <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs text-white/25 md:flex-row">
           <span>PROP DUE</span>
-
           <span>PROPERTY DUE DILIGENCE PLATFORM</span>
         </div>
       </footer>
@@ -560,35 +376,20 @@ export default function PropertySearchPage() {
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| INFO BLOCK
-|--------------------------------------------------------------------------
-*/
-
 function InfoBlock({ number, title, text }) {
   return (
     <div className="bg-[#101010] p-8 md:p-10">
       <p className="text-xs tracking-[0.25em] text-white/25">{number}</p>
-
       <h3 className="mt-12 text-2xl font-medium">{title}</h3>
-
       <p className="mt-4 text-sm leading-7 text-white/40">{text}</p>
     </div>
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| DETAIL CARD
-|--------------------------------------------------------------------------
-*/
-
 function DetailCard({ label, value }) {
   return (
     <div className="bg-[#101010] p-6">
       <p className="text-xs tracking-[0.2em] text-white/25">{label}</p>
-
       <p className="mt-4 break-words text-base font-medium text-white/80">
         {value}
       </p>

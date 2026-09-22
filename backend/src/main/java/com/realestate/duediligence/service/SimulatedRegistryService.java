@@ -7,243 +7,133 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Simulates external data sources such as:
- * - Land Registry
- * - Tax Authority
- * - Zoning Office
- * - Flood Zone Authority
- * - Permit Office
- * - Environmental Agency
- * - Utility Providers
+ * Simulates external data sources since real government APIs are not
+ * accessible for this project.
  *
- * WHY:
- * The SRS requires integration with external data sources,
- * but real government APIs are not available for this project.
+ * WHY improved indexing: earlier versions used property.getId() % length
+ * directly, which caused coincidental overlaps between different arrays
+ * of similar length (e.g. two properties with IDs 5 apart would repeat
+ * the same owner AND same zoning, since both arrays had length 5). This
+ * version mixes in the property's address text too, spreading results
+ * out so different properties look genuinely more varied.
  *
- * Therefore, this service generates realistic sample data
- * instead of calling real external APIs.
- *
- * IMPORTANT:
- * This class only creates and returns entity objects.
- * It does NOT save anything directly to the database.
- *
- * The generated entity is later saved by the appropriate
- * repository inside PropertyService.
+ * Note: the SAME property will always produce the SAME simulated values
+ * on repeat requests — this is intentional (data is generated once and
+ * saved, not regenerated randomly each time you view it).
  */
 @Service
 public class SimulatedRegistryService {
 
+    private static final String[] OWNER_NAMES = {
+            "R. Kumar", "S. Patel", "A. Reddy", "M. Iyer", "V. Nair", "K. Sharma", "P. Menon"
+    };
+
+    private static final String[] ZONE_TYPES = {
+            "Residential - R1", "Residential - R2", "Commercial - C1", "Mixed-Use", "Agricultural"
+    };
+
+    private static final String[] FLOOD_ZONES = {
+            "Zone X", "Zone A", "Zone AE", "Zone B"
+    };
+
+    private static final RiskLevel[] RISK_LEVELS = {
+            RiskLevel.LOW, RiskLevel.LOW, RiskLevel.MEDIUM, RiskLevel.HIGH
+    };
+
+    private static final String[] PERMIT_TYPES = {
+            "Renovation", "Electrical", "Plumbing", "Addition", "Demolition"
+    };
+
+    private static final String[] UTILITY_PROVIDERS = {
+            "City Utilities Board", "Metro Water Authority", "State Power Corporation"
+    };
 
     /**
-     * Simulates retrieving ownership information from
-     * a Land Registry.
-     *
-     * @param property property for which ownership information is required
-     * @return generated OwnershipRecord
+     * Produces a well-spread index using the property's id AND its
+     * address text together, so different arrays don't coincidentally
+     * pick the same index for nearby property IDs.
      */
+    private int indexFor(Property property, int arrayLength, int salt) {
+        long addressHash = property.getAddress() != null ? property.getAddress().hashCode() : 0;
+        long seed = (property.getId() * 31L) + (addressHash * 17L) + salt;
+        return (int) (Math.floorMod(seed, arrayLength));
+    }
+
     public OwnershipRecord generateOwnership(Property property) {
+        int i = indexFor(property, OWNER_NAMES.length, 1);
 
-        // Create a new ownership record object.
         OwnershipRecord record = new OwnershipRecord();
-
-        // Associate the ownership record with the requested property.
         record.setProperty(property);
-
-        // Simulated owner name returned by the Land Registry.
-        record.setOwnerName("R. Kumar");
-
-        // Simulated date on which the owner acquired the property.
-        record.setAcquiredDate(LocalDate.of(2018, 3, 12));
-
-        // Return the generated record to the calling service.
+        record.setOwnerName(OWNER_NAMES[i]);
+        record.setAcquiredDate(LocalDate.of(2012 + i, 3, 12));
         return record;
     }
 
-
-    /**
-     * Simulates retrieving tax information from a Tax Authority.
-     *
-     * @param property property for which tax information is required
-     * @return generated TaxHistory record
-     */
     public TaxHistory generateTaxHistory(Property property) {
+        int i = indexFor(property, 6, 2);
+        BigDecimal baseAmount = new BigDecimal("28000").add(new BigDecimal(i * 6500));
 
-        // Create a new tax history record.
         TaxHistory record = new TaxHistory();
-
-        // Associate the tax record with the requested property.
         record.setProperty(property);
-
-        /*
-         * Generate the previous year's tax record.
-         *
-         * LocalDate.now().getYear() gives the current year.
-         * Subtracting 1 gives the previous year.
-         *
-         * Example:
-         * Current year = 2026
-         * Generated tax year = 2025
-         */
         record.setYear(LocalDate.now().getYear() - 1);
-
-        /*
-         * BigDecimal is used for monetary values because
-         * it provides better precision than double/float.
-         */
-        record.setAmountPaid(new BigDecimal("45000"));
-
-        // Simulated tax payment status.
-        record.setStatus(TaxStatus.PAID);
-
-        // Return the generated tax record.
+        record.setAmountPaid(baseAmount);
+        record.setStatus(i == 4 ? TaxStatus.OVERDUE : (i == 5 ? TaxStatus.PARTIALLY_PAID : TaxStatus.PAID));
         return record;
     }
 
-
-    /**
-     * Simulates retrieving zoning information from
-     * a Zoning Office.
-     *
-     * @param property property for which zoning information is required
-     * @return generated ZoningInfo record
-     */
     public ZoningInfo generateZoning(Property property) {
+        int i = indexFor(property, ZONE_TYPES.length, 3);
 
-        // Create a new zoning information object.
         ZoningInfo record = new ZoningInfo();
-
-        // Associate zoning information with the property.
         record.setProperty(property);
-
-        // Simulated zoning classification.
-        record.setZoneType("Residential - R1");
-
-        // Indicates whether the property's usage complies with zoning rules.
-        record.setCompliant(true);
-
-        // Return the generated zoning information.
+        record.setZoneType(ZONE_TYPES[i]);
+        record.setCompliant(i != 4);
         return record;
     }
 
-
-    /**
-     * Simulates retrieving flood-zone information from
-     * a Flood Zone Authority.
-     *
-     * @param property property for which flood information is required
-     * @return generated FloodZoneInfo record
-     */
     public FloodZoneInfo generateFloodZone(Property property) {
+        int i = indexFor(property, FLOOD_ZONES.length, 4);
+        int riskIndex = indexFor(property, RISK_LEVELS.length, 5);
 
-        // Create a new flood-zone information object.
         FloodZoneInfo record = new FloodZoneInfo();
-
-        // Associate flood-zone information with the property.
         record.setProperty(property);
-
-        // Simulated flood-zone classification.
-        record.setZone("Zone X");
-
-        // Simulated flood risk level.
-        record.setRiskLevel(RiskLevel.LOW);
-
-        // Return the generated flood-zone information.
+        record.setZone(FLOOD_ZONES[i]);
+        record.setRiskLevel(RISK_LEVELS[riskIndex]);
         return record;
     }
 
-
-    /**
-     * Simulates retrieving building permit information
-     * from a Permit Office.
-     *
-     * @param property property for which permit information is required
-     * @return generated PermitRecord
-     */
     public PermitRecord generatePermit(Property property) {
+        int i = indexFor(property, PERMIT_TYPES.length, 6);
 
-        // Create a new permit record.
         PermitRecord record = new PermitRecord();
-
-        // Associate the permit with the requested property.
         record.setProperty(property);
-
-        // Simulated type of permit issued for the property.
-        record.setPermitType("Renovation");
-
-        // Simulated permit status.
-        record.setStatus(PermitStatus.APPROVED);
-
-        // Simulated date on which the permit was issued.
-        record.setIssuedDate(LocalDate.of(2021, 5, 1));
-
-        // Return the generated permit information.
+        record.setPermitType(PERMIT_TYPES[i]);
+        record.setStatus(i == 2 ? PermitStatus.PENDING : (i == 4 ? PermitStatus.EXPIRED : PermitStatus.APPROVED));
+        record.setIssuedDate(LocalDate.of(2017 + i, 5, 1));
         return record;
     }
 
-
-    // ---------- ENVIRONMENTAL AND UTILITY DATA ----------
-
-
-    /**
-     * Simulates retrieving environmental assessment information
-     * from an Environmental Agency.
-     *
-     * @param property property for which environmental information is required
-     * @return generated EnvironmentalRecord
-     */
     public EnvironmentalRecord generateEnvironmentalRecord(Property property) {
+        int i = indexFor(property, 5, 7);
+        boolean hazard = (i == 3 || i == 4);
 
-        // Create a new environmental assessment record.
         EnvironmentalRecord record = new EnvironmentalRecord();
-
-        // Associate the environmental record with the property.
         record.setProperty(property);
-
-        /*
-         * Indicates whether an environmental hazard was found
-         * during the simulated assessment.
-         */
-        record.setHazardFound(false);
-
-        // No hazard was found, so the hazard type is "None".
-        record.setHazardType("None");
-
-        // Simulated date of the environmental assessment.
-        record.setAssessmentDate(LocalDate.of(2023, 8, 15));
-
-        // Return the generated environmental information.
+        record.setHazardFound(hazard);
+        record.setHazardType(hazard ? "Soil contamination" : "None");
+        record.setAssessmentDate(LocalDate.of(2021 + (i % 4), 8, 15));
         return record;
     }
 
-
-    /**
-     * Simulates retrieving utility connection information
-     * from a utility provider.
-     *
-     * @param property property for which utility information is required
-     * @return generated UtilityInfo record
-     */
     public UtilityInfo generateUtilityInfo(Property property) {
+        int i = indexFor(property, UTILITY_PROVIDERS.length, 8);
 
-        // Create a new utility information record.
         UtilityInfo record = new UtilityInfo();
-
-        // Associate the utility information with the property.
         record.setProperty(property);
-
-        // Simulated water connection status.
         record.setWaterConnected(true);
-
-        // Simulated electricity connection status.
-        record.setElectricityConnected(true);
-
-        // Simulated gas connection status.
-        record.setGasConnected(true);
-
-        // Simulated utility provider name.
-        record.setProvider("City Utilities Board");
-
-        // Return the generated utility information.
+        record.setElectricityConnected(i != 2);
+        record.setGasConnected(i != 1);
+        record.setProvider(UTILITY_PROVIDERS[i]);
         return record;
     }
 }
