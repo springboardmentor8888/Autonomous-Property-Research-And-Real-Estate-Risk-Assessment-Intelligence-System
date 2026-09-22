@@ -7,6 +7,7 @@ import com.realestate.backend.Entity.LoginResponse;
 import com.realestate.backend.Entity.User;
 import com.realestate.backend.Exception.DuplicateEmailException;
 import com.realestate.backend.Exception.InvalidCredentialsException;
+import com.realestate.backend.Exception.UserNotFoundException;
 import com.realestate.backend.Repository.UserRepository;
 import com.realestate.backend.Security.JwtService;
 import com.realestate.backend.dto.UpdateRoleRequest;
@@ -63,32 +64,46 @@ public class UserService {
 
 	public UserResponse getUserProfile(Long id) {
 
-		User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+	    User user = userRepository.findById(id)
+	            .orElseThrow(() ->
+	                    new UserNotFoundException(
+	                            "User not found with id: " + id));
 
-		return new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getRole());
+	    return new UserResponse(
+	            user.getId(),
+	            user.getName(),
+	            user.getEmail(),
+	            user.getRole());
 	}
 
 	public UserResponse updateUserProfile(Long id, UpdateUserRequest request) {
 
-		User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+	    User user = userRepository.findById(id)
+	            .orElseThrow(() ->
+	                    new UserNotFoundException(
+	                            "User not found with id: " + id));
 
-		if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
-			throw new DuplicateEmailException("Email already registered");
-		}
+	    if (!user.getEmail().equals(request.getEmail())
+	            && userRepository.existsByEmail(request.getEmail())) {
+	        throw new DuplicateEmailException("Email already registered");
+	    }
 
-		user.setName(request.getName());
-		user.setEmail(request.getEmail());
+	    user.setName(request.getName());
+	    user.setEmail(request.getEmail());
 
-		User updatedUser = userRepository.save(user);
+	    User updatedUser = userRepository.save(user);
 
-		return new UserResponse(updatedUser.getId(), updatedUser.getName(), updatedUser.getEmail(),
-				updatedUser.getRole());
+	    return new UserResponse(
+	            updatedUser.getId(),
+	            updatedUser.getName(),
+	            updatedUser.getEmail(),
+	            updatedUser.getRole());
 	}
 
 	public UserResponse updateUserRole(Long id, UpdateRoleRequest request) {
 
-		User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
-
+		User user = userRepository.findById(id).orElseThrow(() ->
+        new UserNotFoundException("User not found with id: " + id));
 		user.setRole(request.getRole());
 
 		User updatedUser = userRepository.save(user);
