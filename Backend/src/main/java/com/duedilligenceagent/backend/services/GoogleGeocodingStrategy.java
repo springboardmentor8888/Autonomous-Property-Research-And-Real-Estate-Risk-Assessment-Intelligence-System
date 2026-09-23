@@ -32,7 +32,7 @@ public class GoogleGeocodingStrategy implements AddressValidationStrategy {
     public GoogleGeocodingStrategy(
             RestClient.Builder restClientBuilder,
             @Value("${google.api.base-url}") String googleBaseUrl,
-            @Value("${google.geocoding.api-key}") String apiKey) {
+            @Value("${app.google.geocoding.api-key}") String apiKey) {
         this.googleRestClient = restClientBuilder
                 .baseUrl(googleBaseUrl)
                 .defaultHeader("Accept", "application/json")

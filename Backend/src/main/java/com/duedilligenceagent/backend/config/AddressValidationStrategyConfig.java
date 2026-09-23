@@ -22,7 +22,7 @@ public class AddressValidationStrategyConfig {
     @Value("${google.api.base-url}")
     private String geocodingBaseUrl;
 
-    @Value("${google.geocoding.api-key}")
+    @Value("${app.google.geocoding.api-key}")
     private String apiKey;
 
     @Bean

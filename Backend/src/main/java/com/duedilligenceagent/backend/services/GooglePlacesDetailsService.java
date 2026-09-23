@@ -28,7 +28,7 @@ public class GooglePlacesDetailsService {
     public GooglePlacesDetailsService(
             RestClient.Builder restClientBuilder,
             @Value("${google.places.base-url:https://places.googleapis.com}") String placesBaseUrl,
-            @Value("${google.places.api-key:}") String apiKey) {
+            @Value("${app.google.places.api-key:}") String apiKey) {
         this.restClient = restClientBuilder
                 .baseUrl(placesBaseUrl)
                 .defaultHeader("Accept", "application/json")
