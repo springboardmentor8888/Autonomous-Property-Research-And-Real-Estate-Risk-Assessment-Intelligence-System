@@ -18,9 +18,6 @@ export default function PropertySearch() {
     buildingSociety: '',
     streetRoad: '',
     locality: '',
-    district: '',
-    propertyName: '',
-    propertyType: '',
   });
   const [loading, setLoading] = useState(false);
   const [invalid, setInvalid] = useState(false);
@@ -103,17 +100,20 @@ export default function PropertySearch() {
             <h3 className="text-sm font-semibold text-slate-700">Required Information</h3>
             
             <div>
-              <label htmlFor="address" className="label-base">Address <span className="text-rose-500">*</span></label>
+              <label htmlFor="address" className="label-base">Address line (premise / landmark) <span className="text-rose-500">*</span></label>
               <input
                 id="address"
                 type="text"
                 value={formData.address}
                 onChange={(e) => handleChange('address', e.target.value)}
-                placeholder="e.g. 23, MG Road"
+                placeholder="e.g. 23, MG Road or Bandra Kurla Complex"
                 className="input-base"
                 disabled={loading}
                 autoFocus
               />
+              <p className="mt-1.5 text-xs text-slate-500">
+                The main address line. Use the fields below for extra detail instead of repeating it here.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -145,7 +145,7 @@ export default function PropertySearch() {
           </div>
 
           {/* Optional Address Fields */}
-          <div className="space-y-4 border-b border-slate-200 pb-6">
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700">Address Details (Optional)</h3>
             
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -163,21 +163,6 @@ export default function PropertySearch() {
                 />
               </div>
               <div>
-                <label htmlFor="district" className="label-base">District</label>
-                <input
-                  id="district"
-                  type="text"
-                  value={formData.district}
-                  onChange={(e) => handleChange('district', e.target.value)}
-                  placeholder="e.g. Bengaluru Urban"
-                  className="input-base"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
                 <label htmlFor="houseFlatPlot" className="label-base">House/Flat/Plot No.</label>
                 <input
                   id="houseFlatPlot"
@@ -189,6 +174,9 @@ export default function PropertySearch() {
                   disabled={loading}
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="buildingSociety" className="label-base">Building/Society</label>
                 <input
@@ -201,9 +189,6 @@ export default function PropertySearch() {
                   disabled={loading}
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="streetRoad" className="label-base">Street/Road</label>
                 <input
@@ -216,6 +201,9 @@ export default function PropertySearch() {
                   disabled={loading}
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="locality" className="label-base">Locality/Area</label>
                 <input
@@ -224,38 +212,6 @@ export default function PropertySearch() {
                   value={formData.locality}
                   onChange={(e) => handleChange('locality', e.target.value)}
                   placeholder="e.g. Whitefield"
-                  className="input-base"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Optional Property Metadata */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-700">Property Metadata (Optional)</h3>
-            
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="propertyName" className="label-base">Property Name</label>
-                <input
-                  id="propertyName"
-                  type="text"
-                  value={formData.propertyName}
-                  onChange={(e) => handleChange('propertyName', e.target.value)}
-                  placeholder="e.g. My Dream Home"
-                  className="input-base"
-                  disabled={loading}
-                />
-              </div>
-              <div>
-                <label htmlFor="propertyType" className="label-base">Property Type</label>
-                <input
-                  id="propertyType"
-                  type="text"
-                  value={formData.propertyType}
-                  onChange={(e) => handleChange('propertyType', e.target.value)}
-                  placeholder="e.g. Apartment, Villa, Commercial"
                   className="input-base"
                   disabled={loading}
                 />

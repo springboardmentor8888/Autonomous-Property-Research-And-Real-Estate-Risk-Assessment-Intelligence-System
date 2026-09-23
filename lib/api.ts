@@ -176,9 +176,6 @@ export type PropertySearchRequest = {
   buildingSociety?: string;
   streetRoad?: string;
   locality?: string;
-  district?: string;
-  propertyName?: string;
-  propertyType?: string;
 };
 
 export const adminApi = {

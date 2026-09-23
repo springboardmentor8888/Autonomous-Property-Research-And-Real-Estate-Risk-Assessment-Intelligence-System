@@ -130,65 +130,82 @@ public class PropertySearchService {
 
     /**
      * Constructs a full address string from structured input fields.
-     * Order: houseFlatPlot, buildingSociety, streetRoad, address, locality, city, district, state, pincode
+     * Order: address, houseFlatPlot, buildingSociety, streetRoad, locality, city, state, pincode.
+     * <p>
+     * Deduplication: the primary address line is split on commas and any
+     * sub-segment already covered by a structured field (case-insensitive)
+     * is dropped, so content typed both in the address line and a structured
+     * field is not sent twice to the geocoder.
      */
     private String buildFullAddress(PropertyDetailsRequest request) {
-        StringBuilder sb = new StringBuilder();
-        
-        // Primary address line (most specific)
-        if (request.getAddress() != null && !request.getAddress().isBlank()) {
-            sb.append(request.getAddress().trim());
+        // Structured parts collected first for duplicate checking
+        List<String> structured = new java.util.ArrayList<>();
+        addPart(structured, request.getHouseFlatPlot());
+        addPart(structured, request.getBuildingSociety());
+        addPart(structured, request.getStreetRoad());
+        addPart(structured, request.getLocality());
+        addPart(structured, request.getCity());
+        addPart(structured, request.getState());
+
+        // Address line with sub-segments already covered by structured fields removed
+        String addressLine = dedupeAddressLine(request.getAddress(), structured);
+
+        List<String> parts = new java.util.ArrayList<>();
+        if (addressLine != null && !addressLine.isBlank()) {
+            parts.add(addressLine);
         }
-        
-        // House/Flat/Plot number
-        if (request.getHouseFlatPlot() != null && !request.getHouseFlatPlot().isBlank()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(request.getHouseFlatPlot().trim());
+        parts.addAll(structured);
+
+        StringBuilder sb = new StringBuilder(String.join(", ", parts));
+
+        if (request.getPincode() != null && !request.getPincode().isBlank() && sb.length() > 0) {
+            sb.append(" ").append(request.getPincode().trim());
         }
-        
-        // Building/Society
-        if (request.getBuildingSociety() != null && !request.getBuildingSociety().isBlank()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(request.getBuildingSociety().trim());
-        }
-        
-        // Street/Road
-        if (request.getStreetRoad() != null && !request.getStreetRoad().isBlank()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(request.getStreetRoad().trim());
-        }
-        
-        // Locality
-        if (request.getLocality() != null && !request.getLocality().isBlank()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(request.getLocality().trim());
-        }
-        
-        // City (required)
-        if (request.getCity() != null && !request.getCity().isBlank()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(request.getCity().trim());
-        }
-        
-        // District
-        if (request.getDistrict() != null && !request.getDistrict().isBlank()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(request.getDistrict().trim());
-        }
-        
-        // State (required)
-        if (request.getState() != null && !request.getState().isBlank()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(request.getState().trim());
-        }
-        
-        // PIN code
-        if (request.getPincode() != null && !request.getPincode().isBlank()) {
-            if (sb.length() > 0) sb.append(" ");
-            sb.append(request.getPincode().trim());
-        }
-        
+
         return sb.toString();
+    }
+
+    /**
+     * Splits the primary address line on commas and drops any sub-segment
+     * that duplicates (case-insensitive) a structured field. Returns null
+     * when nothing remains.
+     */
+    private static String dedupeAddressLine(String address, List<String> structured) {
+        if (address == null || address.isBlank()) {
+            return null;
+        }
+        StringBuilder kept = new StringBuilder();
+        for (String segment : address.split(",")) {
+            String trimmed = segment.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            boolean covered = structured.stream()
+                    .anyMatch(s -> s.equalsIgnoreCase(trimmed));
+            if (!covered) {
+                if (kept.length() > 0) {
+                    kept.append(", ");
+                }
+                kept.append(trimmed);
+            }
+        }
+        return kept.toString();
+    }
+
+    /**
+     * Appends a trimmed part unless it is blank or already present
+     * (case-insensitive) in the accumulated parts.
+     */
+    private static void addPart(List<String> parts, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        String trimmed = value.trim();
+        boolean duplicate = parts.stream()
+                .anyMatch(p -> p.equalsIgnoreCase(trimmed));
+        if (!duplicate) {
+            parts.add(trimmed);
+        }
     }
 
     private Property persist(GoogleCandidate c, String requestedAddress, PropertyDetailsRequest request) {
