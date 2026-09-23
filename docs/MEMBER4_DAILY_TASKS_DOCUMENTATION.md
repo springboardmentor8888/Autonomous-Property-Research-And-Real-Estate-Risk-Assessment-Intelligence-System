@@ -202,7 +202,38 @@ git push origin team-three
   * `FloodValidationService` & `FloodValidationServiceImpl`: Evaluates high-hazard flood zones (AE, VE) and flags mandatory flood insurance requirements.
   * `ZoningValidationService` & `ZoningValidationServiceImpl`: Verifies property usage compatibility against municipal zoning designations.
 * **Unit Testing:**
-  * Created `PermitValidationServiceTest` and `TaxValidationServiceTest` with 100% pass rate (8 of 8 total backend tests passing).
+  * Created `PermitValidationServiceTest` and `TaxValidationServiceTest` with 100% pass rate.
+
+---
+
+## 📅 Milestone 2 — Day 13 (Sep 23, 2026): Risk Validation REST Controller, Security Configuration & Property Data Seeder
+
+### 🎯 Objective
+Expose all Milestone 2 validation engines via clean REST API endpoints for frontend/integration consumption, configure Spring Security to permit validation endpoints, and implement an automated database seeder for initial property listings.
+
+### 💻 Git Commands Executed
+```bash
+git add src/main/java/com/realestate/backend/controller/RiskValidationController.java
+git add src/main/java/com/realestate/backend/dto/ZoningValidationRequestDTO.java
+git add src/main/java/com/realestate/backend/config/SecurityConfig.java
+git add src/main/java/com/realestate/backend/config/PropertyDataSeeder.java
+git add src/test/java/com/realestate/backend/controller/RiskValidationControllerTest.java
+git commit -m "feat(member-4): expose validation REST controller, update security config, and add property data seeder"
+```
+
+### 🛠️ Key Work Done
+* **Created `RiskValidationController.java` (`src/main/java/com/realestate/backend/controller/RiskValidationController.java`):**
+  * `POST /api/validation/permits` - Validates open, expired, and violation permit records.
+  * `POST /api/validation/taxes` - Analyzes delinquent tax years and lien liabilities.
+  * `POST /api/validation/flood` - Verifies FEMA flood risk tier and mandatory insurance.
+  * `POST /api/validation/zoning` - Assesses municipal zoning compatibility and land use.
+* **Created `ZoningValidationRequestDTO.java`:** Modeled structured request combining `ZoningInfoDTO` and `propertyType`.
+* **Configured `SecurityConfig.java`:** Added `/api/validation/**` to `.permitAll()` for seamless integration.
+* **Implemented `PropertyDataSeeder.java` (`src/main/java/com/realestate/backend/config/PropertyDataSeeder.java`):**
+  * Automatically populates 5 realistic property records on startup if database is empty.
+* **Unit Testing:**
+  * Created `RiskValidationControllerTest.java` verifying all 4 REST endpoints.
+  * 100% build & test pass rate (12 of 12 tests passing).
 
 ---
 
@@ -218,9 +249,10 @@ git status
 git add .
 
 # 3. Commit the final changes
-git commit -m "feat(member-4): complete backend external data, property search, and address validation"
+git commit -m "feat(member-4): complete backend external data, property search, validation REST controllers, and seeder"
 
 # 4. Push to remote branch
 git push -u origin team-three
 ```
+
 
