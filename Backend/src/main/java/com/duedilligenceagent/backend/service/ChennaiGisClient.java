@@ -3,6 +3,7 @@ package com.duedilligenceagent.backend.service;
 import java.math.BigDecimal;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "chennai.gcc-gis.base-url", matchIfMissing = false)
 public class ChennaiGisClient {
 
     private final RestClient restClient;
