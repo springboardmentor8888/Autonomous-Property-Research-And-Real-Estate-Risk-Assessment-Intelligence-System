@@ -32,6 +32,18 @@ public class UserProfile {
     @Column(name = "phone", length = 20)
     private String phone;
 
+    @Column(name = "job_title", length = 100)
+    private String jobTitle;
+
+    @Column(name = "organization", length = 150)
+    private String organization;
+
+    @Column(name = "profile_picture", length = 500)
+    private String profilePicture;
+
+    @Column(name = "timezone", length = 50)
+    private String timezone;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

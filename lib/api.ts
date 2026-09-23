@@ -198,6 +198,10 @@ export type ProfileResponse = {
   firstName: string;
   lastName: string;
   phone: string | null;
+  jobTitle: string | null;
+  organization: string | null;
+  profilePicture: string | null;
+  timezone: string | null;
   role: string;
   createdAt: string;
   updatedAt: string;
@@ -209,4 +213,8 @@ export type UpdateProfileRequest = {
   firstName: string;
   lastName: string;
   phone?: string;
+  jobTitle?: string;
+  organization?: string;
+  profilePicture?: string;
+  timezone?: string;
 };

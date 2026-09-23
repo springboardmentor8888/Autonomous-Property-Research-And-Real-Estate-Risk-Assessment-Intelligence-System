@@ -58,6 +58,10 @@ public class ProfileService {
         profile.setFirstName(request.getFirstName());
         profile.setLastName(request.getLastName());
         profile.setPhone(request.getPhone());
+        profile.setJobTitle(request.getJobTitle());
+        profile.setOrganization(request.getOrganization());
+        profile.setProfilePicture(request.getProfilePicture());
+        profile.setTimezone(request.getTimezone());
         profileRepository.save(profile);
 
         return mapToResponse(user, profile);
@@ -88,6 +92,10 @@ public class ProfileService {
                 .firstName(profile.getFirstName())
                 .lastName(profile.getLastName())
                 .phone(profile.getPhone())
+                .jobTitle(profile.getJobTitle())
+                .organization(profile.getOrganization())
+                .profilePicture(profile.getProfilePicture())
+                .timezone(profile.getTimezone())
                 .role(roleName)
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())

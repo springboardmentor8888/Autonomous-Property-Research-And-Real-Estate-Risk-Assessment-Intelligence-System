@@ -29,4 +29,16 @@ public class UpdateProfileRequest {
 
     @Pattern(regexp = "^[+]?[0-9]{10,15}$", message = "Phone must be 10-15 digits, optionally starting with +")
     private String phone;
+
+    @Size(max = 100, message = "Job title must be 100 characters or fewer")
+    private String jobTitle;
+
+    @Size(max = 150, message = "Organization must be 150 characters or fewer")
+    private String organization;
+
+    @Size(max = 500, message = "Profile picture URL must be 500 characters or fewer")
+    private String profilePicture;
+
+    @Size(max = 50, message = "Timezone must be 50 characters or fewer")
+    private String timezone;
 }
