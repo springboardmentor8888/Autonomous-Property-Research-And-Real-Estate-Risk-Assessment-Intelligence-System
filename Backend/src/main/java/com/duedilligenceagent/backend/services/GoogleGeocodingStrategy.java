@@ -2,6 +2,7 @@ package com.duedilligenceagent.backend.services;
 
 import com.duedilligenceagent.backend.dto.Google.GoogleCandidate;
 import com.duedilligenceagent.backend.dto.Google.GoogleGeocodingResponse;
+import com.duedilligenceagent.backend.dto.Property.PropertyDetailsRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
@@ -21,6 +22,10 @@ import java.util.stream.Collectors;
  * <p>
  * Uses X-Goog-Api-Key header for authentication.
  * Best for: basic geocoding needs, modern API with rich address metadata.
+ * <p>
+ * Kept as a fallback strategy — the primary validation strategy is the
+ * Google Address Validation API which additionally returns the validation
+ * verdict (granularity, address completeness).
  */
 @Slf4j
 @Component
@@ -42,11 +47,14 @@ public class GoogleGeocodingStrategy implements AddressValidationStrategy {
     }
 
     @Override
-    public List<GoogleCandidate> validate(String address) throws AddressValidationException {
-        if (address == null || address.isBlank()) {
+    public List<GoogleCandidate> validate(PropertyDetailsRequest request) throws AddressValidationException {
+        if (request == null || request.getAddress() == null || request.getAddress().isBlank()) {
             log.debug("validate() called with blank address — returning empty result");
             return List.of();
         }
+
+        // Construct the full single-line address from structured input
+        final String address = StructuredAddressText.fullAddress(request);
 
         // Require real API key - no mock fallback
         if (apiKey == null || apiKey.isBlank()) {
@@ -91,6 +99,7 @@ public class GoogleGeocodingStrategy implements AddressValidationStrategy {
         String city = null;
         String state = null;
         String postalCode = null;
+        String locality = null;
 
         // Use postalAddress if available (more structured)
         if (result.getPostalAddress() != null) {
@@ -100,19 +109,22 @@ public class GoogleGeocodingStrategy implements AddressValidationStrategy {
         }
 
         // Fallback to address components
-        if (city == null || state == null || postalCode == null) {
-            if (result.getAddressComponents() != null) {
-                for (GoogleGeocodingResponse.Result.AddressComponent comp : result.getAddressComponents()) {
-                    if (comp.getTypes() != null) {
-                        if (comp.getTypes().contains("locality") && city == null) {
-                            city = comp.getLongText();
-                        }
-                        if (comp.getTypes().contains("administrative_area_level_1") && state == null) {
-                            state = comp.getLongText();
-                        }
-                        if (comp.getTypes().contains("postal_code") && postalCode == null) {
-                            postalCode = comp.getLongText();
-                        }
+        if (result.getAddressComponents() != null) {
+            for (GoogleGeocodingResponse.Result.AddressComponent comp : result.getAddressComponents()) {
+                if (comp.getTypes() != null) {
+                    if (comp.getTypes().contains("locality") && city == null) {
+                        city = comp.getLongText();
+                    }
+                    if (comp.getTypes().contains("administrative_area_level_1") && state == null) {
+                        state = comp.getLongText();
+                    }
+                    if (comp.getTypes().contains("postal_code") && postalCode == null) {
+                        postalCode = comp.getLongText();
+                    }
+                    if (locality == null && (comp.getTypes().contains("sublocality")
+                            || comp.getTypes().contains("sublocality_level_1")
+                            || comp.getTypes().contains("neighborhood"))) {
+                        locality = comp.getLongText();
                     }
                 }
             }
@@ -133,6 +145,7 @@ public class GoogleGeocodingStrategy implements AddressValidationStrategy {
                 .city(city)
                 .state(state)
                 .postalCode(postalCode)
+                .locality(locality)
                 .propertyType(inferPropertyType(result.getTypes()))
                 .build();
     }

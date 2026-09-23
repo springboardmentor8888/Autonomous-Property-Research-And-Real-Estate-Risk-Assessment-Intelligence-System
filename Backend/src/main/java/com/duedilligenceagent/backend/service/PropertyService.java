@@ -64,15 +64,61 @@ public class PropertyService {
     }
 
     private PropertyResponse toResponse(Property property) {
-        return new PropertyResponse(
-                property.getPropertyId(),
-                property.getAddress(),
-                property.getCity(),
-                property.getState(),
-                property.getPostalCode(),
-                property.getLatitude(),
-                property.getLongitude(),
-                property.getPropertyType()
-        );
+        return PropertyResponse.builder()
+                .propertyId(property.getPropertyId())
+                .address(property.getAddress())
+                .city(property.getCity())
+                .state(property.getState())
+                .postalCode(property.getPostalCode())
+                .latitude(property.getLatitude())
+                .longitude(property.getLongitude())
+                .propertyType(property.getPropertyType())
+                .locality(property.getLocality())
+                .googlePlaceId(property.getGooglePlaceId())
+                .validationGranularity(property.getValidationGranularity())
+                .geocodeGranularity(property.getGeocodeGranularity())
+                .addressComplete(property.getAddressComplete())
+                .hasUnconfirmedComponents(property.getHasUnconfirmedComponents())
+                .possibleNextAction(property.getPossibleNextAction())
+                .placeTypes(PropertyResponse.splitCsv(property.getPlaceTypes()))
+                .plusCode(property.getPlusCode())
+                .externalListingId(property.getExternalListingId())
+                .title(property.getTitle())
+                .propertySubtype(property.getPropertySubtype())
+                .bedrooms(property.getBedrooms())
+                .bathrooms(property.getBathrooms())
+                .balconies(property.getBalconies())
+                .carpetAreaSqft(property.getCarpetAreaSqft())
+                .superAreaSqft(property.getSuperAreaSqft())
+                .areaText(property.getAreaText())
+                .sqm(property.getSqm())
+                .price(property.getPrice())
+                .pricePerSqft(property.getPricePerSqft())
+                .deposit(property.getDeposit())
+                .brokerage(property.getBrokerage())
+                .originalPrice(property.getOriginalPrice())
+                .originalCurrency(property.getOriginalCurrency())
+                .furnishing(property.getFurnishing())
+                .facing(property.getFacing())
+                .floor(property.getFloor())
+                .totalFloors(property.getTotalFloors())
+                .age(property.getAge())
+                .availability(property.getAvailability())
+                .transaction(property.getTransaction())
+                .source(property.getSource())
+                .reraId(property.getReraId())
+                .listedBy(property.getListedBy())
+                .dealer(property.getDealer())
+                .gatedCommunity(property.getGatedCommunity())
+                .verified(property.getVerified())
+                .amenities(PropertyResponse.splitCsv(property.getAmenities()))
+                .images(PropertyResponse.splitCsv(property.getImages()))
+                .description(property.getDescription())
+                .listingUrl(property.getListingUrl())
+                .postingDate(property.getPostingDate())
+                .updateDate(property.getUpdateDate())
+                .expiryDate(property.getExpiryDate())
+                .mapAccuracy(property.getMapAccuracy())
+                .build();
     }
 }

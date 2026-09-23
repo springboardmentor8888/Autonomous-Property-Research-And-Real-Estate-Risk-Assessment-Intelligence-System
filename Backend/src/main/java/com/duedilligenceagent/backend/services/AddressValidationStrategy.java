@@ -1,6 +1,7 @@
 package com.duedilligenceagent.backend.services;
 
 import com.duedilligenceagent.backend.dto.Google.GoogleCandidate;
+import com.duedilligenceagent.backend.dto.Property.PropertyDetailsRequest;
 
 import java.util.List;
 
@@ -10,19 +11,22 @@ import java.util.List;
  * Allows plugging in different Google Maps Platform APIs (Address Validation,
  * Geocoding, Places) via configuration without changing the orchestration layer.
  * <p>
+ * Implementations receive the application's structured address input and own
+ * the conversion into their provider-specific request format.
+ * <p>
  * Each implementation must return a list of normalized {@link GoogleCandidate}
  * objects, with the first element being the best match.
  */
 public interface AddressValidationStrategy {
 
     /**
-     * Validates and/or geocodes the given address text.
+     * Validates and/or geocodes the given structured address.
      *
-     * @param address free-form address string from the user
+     * @param request structured address input from the user
      * @return list of candidates (empty if address not found); first candidate is the best match
      * @throws AddressValidationException on API errors (network, quota, auth, etc.)
      */
-    List<GoogleCandidate> validate(String address) throws AddressValidationException;
+    List<GoogleCandidate> validate(PropertyDetailsRequest request) throws AddressValidationException;
 
     /**
      * Returns the human-readable name of this strategy for logging/config display.

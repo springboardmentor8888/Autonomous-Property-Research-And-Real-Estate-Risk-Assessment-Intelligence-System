@@ -88,7 +88,7 @@ export default function PropertySearch() {
           </nav>
           <h1 className="page-title mt-2">Search Property</h1>
           <p className="page-subtitle">
-            Validate an Indian address with Google Geocoding and load property details.
+            Validate an Indian address with Google Address Validation and load property details enriched with 99acres listing data.
           </p>
         </div>
       </header>

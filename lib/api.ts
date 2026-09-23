@@ -156,14 +156,14 @@ export const authApi = {
 
 export const propertyApi = {
   async searchByAddress(data: PropertySearchRequest) {
-    return fetchWithAuth<any>('/properties/search', {
+    return fetchWithAuth<PropertySearchApiResponse>('/properties/search', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   async getById(id: number | string) {
-    return fetchWithAuth<any>(`/properties/${id}`);
+    return fetchWithAuth<PropertyDetailsResponse>(`/properties/${id}`);
   },
 };
 
@@ -176,6 +176,144 @@ export type PropertySearchRequest = {
   buildingSociety?: string;
   streetRoad?: string;
   locality?: string;
+};
+
+/** Envelope returned by POST /properties/search. */
+export type PropertySearchApiResponse = {
+  success: boolean;
+  message?: string;
+  data?: PropertySearchResult;
+};
+
+export type PropertySearchResult = {
+  status: 'VALID' | 'INVALID' | 'ERROR';
+  message?: string;
+  requestedAddress?: string;
+  results?: ResolvedPlace[];
+  listingsStatus?: 'FOUND' | 'NO_RESULTS' | 'UNAVAILABLE';
+  listingsMessage?: string;
+  listings?: PropertyListing[];
+};
+
+export type ResolvedPlace = {
+  propertyId?: number;
+  placeId?: string;
+  formattedAddress?: string;
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  locality?: string;
+  validationGranularity?: string;
+  geocodeGranularity?: string;
+  addressComplete?: boolean;
+  hasUnconfirmedComponents?: boolean;
+  possibleNextAction?: string;
+  placeTypes?: string[];
+  plusCode?: string;
+};
+
+/** One external property listing (99acres via Apify), mapped to our model. */
+export type PropertyListing = {
+  listingId?: string;
+  title?: string;
+  propertyType?: string;
+  propertySubtype?: string;
+  bhk?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  balconies?: number;
+  carpetArea?: string;
+  superArea?: string;
+  areaText?: string;
+  sqm?: string;
+  price?: string;
+  pricePerSqft?: string;
+  originalPrice?: string;
+  originalCurrency?: string;
+  deposit?: string;
+  brokerage?: string;
+  furnishing?: string;
+  facing?: string;
+  floor?: string;
+  totalFloors?: number;
+  age?: string;
+  availability?: string;
+  transaction?: string;
+  source?: string;
+  locality?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  mapAccuracy?: string;
+  projectId?: string;
+  projectName?: string;
+  buildingId?: string;
+  buildingName?: string;
+  reraId?: string;
+  listedBy?: string;
+  dealer?: string;
+  gatedCommunity?: boolean;
+  verified?: boolean;
+  amenities?: string[];
+  images?: string[];
+  description?: string;
+  url?: string;
+  postingDate?: string;
+  updateDate?: string;
+  expiryDate?: string;
+};
+
+/** GET /properties/{id} — validated address + enriched listing data. */
+export type PropertyDetailsResponse = {
+  propertyId: number;
+  address: string;
+  city: string;
+  state: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+  propertyType?: string;
+  locality?: string;
+  validationGranularity?: string;
+  geocodeGranularity?: string;
+  addressComplete?: boolean;
+  plusCode?: string;
+  externalListingId?: string;
+  title?: string;
+  propertySubtype?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  balconies?: number;
+  carpetAreaSqft?: number;
+  superAreaSqft?: number;
+  areaText?: string;
+  price?: number;
+  pricePerSqft?: number;
+  deposit?: number;
+  brokerage?: number;
+  furnishing?: string;
+  facing?: string;
+  floor?: string;
+  totalFloors?: number;
+  age?: string;
+  availability?: string;
+  transaction?: string;
+  source?: string;
+  reraId?: string;
+  listedBy?: string;
+  dealer?: string;
+  gatedCommunity?: boolean;
+  verified?: boolean;
+  amenities?: string[];
+  images?: string[];
+  description?: string;
+  listingUrl?: string;
+  postingDate?: string;
+  updateDate?: string;
+  expiryDate?: string;
+  mapAccuracy?: string;
 };
 
 export const adminApi = {
