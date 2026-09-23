@@ -52,23 +52,24 @@ public class PropertySearchService {
                     .build();
         }
 
-        final String requestedAddress = request.getAddress().trim();
-        log.info("Validating address via {}: '{}'", addressValidationStrategy.getStrategyName(), requestedAddress);
+        // Construct full address from structured input
+        final String fullAddress = buildFullAddress(request);
+        log.info("Validating address via {}: '{}'", addressValidationStrategy.getStrategyName(), fullAddress);
 
         // Primary: Configured Address Validation Strategy (Google Geocoding API)
         List<GoogleCandidate> candidates;
         try {
-            candidates = addressValidationStrategy.validate(requestedAddress);
+            candidates = addressValidationStrategy.validate(fullAddress);
         } catch (AddressValidationStrategy.AddressValidationException ex) {
             log.error("Address validation API error for address='{}': status={}, message={}",
-                    requestedAddress, ex.getApiStatus(), ex.getMessage());
+                    fullAddress, ex.getApiStatus(), ex.getMessage());
             return PropertySearchApiResponse.builder()
                     .success(false)
                     .message("Address validation service error: " + ex.getMessage())
                     .data(PropertySearchResponse.builder()
                             .status(PropertySearchResponse.Status.ERROR)
                             .message("Google API error: " + ex.getApiStatus())
-                            .requestedAddress(requestedAddress)
+                            .requestedAddress(fullAddress)
                             .results(Collections.emptyList())
                             .build())
                     .build();
@@ -76,14 +77,14 @@ public class PropertySearchService {
 
         if (candidates.isEmpty()) {
             log.info("{} returned no candidates for address='{}' (ZERO_RESULTS)",
-                    addressValidationStrategy.getStrategyName(), requestedAddress);
+                    addressValidationStrategy.getStrategyName(), fullAddress);
             return PropertySearchApiResponse.builder()
                     .success(false)
-                    .message("Invalid address. Could not resolve '" + requestedAddress + "'.")
+                    .message("Invalid address. Could not resolve '" + fullAddress + "'.")
                     .data(PropertySearchResponse.builder()
                             .status(PropertySearchResponse.Status.INVALID)
                             .message("Invalid address. Could not resolve the provided address.")
-                            .requestedAddress(requestedAddress)
+                            .requestedAddress(fullAddress)
                             .results(Collections.emptyList())
                             .build())
                     .build();
@@ -99,7 +100,7 @@ public class PropertySearchService {
         }
 
         // Persist the best candidate (rely solely on geocoding API for all property data)
-        Property saved = persist(bestCandidate, requestedAddress);
+        Property saved = persist(bestCandidate, fullAddress, request);
 
         final ResolvedPlace place = ResolvedPlace.builder()
                 .propertyId(saved.getPropertyId())
@@ -113,7 +114,7 @@ public class PropertySearchService {
                 .build();
 
         log.info("{} resolved '{}' to candidate; persisted Property row with id={}",
-                addressValidationStrategy.getStrategyName(), requestedAddress, saved.getPropertyId());
+                addressValidationStrategy.getStrategyName(), fullAddress, saved.getPropertyId());
 
         return PropertySearchApiResponse.builder()
                 .success(true)
@@ -121,18 +122,81 @@ public class PropertySearchService {
                 .data(PropertySearchResponse.builder()
                         .status(PropertySearchResponse.Status.VALID)
                         .message("Address validated successfully.")
-                        .requestedAddress(requestedAddress)
+                        .requestedAddress(fullAddress)
                         .results(List.of(place))
                         .build())
                 .build();
     }
 
-    private Property persist(GoogleCandidate c, String requestedAddress) {
+    /**
+     * Constructs a full address string from structured input fields.
+     * Order: houseFlatPlot, buildingSociety, streetRoad, address, locality, city, district, state, pincode
+     */
+    private String buildFullAddress(PropertyDetailsRequest request) {
+        StringBuilder sb = new StringBuilder();
+        
+        // Primary address line (most specific)
+        if (request.getAddress() != null && !request.getAddress().isBlank()) {
+            sb.append(request.getAddress().trim());
+        }
+        
+        // House/Flat/Plot number
+        if (request.getHouseFlatPlot() != null && !request.getHouseFlatPlot().isBlank()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(request.getHouseFlatPlot().trim());
+        }
+        
+        // Building/Society
+        if (request.getBuildingSociety() != null && !request.getBuildingSociety().isBlank()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(request.getBuildingSociety().trim());
+        }
+        
+        // Street/Road
+        if (request.getStreetRoad() != null && !request.getStreetRoad().isBlank()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(request.getStreetRoad().trim());
+        }
+        
+        // Locality
+        if (request.getLocality() != null && !request.getLocality().isBlank()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(request.getLocality().trim());
+        }
+        
+        // City (required)
+        if (request.getCity() != null && !request.getCity().isBlank()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(request.getCity().trim());
+        }
+        
+        // District
+        if (request.getDistrict() != null && !request.getDistrict().isBlank()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(request.getDistrict().trim());
+        }
+        
+        // State (required)
+        if (request.getState() != null && !request.getState().isBlank()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(request.getState().trim());
+        }
+        
+        // PIN code
+        if (request.getPincode() != null && !request.getPincode().isBlank()) {
+            if (sb.length() > 0) sb.append(" ");
+            sb.append(request.getPincode().trim());
+        }
+        
+        return sb.toString();
+    }
+
+    private Property persist(GoogleCandidate c, String requestedAddress, PropertyDetailsRequest request) {
         Property row = Property.builder()
                 .address(c.getFormattedAddress() != null ? c.getFormattedAddress() : requestedAddress)
-                .city(c.getCity())
-                .state(c.getState())
-                .postalCode(c.getPostalCode())
+                .city(c.getCity() != null ? c.getCity() : request.getCity())
+                .state(c.getState() != null ? c.getState() : request.getState())
+                .postalCode(c.getPostalCode() != null ? c.getPostalCode() : request.getPincode())
                 .latitude(toBigDecimal(c.getLatitude()))
                 .longitude(toBigDecimal(c.getLongitude()))
                 .propertyType(PropertyTypeClassifier.normalize(c.getPropertyType()))

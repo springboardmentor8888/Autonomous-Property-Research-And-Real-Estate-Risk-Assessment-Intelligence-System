@@ -155,16 +155,30 @@ export const authApi = {
 };
 
 export const propertyApi = {
-  async searchByAddress(address: string) {
+  async searchByAddress(data: PropertySearchRequest) {
     return fetchWithAuth<any>('/properties/search', {
       method: 'POST',
-      body: JSON.stringify({ address }),
+      body: JSON.stringify(data),
     });
   },
 
   async getById(id: number | string) {
     return fetchWithAuth<any>(`/properties/${id}`);
   },
+};
+
+export type PropertySearchRequest = {
+  address: string;
+  city: string;
+  state: string;
+  pincode?: string;
+  houseFlatPlot?: string;
+  buildingSociety?: string;
+  streetRoad?: string;
+  locality?: string;
+  district?: string;
+  propertyName?: string;
+  propertyType?: string;
 };
 
 export const adminApi = {
