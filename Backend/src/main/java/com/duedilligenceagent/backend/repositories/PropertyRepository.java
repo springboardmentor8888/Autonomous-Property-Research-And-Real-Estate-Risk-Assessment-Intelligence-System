@@ -23,10 +23,11 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
     List<Property> findByPropertyTypeIgnoreCase(String propertyType);
 
     /**
-     * Search history for a user: their own searches plus legacy rows
-     * created before user attribution was added (searched_by is null).
+     * Search history for a user: properties they searched via the search
+     * pipeline, newest first. The static due-diligence seed rows
+     * (searched_by null) are intentionally excluded — they are dataset
+     * records, not searches.
      */
-    @Query("SELECT p FROM Property p WHERE p.searchedBy = :userId OR p.searchedBy IS NULL "
-            + "ORDER BY p.createdAt DESC")
+    @Query("SELECT p FROM Property p WHERE p.searchedBy = :userId ORDER BY p.createdAt DESC")
     List<Property> findSearchHistory(@Param("userId") Long userId);
 }

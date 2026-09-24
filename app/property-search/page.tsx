@@ -18,6 +18,7 @@ export default function PropertySearch() {
     buildingSociety: '',
     streetRoad: '',
     locality: '',
+    district: '',
   });
   const [loading, setLoading] = useState(false);
   const [invalid, setInvalid] = useState(false);
@@ -212,6 +213,18 @@ export default function PropertySearch() {
                   value={formData.locality}
                   onChange={(e) => handleChange('locality', e.target.value)}
                   placeholder="e.g. Whitefield"
+                  className="input-base"
+                  disabled={loading}
+                />
+              </div>
+              <div>
+                <label htmlFor="district" className="label-base">District</label>
+                <input
+                  id="district"
+                  type="text"
+                  value={formData.district ?? ''}
+                  onChange={(e) => handleChange('district', e.target.value)}
+                  placeholder="e.g. Bengaluru Urban"
                   className="input-base"
                   disabled={loading}
                 />

@@ -21,7 +21,7 @@ public final class StructuredAddressText {
 
     /**
      * Full single-line address: address line, house/flat/plot, building/society,
-     * street/road, locality, city, state, pincode (space-appended).
+     * street/road, locality, district, city, state, pincode (space-appended).
      */
     public static String fullAddress(PropertyDetailsRequest request) {
         List<String> structured = structuredParts(request);
@@ -45,9 +45,9 @@ public final class StructuredAddressText {
 
     /**
      * Premise-level address text only (address line, house/flat/plot,
-     * building/society, street/road, locality) — the parts that do not have
-     * a dedicated structured field in Google's PostalAddress. Used as the
-     * {@code addressLines} entry for the Address Validation API.
+     * building/society, street/road, locality, district) — the parts that do
+     * not have a dedicated structured field in Google's PostalAddress. Used
+     * as the {@code addressLines} entry for the Address Validation API.
      */
     public static String premiseLine(PropertyDetailsRequest request) {
         List<String> structured = new ArrayList<>();
@@ -55,6 +55,7 @@ public final class StructuredAddressText {
         addPart(structured, request.getBuildingSociety());
         addPart(structured, request.getStreetRoad());
         addPart(structured, request.getLocality());
+        addPart(structured, request.getDistrict());
 
         String addressLine = dedupeAddressLine(request.getAddress(), structured);
 
@@ -76,6 +77,7 @@ public final class StructuredAddressText {
         addPart(structured, request.getBuildingSociety());
         addPart(structured, request.getStreetRoad());
         addPart(structured, request.getLocality());
+        addPart(structured, request.getDistrict());
         addPart(structured, request.getCity());
         addPart(structured, request.getState());
         return structured;

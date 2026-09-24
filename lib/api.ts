@@ -220,6 +220,7 @@ export type PropertySearchRequest = {
   buildingSociety?: string;
   streetRoad?: string;
   locality?: string;
+  district?: string;
 };
 
 /** Envelope returned by POST /properties/search. */

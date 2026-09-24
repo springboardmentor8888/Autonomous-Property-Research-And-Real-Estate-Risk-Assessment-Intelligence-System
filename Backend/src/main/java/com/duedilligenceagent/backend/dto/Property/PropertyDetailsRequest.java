@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
  * 
  * Supports structured address input for precise geocoding:
  * - Required: address (primary line), city, state
- * - Optional: pincode, house/flat/plot, building/society, street/road, locality
+ * - Optional: pincode, house/flat/plot, building/society, street/road, locality, district
  */
 @Data
 @Builder
@@ -55,4 +55,8 @@ public class PropertyDetailsRequest {
     /** Locality/Area - optional */
     @Size(max = 150, message = "locality must be at most 150 characters")
     private String locality;
+
+    /** District - optional */
+    @Size(max = 100, message = "district must be at most 100 characters")
+    private String district;
 }
