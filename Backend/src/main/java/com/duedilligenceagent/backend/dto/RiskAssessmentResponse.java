@@ -11,8 +11,11 @@ import java.time.LocalDateTime;
 /**
  * Latest risk assessment for a property, as returned by
  * {@code GET /api/properties/{id}/risk-assessment}.
- * Scores are 0-10 (higher = safer); null until the diligence pipeline
- * has produced an assessment.
+ * <p>
+ * All scores are 0–100 <b>risk</b> scores — higher means riskier — matching
+ * the seeded demonstration dataset (e.g. a fully compliant property scores
+ * ~7.75 overall, an overdue-tax/high-flood property ~52.5). Null until the
+ * diligence pipeline has produced an assessment.
  */
 @Data
 @Builder

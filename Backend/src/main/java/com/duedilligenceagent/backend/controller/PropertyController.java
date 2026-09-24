@@ -5,7 +5,9 @@ import java.util.List;
 import com.duedilligenceagent.backend.dto.AggregationRequest;
 import com.duedilligenceagent.backend.dto.AggregationResponse;
 import com.duedilligenceagent.backend.dto.AggregationRunSummary;
+import com.duedilligenceagent.backend.dto.DiligenceDataResponse;
 import com.duedilligenceagent.backend.dto.MonitoringStatusResponse;
+import com.duedilligenceagent.backend.dto.ReportResponse;
 import com.duedilligenceagent.backend.dto.RiskAssessmentResponse;
 import com.duedilligenceagent.backend.entities.AggregationRun;
 import com.duedilligenceagent.backend.entities.RiskAssessmentDetails;
@@ -28,9 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.duedilligenceagent.backend.dto.Property.PropertyDetailsRequest;
 import com.duedilligenceagent.backend.dto.Property.PropertySearchApiResponse;
 import com.duedilligenceagent.backend.dto.PropertyResponse;
+import com.duedilligenceagent.backend.service.DiligenceService;
 import com.duedilligenceagent.backend.service.PropertyMonitoringService;
 import com.duedilligenceagent.backend.service.PropertySearchService;
 import com.duedilligenceagent.backend.service.PropertyService;
+import com.duedilligenceagent.backend.service.ReportService;
 import com.duedilligenceagent.backend.service.AggregationService;
 
 /**
@@ -45,6 +49,8 @@ public class PropertyController {
     private final PropertySearchService propertySearchService;
     private final AggregationService aggregationService;
     private final PropertyMonitoringService monitoringService;
+    private final DiligenceService diligenceService;
+    private final ReportService reportService;
     private final AggregationRunRepository aggregationRunRepository;
     private final RiskAssessmentDetailsRepository riskAssessmentRepository;
     private final UserRepository userRepository;
@@ -53,6 +59,8 @@ public class PropertyController {
                               PropertySearchService propertySearchService,
                               AggregationService aggregationService,
                               PropertyMonitoringService monitoringService,
+                              DiligenceService diligenceService,
+                              ReportService reportService,
                               AggregationRunRepository aggregationRunRepository,
                               RiskAssessmentDetailsRepository riskAssessmentRepository,
                               UserRepository userRepository) {
@@ -60,6 +68,8 @@ public class PropertyController {
         this.propertySearchService = propertySearchService;
         this.aggregationService = aggregationService;
         this.monitoringService = monitoringService;
+        this.diligenceService = diligenceService;
+        this.reportService = reportService;
         this.aggregationRunRepository = aggregationRunRepository;
         this.riskAssessmentRepository = riskAssessmentRepository;
         this.userRepository = userRepository;
@@ -147,6 +157,45 @@ public class PropertyController {
                 .map(this::toRiskResponse)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /**
+     * The full due-diligence record set stored for a property: ownership,
+     * tax, permits, zoning, flood, environmental, utilities, comparables
+     * and market trends. Absent sections are omitted.
+     */
+    @GetMapping("/{id}/diligence")
+    public ResponseEntity<DiligenceDataResponse> getDiligenceData(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(diligenceService.getDiligenceData(id));
+    }
+
+    /**
+     * Generates a due-diligence report from the stored data: calculates the
+     * risk assessment from the diligence records, builds the executive
+     * summary from the record statuses and persists the report for the
+     * current user.
+     */
+    @PostMapping("/{id}/report")
+    public ResponseEntity<ReportResponse> generateReport(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                reportService.generate(id, userIdOf(userDetails))
+        );
+    }
+
+    /** Latest generated report for a property; 204 when none exists yet. */
+    @GetMapping("/{id}/report")
+    public ResponseEntity<ReportResponse> getLatestReport(
+            @PathVariable Long id) {
+
+        ReportResponse report = reportService.latest(id);
+        return report == null
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.ok(report);
     }
 
     /** Monitoring state of a property for the current user. */

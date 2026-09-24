@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JPA repository for {@link Property}. Spring Data provides the standard
@@ -22,12 +23,15 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 
     List<Property> findByPropertyTypeIgnoreCase(String propertyType);
 
+    /** Exact place dedup for the external search path (fetch once, reuse). */
+    Optional<Property> findByGooglePlaceId(String googlePlaceId);
+
     /**
-     * Search history for a user: properties they searched via the search
-     * pipeline, newest first. The static due-diligence seed rows
-     * (searched_by null) are intentionally excluded — they are dataset
-     * records, not searches.
+     * Properties that carry diligence records — today the 50-property static
+     * dataset. These are the match candidates for the seed-dataset search
+     * path (no external API calls needed).
      */
-    @Query("SELECT p FROM Property p WHERE p.searchedBy = :userId ORDER BY p.createdAt DESC")
-    List<Property> findSearchHistory(@Param("userId") Long userId);
+    @Query("SELECT p FROM Property p WHERE p.propertyId IN "
+            + "(SELECT o.propertyId FROM OwnershipDetails o) ORDER BY p.propertyId")
+    List<Property> findPropertiesWithDiligenceRecords();
 }

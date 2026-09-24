@@ -1,12 +1,16 @@
 package com.duedilligenceagent.backend.service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
 import com.duedilligenceagent.backend.dto.PropertyResponse;
+import com.duedilligenceagent.backend.entities.ActivityLog;
 import com.duedilligenceagent.backend.entities.Property;
 import com.duedilligenceagent.backend.exception.ResourceNotFoundException;
+import com.duedilligenceagent.backend.repositories.ActivityLogRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 
 /**
@@ -17,9 +21,12 @@ import com.duedilligenceagent.backend.repositories.PropertyRepository;
 public class PropertyService {
 
     private final PropertyRepository propertyRepository;
+    private final ActivityLogRepository activityLogRepository;
 
-    public PropertyService(PropertyRepository propertyRepository) {
+    public PropertyService(PropertyRepository propertyRepository,
+                           ActivityLogRepository activityLogRepository) {
         this.propertyRepository = propertyRepository;
+        this.activityLogRepository = activityLogRepository;
     }
 
     // @Cacheable intentionally omitted: Redis is not configured for local dev,
@@ -64,12 +71,28 @@ public class PropertyService {
                 .toList();
     }
 
-    /** The user's searched properties, newest first (see PropertyRepository.findSearchHistory). */
+    /**
+     * The user's search history: their {@code PROPERTY_SEARCHED} events joined
+     * to properties, newest first. Each property appears once (its most recent
+     * search), so dataset matches and deduped external searches — where the
+     * property row is shared across users — still show in every searcher's
+     * own history.
+     */
     public List<PropertyResponse> getSearchHistory(Long userId) {
-        return propertyRepository.findSearchHistory(userId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        List<ActivityLog> events = activityLogRepository
+                .findByUserIdAndActionOrderByCreatedAtDesc(
+                        userId, PropertySearchService.SEARCH_EVENT_ACTION);
+
+        Map<Long, PropertyResponse> byPropertyId = new LinkedHashMap<>();
+        for (ActivityLog event : events) {
+            Long propertyId = event.getEntityId();
+            if (propertyId == null || byPropertyId.containsKey(propertyId)) {
+                continue; // newest event per property wins
+            }
+            propertyRepository.findById(propertyId)
+                    .ifPresent(property -> byPropertyId.put(propertyId, toResponse(property)));
+        }
+        return List.copyOf(byPropertyId.values());
     }
 
     private PropertyResponse toResponse(Property property) {

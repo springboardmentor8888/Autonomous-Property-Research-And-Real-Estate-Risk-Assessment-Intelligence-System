@@ -8,14 +8,17 @@ import com.duedilligenceagent.backend.dto.Property.PropertySearchApiResponse;
 import com.duedilligenceagent.backend.dto.Property.PropertySearchResponse;
 import com.duedilligenceagent.backend.dto.Property.PropertySearchResponse.ListingsStatus;
 import com.duedilligenceagent.backend.dto.Property.PropertySearchResponse.ResolvedPlace;
+import com.duedilligenceagent.backend.entities.ActivityLog;
 import com.duedilligenceagent.backend.entities.ComparablePropertyDetails;
 import com.duedilligenceagent.backend.entities.Property;
+import com.duedilligenceagent.backend.repositories.ActivityLogRepository;
 import com.duedilligenceagent.backend.repositories.ComparablePropertyDetailsRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import com.duedilligenceagent.backend.services.AddressValidationStrategy;
 import com.duedilligenceagent.backend.services.ApifyClient;
 import com.duedilligenceagent.backend.services.ApifyPropertyMapper;
 import com.duedilligenceagent.backend.services.GooglePlacesDetailsService;
+import com.duedilligenceagent.backend.services.PropertyMatchService;
 import com.duedilligenceagent.backend.services.PropertyTypeClassifier;
 import com.duedilligenceagent.backend.services.StructuredAddressText;
 import lombok.RequiredArgsConstructor;
@@ -29,30 +32,36 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
- * Orchestrates the property search pipeline:
+ * Orchestrates the property search:
  * <ol>
- *   <li>structured address input → Google Address Validation
- *       (validated/normalized address + location),</li>
- *   <li>persist the initial property details,</li>
- *   <li>Apify 99acres property search using the resolved address/location,</li>
- *   <li>map the listing data into the internal model,</li>
- *   <li>enrich the property_details row with the best match and persist every
- *       listing as a market comparable,</li>
- *   <li>return the property search result.</li>
+ *   <li><b>Due-diligence dataset match</b> — the structured input is matched
+ *       against the stored dataset (the 50 seeded properties with full
+ *       diligence records). On a match the stored property is returned
+ *       directly with its dataset comparables — <b>no external API
+ *       calls</b>. Data is fetched once and reused for every user.</li>
+ *   <li><b>External pipeline</b> (side-plugin for future milestones) —
+ *       Google Address Validation resolves the address, an existing
+ *       property_details row for the same place is reused (fetch once),
+ *       otherwise the validated address is persisted, enriched with the
+ *       best-matching Apify 99acres listing and every listing is stored as
+ *       a market comparable.</li>
  * </ol>
+ * Every successful search — dataset match or external — records a
+ * {@code PROPERTY_SEARCHED} activity event for the user, which drives
+ * their search history.
  * <p>
  * A listing-provider failure never fails the search — the validated address
  * result is returned with {@code listingsStatus=UNAVAILABLE}.
- * <p>
- * Kept separate from {@link PropertyService} (DB-backed CRUD) to keep
- * the search/orchestration concern out of the entity layer.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PropertySearchService {
+
+    static final String SEARCH_EVENT_ACTION = "PROPERTY_SEARCHED";
 
     private final AddressValidationStrategy addressValidationStrategy;
     private final PropertyRepository propertyRepository;
@@ -60,6 +69,8 @@ public class PropertySearchService {
     private final GooglePlacesDetailsService placesDetailsService;
     private final ApifyClient apifyClient;
     private final ApifyPropertyMapper apifyPropertyMapper;
+    private final PropertyMatchService propertyMatchService;
+    private final ActivityLogRepository activityLogRepository;
 
     @Transactional
     public PropertySearchApiResponse searchByAddress(PropertyDetailsRequest request, Long searchedByUserId) {
@@ -77,7 +88,15 @@ public class PropertySearchService {
         }
 
         final String fullAddress = StructuredAddressText.fullAddress(request);
-        log.info("Validating address via {}: '{}'", addressValidationStrategy.getStrategyName(), fullAddress);
+
+        // --- 0. Due-diligence dataset match: stored data, no external calls ---
+        Optional<Property> datasetMatch = propertyMatchService.findMatch(request);
+        if (datasetMatch.isPresent()) {
+            return datasetMatchResponse(datasetMatch.get(), fullAddress, searchedByUserId);
+        }
+
+        log.info("No dataset match for '{}' — falling back to {} validation",
+                fullAddress, addressValidationStrategy.getStrategyName());
 
         // --- 1. Google Address Validation ---
         List<GoogleCandidate> candidates;
@@ -122,17 +141,46 @@ public class PropertySearchService {
             enrichPropertyTypeFromPlaces(bestCandidate);
         }
 
-        // --- 2. Persist the initial property details ---
-        Property saved = persist(bestCandidate, fullAddress, request, searchedByUserId);
-        log.info("{} resolved '{}' to candidate; persisted Property row with id={}",
-                addressValidationStrategy.getStrategyName(), fullAddress, saved.getPropertyId());
+        // --- 2. Dedup by place id: fetch once, reuse for every later search ---
+        Property saved;
+        boolean reused;
+        if (bestCandidate.getPlaceId() != null) {
+            Optional<Property> existing =
+                    propertyRepository.findByGooglePlaceId(bestCandidate.getPlaceId());
+            if (existing.isPresent()) {
+                saved = existing.get();
+                reused = true;
+                log.info("Reusing stored property id={} for place '{}' (skipping re-fetch)",
+                        saved.getPropertyId(), bestCandidate.getPlaceId());
+            } else {
+                saved = persist(bestCandidate, fullAddress, request, searchedByUserId);
+                reused = false;
+                log.info("{} resolved '{}' to candidate; persisted Property row with id={}",
+                        addressValidationStrategy.getStrategyName(), fullAddress, saved.getPropertyId());
+            }
+        } else {
+            saved = persist(bestCandidate, fullAddress, request, searchedByUserId);
+            reused = false;
+        }
 
-        // --- 3-5. Apify property search using the resolved address/location ---
+        logSearchEvent(searchedByUserId, saved.getPropertyId());
+
+        // --- 3-5. Listing data: stored comparables on reuse, Apify otherwise ---
         List<PropertyListing> listings = null;
         ListingsStatus listingsStatus = ListingsStatus.UNAVAILABLE;
         String listingsMessage = null;
 
-        if (apifyClient.isEnabled()) {
+        if (reused && saved.getExternalListingId() != null) {
+            // Previously fetched — serve the stored comparables.
+            listings = storedListings(saved);
+            if (listings.isEmpty()) {
+                listingsStatus = ListingsStatus.NO_RESULTS;
+                listingsMessage = "No property listings stored for this property yet.";
+            } else {
+                listingsStatus = ListingsStatus.FOUND;
+                listingsMessage = "Previously fetched property listings for this property.";
+            }
+        } else if (apifyClient.isEnabled()) {
             String searchCity = firstNonBlank(bestCandidate.getCity(), request.getCity());
             String searchLocality = firstNonBlank(bestCandidate.getLocality(), request.getLocality());
             try {
@@ -209,6 +257,79 @@ public class PropertySearchService {
                 .build();
     }
 
+    /** Response for a due-diligence dataset match: stored property + comparables. */
+    private PropertySearchApiResponse datasetMatchResponse(Property property, String requestedAddress,
+                                                            Long searchedByUserId) {
+        logSearchEvent(searchedByUserId, property.getPropertyId());
+
+        List<PropertyListing> listings = storedListings(property);
+
+        ResolvedPlace place = ResolvedPlace.builder()
+                .propertyId(property.getPropertyId())
+                .formattedAddress(property.getAddress())
+                .latitude(toDouble(property.getLatitude()))
+                .longitude(toDouble(property.getLongitude()))
+                .city(property.getCity())
+                .state(property.getState())
+                .pincode(property.getPostalCode())
+                .locality(property.getLocality())
+                .build();
+
+        return PropertySearchApiResponse.builder()
+                .success(true)
+                .message("Matched the due-diligence dataset.")
+                .data(PropertySearchResponse.builder()
+                        .status(PropertySearchResponse.Status.VALID)
+                        .message("Matched the due-diligence dataset.")
+                        .requestedAddress(requestedAddress)
+                        .results(List.of(place))
+                        .listingsStatus(listings.isEmpty() ? ListingsStatus.NO_RESULTS : ListingsStatus.FOUND)
+                        .listingsMessage(listings.isEmpty()
+                                ? "No comparables stored for this property."
+                                : "Comparables from the due-diligence dataset.")
+                        .listings(listings)
+                        .build())
+                .build();
+    }
+
+    /** Maps the property's stored comparables into search-response listings. */
+    private List<PropertyListing> storedListings(Property property) {
+        return comparableRepository.findByPropertyId(property.getPropertyId()).stream()
+                .map(this::comparableToListing)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private PropertyListing comparableToListing(ComparablePropertyDetails comparable) {
+        return PropertyListing.builder()
+                .listingId(comparable.getExternalListingId())
+                .propertyType(comparable.getPropertyType())
+                .bhk(comparable.getBhk())
+                .areaText(comparable.getAreaSqft() == null ? null : comparable.getAreaSqft() + " sqft")
+                .price(comparable.getPrice() == null ? null : comparable.getPrice().toPlainString())
+                .pricePerSqft(comparable.getPricePerSqft() == null
+                        ? null : comparable.getPricePerSqft().toPlainString())
+                .reraId(comparable.getReraId())
+                .verified(comparable.getVerified())
+                .locality(comparable.getLocality())
+                .city(comparable.getCity())
+                .source(comparable.getSource())
+                .build();
+    }
+
+    /** Records the user's search event — the basis of the search history. */
+    private void logSearchEvent(Long userId, Long propertyId) {
+        if (userId == null) {
+            return;
+        }
+        activityLogRepository.save(ActivityLog.builder()
+                .userId(userId)
+                .action(SEARCH_EVENT_ACTION)
+                .entityType("PROPERTY")
+                .entityId(propertyId)
+                .build());
+    }
+
     /**
      * Picks the listing that best matches the searched property: when the user
      * supplied a building/society name, the first listing whose project,
@@ -257,6 +378,10 @@ public class PropertySearchService {
                 .searchedBy(searchedByUserId)
                 .build();
         return propertyRepository.save(row);
+    }
+
+    private static Double toDouble(BigDecimal value) {
+        return value == null ? null : value.doubleValue();
     }
 
     private static BigDecimal toBigDecimal(Double v) {
