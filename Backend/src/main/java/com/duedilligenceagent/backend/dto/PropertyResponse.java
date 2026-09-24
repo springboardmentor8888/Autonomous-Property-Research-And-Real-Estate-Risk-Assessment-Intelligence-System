@@ -86,6 +86,9 @@ public class PropertyResponse implements Serializable {
     private String expiryDate;
     private String mapAccuracy;
 
+    /** When this property was searched (row creation time). */
+    private java.time.LocalDateTime searchedAt;
+
     /** Splits a comma-joined column value into a list (null-safe). */
     public static List<String> splitCsv(String value) {
         if (value == null || value.isBlank()) {

@@ -3,7 +3,38 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { useAuthGuard } from '@/lib/useAuth';
-import { propertyApi, type PropertyDetailsResponse } from '@/lib/api';
+import {
+  propertyApi,
+  type AggregationRunResponse,
+  type AggregationRunSummary,
+  type MonitoringStatus,
+  type PropertyDetailsResponse,
+  type RiskAssessment,
+} from '@/lib/api';
+
+function formatDateTime(value?: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function observationStatusClass(status?: string) {
+  switch (status) {
+    case 'SUCCESS':
+      return 'text-emerald-600';
+    case 'FAILED':
+      return 'text-rose-600';
+    default:
+      return 'text-amber-600';
+  }
+}
 
 function PropertyDetailsContent() {
   const router = useRouter();
@@ -12,6 +43,15 @@ function PropertyDetailsContent() {
 
   const [details, setDetails] = useState<PropertyDetailsResponse | null>(null);
   const [done, setDone] = useState(false);
+
+  // --- Due diligence & monitoring state ---
+  const [monitoring, setMonitoring] = useState<MonitoringStatus | null>(null);
+  const [runs, setRuns] = useState<AggregationRunSummary[]>([]);
+  const [risk, setRisk] = useState<RiskAssessment | null>(null);
+  const [aggregating, setAggregating] = useState(false);
+  const [aggregateResult, setAggregateResult] = useState<AggregationRunResponse | null>(null);
+  const [aggregateError, setAggregateError] = useState<string | null>(null);
+  const [monitorBusy, setMonitorBusy] = useState(false);
 
   const authReady = useAuthGuard({ loginPath: '/' });
 
@@ -27,6 +67,59 @@ function PropertyDetailsContent() {
       .catch(() => setDetails(null))
       .finally(() => setDone(true));
   }, [propertyId, authReady]);
+
+  // Load monitoring status, past diligence runs and risk assessment.
+  useEffect(() => {
+    if (!authReady || !propertyId) return;
+    const id = Number(propertyId);
+    Promise.all([
+      propertyApi.getMonitoring(id).catch(() => null),
+      propertyApi.getAggregationRuns(id).catch(() => []),
+      propertyApi.getRiskAssessment(id).catch(() => undefined),
+    ]).then(([monitoringStatus, aggregationRuns, riskAssessment]) => {
+      setMonitoring(monitoringStatus);
+      setRuns(aggregationRuns ?? []);
+      setRisk(riskAssessment ?? null);
+    });
+  }, [propertyId, authReady]);
+
+  async function generateReport() {
+    if (!details) return;
+    setAggregating(true);
+    setAggregateError(null);
+    setAggregateResult(null);
+    try {
+      const result = await propertyApi.aggregate(details.propertyId, {
+        city: details.city,
+        localityName: details.locality || undefined,
+        propertyType: details.propertyType || undefined,
+        bhk: details.bedrooms || undefined,
+      });
+      setAggregateResult(result);
+      propertyApi.getAggregationRuns(details.propertyId)
+        .then((updatedRuns) => setRuns(updatedRuns ?? []))
+        .catch(() => {});
+    } catch (err) {
+      setAggregateError(
+        err instanceof Error ? err.message : 'Failed to run the diligence pipeline.'
+      );
+    } finally {
+      setAggregating(false);
+    }
+  }
+
+  async function toggleMonitoring() {
+    if (!details || !monitoring || monitorBusy) return;
+    setMonitorBusy(true);
+    try {
+      const next = monitoring.enabled
+        ? await propertyApi.disableMonitoring(details.propertyId)
+        : await propertyApi.enableMonitoring(details.propertyId);
+      setMonitoring(next);
+    } finally {
+      setMonitorBusy(false);
+    }
+  }
 
   if (!authReady) return null;
 
@@ -201,6 +294,145 @@ function PropertyDetailsContent() {
           </button>
         </div>
       </section>
+
+      {details && (
+        <section className="card mt-6 p-8">
+          <h2 className="text-sm font-semibold text-slate-700">Due Diligence & Monitoring</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Actions available for this property.
+          </p>
+
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Diligence report via aggregation pipeline */}
+            <div className="rounded-lg border border-slate-200 p-5">
+              <h3 className="text-sm font-semibold text-slate-900">Diligence Report</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Runs the aggregation pipeline — market comparables, locality trends and
+                provider checks — and stores the run result.
+              </p>
+              <button
+                onClick={generateReport}
+                disabled={aggregating}
+                className="btn-primary mt-4"
+              >
+                {aggregating ? 'Running pipeline…' : 'Generate Diligence Report'}
+              </button>
+              {aggregateError && (
+                <p className="mt-3 text-xs font-medium text-rose-600">{aggregateError}</p>
+              )}
+              {aggregateResult && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs text-slate-600">
+                    Run #{aggregateResult.aggregationRunId} — status{' '}
+                    <span className="font-semibold text-slate-900">{aggregateResult.status}</span>
+                  </p>
+                  <ul className="space-y-1.5">
+                    {aggregateResult.observations?.map((obs, i) => (
+                      <li key={i} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium text-slate-700">
+                          {obs.provider}
+                          {obs.operation ? ` · ${obs.operation}` : ''}
+                        </span>
+                        <span className={observationStatusClass(obs.status)}>
+                          {obs.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {runs.length > 0 && (
+                <div className="mt-4 border-t border-slate-100 pt-3">
+                  <p className="text-xs font-medium text-slate-500">Past runs</p>
+                  <ul className="mt-2 space-y-1">
+                    {runs.slice(0, 5).map((run) => (
+                      <li
+                        key={run.aggregationRunId}
+                        className="flex items-center justify-between gap-2 text-xs text-slate-600"
+                      >
+                        <span>
+                          #{run.aggregationRunId} · {formatDateTime(run.startedAt)}
+                        </span>
+                        <span className="font-medium">{run.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Risk assessment */}
+            <div className="rounded-lg border border-slate-200 p-5">
+              <h3 className="text-sm font-semibold text-slate-900">Risk Assessment</h3>
+              {risk ? (
+                <>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Assessed {formatDateTime(risk.assessedAt)} · scores 0–10.
+                  </p>
+                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                    {([
+                      ['Overall', risk.overallScore],
+                      ['Tax Risk', risk.taxRisk],
+                      ['Legal Risk', risk.legalRisk],
+                      ['Flood Risk', risk.floodRisk],
+                      ['Permit Compliance', risk.permitCompliance],
+                      ['Zoning Compliance', risk.zoningCompliance],
+                      ['Ownership Verification', risk.ownershipVerification],
+                    ] as Array<[string, number | undefined]>).map(([label, value]) => (
+                      <div key={label}>
+                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                          {label}
+                        </dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                          {value === undefined || value === null ? '—' : String(value)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-slate-500">
+                  No risk assessment available yet. Risk scores are produced by the
+                  diligence pipeline once the remaining provider contracts are finalized.
+                </p>
+              )}
+            </div>
+
+            {/* Property monitoring */}
+            <div className="rounded-lg border border-slate-200 p-5 lg:col-span-2">
+              <h3 className="text-sm font-semibold text-slate-900">Property Monitoring</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Monitor this property for changes in its records — ownership, tax,
+                permits, listings and market data.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-4">
+                <button
+                  onClick={toggleMonitoring}
+                  disabled={!monitoring || monitorBusy}
+                  className={monitoring?.enabled ? 'btn-secondary' : 'btn-primary'}
+                >
+                  {monitorBusy
+                    ? 'Updating…'
+                    : monitoring?.enabled
+                      ? 'Stop monitoring'
+                      : 'Monitor this property'}
+                </button>
+                {monitoring?.enabled ? (
+                  <p className="text-xs text-slate-500">
+                    Monitoring active since {formatDateTime(monitoring.monitoredSince)} ·
+                    last checked {formatDateTime(monitoring.lastCheckedAt)} · next check{' '}
+                    {formatDateTime(monitoring.nextCheckAt)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Not monitoring. Enable to track record changes for this property.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

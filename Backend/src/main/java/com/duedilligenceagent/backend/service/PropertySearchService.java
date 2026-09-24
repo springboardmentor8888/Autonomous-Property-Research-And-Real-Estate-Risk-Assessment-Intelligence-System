@@ -62,7 +62,7 @@ public class PropertySearchService {
     private final ApifyPropertyMapper apifyPropertyMapper;
 
     @Transactional
-    public PropertySearchApiResponse searchByAddress(PropertyDetailsRequest request) {
+    public PropertySearchApiResponse searchByAddress(PropertyDetailsRequest request, Long searchedByUserId) {
         if (request == null || request.getAddress() == null || request.getAddress().isBlank()) {
             return PropertySearchApiResponse.builder()
                     .success(false)
@@ -123,7 +123,7 @@ public class PropertySearchService {
         }
 
         // --- 2. Persist the initial property details ---
-        Property saved = persist(bestCandidate, fullAddress, request);
+        Property saved = persist(bestCandidate, fullAddress, request, searchedByUserId);
         log.info("{} resolved '{}' to candidate; persisted Property row with id={}",
                 addressValidationStrategy.getStrategyName(), fullAddress, saved.getPropertyId());
 
@@ -234,7 +234,8 @@ public class PropertySearchService {
         return haystack != null && haystack.toLowerCase(Locale.ROOT).contains(needle);
     }
 
-    private Property persist(GoogleCandidate c, String requestedAddress, PropertyDetailsRequest request) {
+    private Property persist(GoogleCandidate c, String requestedAddress, PropertyDetailsRequest request,
+                              Long searchedByUserId) {
         Property row = Property.builder()
                 .address(c.getFormattedAddress() != null ? c.getFormattedAddress() : requestedAddress)
                 .city(c.getCity() != null ? c.getCity() : request.getCity())
@@ -253,6 +254,7 @@ public class PropertySearchService {
                 .placeTypes(join(c.getPlaceTypes()))
                 .plusCode(c.getPlusCode())
                 .googleResponseId(c.getResponseId())
+                .searchedBy(searchedByUserId)
                 .build();
         return propertyRepository.save(row);
     }

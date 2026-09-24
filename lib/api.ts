@@ -60,6 +60,11 @@ async function fetchWithAuth<T>(
     throw new Error(errorData.message || `Request failed: ${res.status}`);
   }
 
+  // 204 No Content — nothing to parse (e.g. absent risk assessment).
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json();
 }
 
@@ -164,6 +169,45 @@ export const propertyApi = {
 
   async getById(id: number | string) {
     return fetchWithAuth<PropertyDetailsResponse>(`/properties/${id}`);
+  },
+
+  /** The current user's searched properties, newest first. */
+  async getSearchHistory() {
+    return fetchWithAuth<PropertyDetailsResponse[]>('/properties/searched');
+  },
+
+  /** Runs the diligence aggregation pipeline for a property. */
+  async aggregate(id: number | string, data: AggregationRequestDto) {
+    return fetchWithAuth<AggregationRunResponse>(`/properties/${id}/aggregate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /** Past diligence aggregation runs for a property, newest first. */
+  async getAggregationRuns(id: number | string) {
+    return fetchWithAuth<AggregationRunSummary[]>(`/properties/${id}/aggregations`);
+  },
+
+  /** Latest risk assessment; undefined when none has been produced yet. */
+  async getRiskAssessment(id: number | string) {
+    return fetchWithAuth<RiskAssessment | undefined>(`/properties/${id}/risk-assessment`);
+  },
+
+  async getMonitoring(id: number | string) {
+    return fetchWithAuth<MonitoringStatus>(`/properties/${id}/monitoring`);
+  },
+
+  async enableMonitoring(id: number | string) {
+    return fetchWithAuth<MonitoringStatus>(`/properties/${id}/monitoring`, {
+      method: 'POST',
+    });
+  },
+
+  async disableMonitoring(id: number | string) {
+    return fetchWithAuth<MonitoringStatus>(`/properties/${id}/monitoring`, {
+      method: 'DELETE',
+    });
   },
 };
 
@@ -314,6 +358,74 @@ export type PropertyDetailsResponse = {
   updateDate?: string;
   expiryDate?: string;
   mapAccuracy?: string;
+  /** When this property was searched (row creation time). */
+  searchedAt?: string;
+};
+
+/** Request body for POST /properties/{id}/aggregate. */
+export type AggregationRequestDto = {
+  city: string;
+  localityName?: string;
+  propertyType?: string;
+  bhk?: number;
+  transactionType?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  limit?: number;
+};
+
+/** Response of POST /properties/{id}/aggregate — one diligence pipeline run. */
+export type AggregationRunResponse = {
+  aggregationRunId: number;
+  propertyId: number;
+  status: string;
+  startedAt?: string;
+  completedAt?: string;
+  observations?: AggregationObservation[];
+};
+
+export type AggregationObservation = {
+  provider?: string;
+  operation?: string;
+  status?: string;
+  httpStatus?: number;
+  externalRecordId?: string;
+  errorMessage?: string;
+  retrievedAt?: string;
+};
+
+/** One past diligence run, as listed by GET /properties/{id}/aggregations. */
+export type AggregationRunSummary = {
+  aggregationRunId: number;
+  propertyId: number;
+  requestedAddress?: string;
+  status: string;
+  startedAt?: string;
+  completedAt?: string;
+};
+
+/** GET /properties/{id}/monitoring — per-user monitoring state. */
+export type MonitoringStatus = {
+  propertyId: number;
+  userId: number;
+  enabled: boolean;
+  lastCheckedAt?: string;
+  nextCheckAt?: string;
+  monitoredSince?: string;
+};
+
+/** GET /properties/{id}/risk-assessment — latest risk scores (0-10). */
+export type RiskAssessment = {
+  riskAssessmentId: number;
+  propertyId: number;
+  taxRisk?: number;
+  legalRisk?: number;
+  floodRisk?: number;
+  permitCompliance?: number;
+  zoningCompliance?: number;
+  ownershipVerification?: number;
+  overallScore?: number;
+  assessedAt?: string;
 };
 
 export const adminApi = {

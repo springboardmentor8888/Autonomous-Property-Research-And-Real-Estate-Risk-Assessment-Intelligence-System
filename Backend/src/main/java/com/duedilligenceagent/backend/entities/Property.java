@@ -224,6 +224,14 @@ public class Property {
     @Column(name = "map_accuracy", length = 30)
     private String mapAccuracy;
 
+    /** User who searched this property; null for legacy/unattributed rows. */
+    @Column(name = "searched_by")
+    private Long searchedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "searched_by", insertable = false, updatable = false)
+    private User searchedByUser;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

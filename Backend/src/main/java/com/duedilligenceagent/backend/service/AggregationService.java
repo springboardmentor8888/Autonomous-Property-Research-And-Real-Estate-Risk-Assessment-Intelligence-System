@@ -7,6 +7,7 @@ import com.duedilligenceagent.backend.entities.ComparablePropertyDetails;
 import com.duedilligenceagent.backend.entities.MarketTrends;
 import com.duedilligenceagent.backend.entities.Property;
 import com.duedilligenceagent.backend.entities.ProviderObservation;
+import com.duedilligenceagent.backend.exception.ResourceNotFoundException;
 import com.duedilligenceagent.backend.repositories.AggregationRunRepository;
 import com.duedilligenceagent.backend.repositories.ComparablePropertyDetailsRepository;
 import com.duedilligenceagent.backend.repositories.MarketTrendsRepository;
@@ -45,7 +46,7 @@ public class AggregationService {
     @Transactional
     public AggregationResponse aggregate(Long propertyId, String requestedAddress, AggregationRequest request) {
         Property property = propertyRepository.findById(propertyId)
-                .orElseThrow(() -> new IllegalArgumentException("Property not found with id: " + propertyId));
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found with id: " + propertyId));
         LocalDateTime startedAt = LocalDateTime.now();
         AggregationRun run = aggregationRunRepository.save(AggregationRun.builder()
                 .propertyId(propertyId)

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.duedilligenceagent.backend.dto.PropertyResponse;
 import com.duedilligenceagent.backend.entities.Property;
+import com.duedilligenceagent.backend.exception.ResourceNotFoundException;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 
 /**
@@ -35,7 +36,7 @@ public class PropertyService {
     public PropertyResponse getPropertyById(Long id) {
         Property property = propertyRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Property not found with id: " + id
                         ));
 
@@ -58,6 +59,14 @@ public class PropertyService {
 
     public List<PropertyResponse> searchByPropertyType(String propertyType) {
         return propertyRepository.findByPropertyTypeIgnoreCase(propertyType)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /** The user's searched properties, newest first (see PropertyRepository.findSearchHistory). */
+    public List<PropertyResponse> getSearchHistory(Long userId) {
+        return propertyRepository.findSearchHistory(userId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -119,6 +128,7 @@ public class PropertyService {
                 .updateDate(property.getUpdateDate())
                 .expiryDate(property.getExpiryDate())
                 .mapAccuracy(property.getMapAccuracy())
+                .searchedAt(property.getCreatedAt())
                 .build();
     }
 }
