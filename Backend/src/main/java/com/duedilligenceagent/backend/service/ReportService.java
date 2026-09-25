@@ -183,6 +183,14 @@ public class ReportService {
      */
     private String buildExecutiveSummary(Property property, RiskAssessmentDetails assessment,
                                         DiligenceDataResponse diligence) {
+        // Insufficient data: no diligence records exist — no fabricated scores.
+        if (assessment.getOverallScore() == null) {
+            return "No due-diligence records are available for this property yet — "
+                    + "risk scores could not be calculated. Run the diligence data "
+                    + "aggregation or connect record providers to populate the missing sections: "
+                    + String.join(", ", toCoverage(diligence).getMissingSections()) + ".";
+        }
+
         String tier = RiskAssessmentService.tierOf(assessment.getOverallScore());
         StringBuilder sb = new StringBuilder("Overall risk ")
                 .append(tier)

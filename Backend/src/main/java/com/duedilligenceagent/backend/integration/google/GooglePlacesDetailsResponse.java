@@ -1,4 +1,4 @@
-package com.duedilligenceagent.backend.dto.Google;
+package com.duedilligenceagent.backend.integration.google;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;

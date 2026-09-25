@@ -27,6 +27,15 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
     Optional<Property> findByGooglePlaceId(String googlePlaceId);
 
     /**
+     * Secondary dedup for the external search path: the same resolved
+     * address in the same city. Google place ids are not always stable for
+     * landmark-level addresses, so the resolved formatted address is the
+     * stable identity of last resort.
+     */
+    Optional<Property> findFirstByAddressIgnoreCaseAndCityIgnoreCaseOrderByPropertyIdAsc(
+            String address, String city);
+
+    /**
      * Properties that carry diligence records — today the 50-property static
      * dataset. These are the match candidates for the seed-dataset search
      * path (no external API calls needed).

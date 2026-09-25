@@ -55,15 +55,22 @@ import java.util.Optional;
  * exactly its seeded baseline.)
  *
  * <h2>Properties without diligence records</h2>
- * External searches (Google/Apify path) have no records yet; their domains
- * score the neutral-unknown 50, adjusted by the signals we do have:
- * premise-level validated address −10 ownership risk, RERA-registered
- * listing −10 legal risk, verified listing −5 ownership risk. The
- * neutral-unknown 50 overall lands in the ELEVATED tier deliberately —
- * a property whose records could not be verified is not cleared.
+ * A property with <b>no records at all</b> (every domain missing — the
+ * external-search case before any records exist) gets an explicit
+ * <b>insufficient-data</b> assessment: all domain scores and the overall
+ * score are stored null and the tier is {@code INSUFFICIENT_DATA}. No
+ * fabricated numbers — the report says records are missing.
+ * A property with <b>some</b> records keeps the conservative model: each
+ * missing domain scores the neutral-unknown 50, adjusted by the signals
+ * we do have (premise-level validated address −10 ownership risk,
+ * RERA-registered listing −10 legal risk, verified listing −5 ownership
+ * risk). The neutral-unknown 50 overall lands in the ELEVATED tier
+ * deliberately — a property whose records could not be verified is not
+ * cleared.
  *
  * <h2>Tiers</h2>
- * LOW < 20 ≤ MODERATE < 40 ≤ ELEVATED < 55 ≤ HIGH.
+ * LOW < 20 ≤ MODERATE < 40 ≤ ELEVATED < 55 ≤ HIGH; null overall →
+ * INSUFFICIENT_DATA.
  *
  * The engine is append-only: every calculation persists a NEW
  * risk_assessment_details row. The seeded baseline rows are the dataset's
@@ -115,6 +122,15 @@ public class RiskAssessmentService {
                 firstOf(environmentalRepository.findByPropertyId(id));
         Optional<OwnershipDetails> ownership = ownershipRepository.findByPropertyId(id);
 
+        // No records in any domain: insufficient data — no fabricated scores.
+        if (tax.isEmpty() && flood.isEmpty() && permit.isEmpty()
+                && zoning.isEmpty() && environmental.isEmpty() && ownership.isEmpty()) {
+            return RiskAssessmentDetails.builder()
+                    .propertyId(id)
+                    .assessedAt(LocalDateTime.now())
+                    .build();
+        }
+
         BigDecimal taxRisk = taxRisk(tax);
         BigDecimal floodRisk = floodRisk(flood);
         BigDecimal permitRisk = permitRisk(permit);
@@ -143,10 +159,10 @@ public class RiskAssessmentService {
                 .build();
     }
 
-    /** Risk tier for an overall score: LOW / MODERATE / ELEVATED / HIGH. */
+    /** Risk tier for an overall score: LOW / MODERATE / ELEVATED / HIGH; null → INSUFFICIENT_DATA. */
     static String tierOf(BigDecimal overall) {
         if (overall == null) {
-            return "UNKNOWN";
+            return "INSUFFICIENT_DATA";
         }
         double v = overall.doubleValue();
         if (v < 20) {

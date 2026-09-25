@@ -133,7 +133,9 @@ export default function Reports() {
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tierClass(report.riskTier)}`}
                     >
-                      {report.riskTier} RISK
+                      {report.riskTier === 'INSUFFICIENT_DATA'
+                        ? 'INSUFFICIENT DATA'
+                        : `${report.riskTier} RISK`}
                     </span>
                     <p className="mt-2 text-xs text-slate-400">
                       {formatDateTime(report.generatedAt)}

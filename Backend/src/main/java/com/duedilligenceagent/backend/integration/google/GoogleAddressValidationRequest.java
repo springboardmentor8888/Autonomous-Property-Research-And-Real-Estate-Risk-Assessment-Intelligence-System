@@ -1,4 +1,4 @@
-package com.duedilligenceagent.backend.dto.Google;
+package com.duedilligenceagent.backend.integration.google;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
@@ -13,7 +13,7 @@ import java.util.List;
  * ({@code POST /v1:validateAddress}).
  * <p>
  * Provider-specific shape — never exposed to the internal domain. Built by
- * {@link com.duedilligenceagent.backend.services.GoogleAddressValidationStrategy}
+ * {@link com.duedilligenceagent.backend.integration.google.GoogleAddressValidationStrategy}
  * from the application's structured address input.
  *
  * @see <a href="https://developers.google.com/maps/documentation/address-validation/reference/rest/v1/validateAddress">Address Validation API reference</a>

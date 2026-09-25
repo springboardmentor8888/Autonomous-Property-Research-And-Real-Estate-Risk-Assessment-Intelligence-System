@@ -1,7 +1,6 @@
-package com.duedilligenceagent.backend.services;
+package com.duedilligenceagent.backend.integration.google;
 
-import com.duedilligenceagent.backend.dto.Google.GoogleAddressValidationRequest;
-import com.duedilligenceagent.backend.dto.Google.GoogleAddressValidationResponse;
+import com.duedilligenceagent.backend.service.search.AddressValidationStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

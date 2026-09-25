@@ -1,7 +1,7 @@
-package com.duedilligenceagent.backend.services;
+package com.duedilligenceagent.backend.integration.google;
 
-import com.duedilligenceagent.backend.dto.Google.GoogleAddressValidationResponse;
-import com.duedilligenceagent.backend.dto.Google.GoogleCandidate;
+import com.duedilligenceagent.backend.integration.google.GoogleAddressValidationResponse;
+import com.duedilligenceagent.backend.integration.google.GoogleCandidate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

@@ -486,7 +486,7 @@ export type ReportResponse = {
   reportId: number;
   propertyId: number;
   propertyAddress?: string;
-  riskTier?: 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH' | 'UNKNOWN';
+  riskTier?: 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH' | 'UNKNOWN' | 'INSUFFICIENT_DATA';
   executiveSummary?: string;
   status?: string;
   generatedAt?: string;

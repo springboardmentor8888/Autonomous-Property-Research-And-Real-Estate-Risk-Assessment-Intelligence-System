@@ -1,163 +1,134 @@
 package com.duedilligenceagent.backend.service;
 
-import com.duedilligenceagent.backend.dto.AggregationRequest;
 import com.duedilligenceagent.backend.dto.AggregationResponse;
 import com.duedilligenceagent.backend.entities.AggregationRun;
-import com.duedilligenceagent.backend.entities.ComparablePropertyDetails;
-import com.duedilligenceagent.backend.entities.MarketTrends;
 import com.duedilligenceagent.backend.entities.Property;
 import com.duedilligenceagent.backend.entities.ProviderObservation;
 import com.duedilligenceagent.backend.exception.ResourceNotFoundException;
 import com.duedilligenceagent.backend.repositories.AggregationRunRepository;
+import com.duedilligenceagent.backend.repositories.BuildingPermitDetailsRepository;
 import com.duedilligenceagent.backend.repositories.ComparablePropertyDetailsRepository;
+import com.duedilligenceagent.backend.repositories.EnvironmentalDetailsRepository;
+import com.duedilligenceagent.backend.repositories.FloodZoneDetailsRepository;
 import com.duedilligenceagent.backend.repositories.MarketTrendsRepository;
+import com.duedilligenceagent.backend.repositories.OwnershipDetailsRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import com.duedilligenceagent.backend.repositories.ProviderObservationRepository;
-import com.duedilligenceagent.backend.services.AvnesterClient;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.duedilligenceagent.backend.repositories.TaxDetailsRepository;
+import com.duedilligenceagent.backend.repositories.ZoningDetailsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClientException;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
+/**
+ * Standalone diligence-data aggregation: inventories the property's
+ * <b>stored</b> due-diligence data (records, comparables, market trends)
+ * into an aggregation run. Makes no external API calls — external
+ * providers exist only as the property-search fallback
+ * (see {@code service/search/}).
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AggregationService {
 
-    private static final List<String> PENDING_CONTRACTS = List.of(
-            "RBIH_LRS", "NEER_FLOOD", "PROPERTY_TAX", "BUILDING_PERMITS",
-            "ZONING", "ENVIRONMENTAL", "UTILITIES"
-    );
-
     private final PropertyRepository propertyRepository;
     private final AggregationRunRepository aggregationRunRepository;
     private final ProviderObservationRepository providerObservationRepository;
+    private final TaxDetailsRepository taxRepository;
+    private final FloodZoneDetailsRepository floodRepository;
+    private final BuildingPermitDetailsRepository permitRepository;
+    private final ZoningDetailsRepository zoningRepository;
+    private final EnvironmentalDetailsRepository environmentalRepository;
+    private final OwnershipDetailsRepository ownershipRepository;
     private final ComparablePropertyDetailsRepository comparableRepository;
     private final MarketTrendsRepository marketTrendsRepository;
-    private final AvnesterClient avnesterClient;
 
     @Transactional
-    public AggregationResponse aggregate(Long propertyId, String requestedAddress, AggregationRequest request) {
+    public AggregationResponse aggregate(Long propertyId, String requestedAddress) {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found with id: " + propertyId));
-        LocalDateTime startedAt = LocalDateTime.now();
+
         AggregationRun run = aggregationRunRepository.save(AggregationRun.builder()
                 .propertyId(propertyId)
                 .requestedAddress(requestedAddress == null ? property.getAddress() : requestedAddress)
                 .status("RUNNING")
-                .startedAt(startedAt)
+                .startedAt(LocalDateTime.now())
                 .build());
 
         List<ProviderObservation> observations = new ArrayList<>();
-        if (avnesterClient.isEnabled()) {
-            collectAvnester(run, property, request, observations);
-        } else {
-            observations.add(observation(run, "AVNESTER", "search_properties", "NOT_CONFIGURED", null, null,
-                    "AVNESTER aggregation is disabled by configuration."));
-        }
-
-        for (String provider : PENDING_CONTRACTS) {
-            observations.add(observation(run, provider, "aggregate", "CONTRACT_PENDING", null, null,
-                    "Provider contract or target jurisdiction is not frozen; no endpoint was called."));
-        }
+        inventoryRecord(observations, run, "tax_records",
+                taxRepository.findByPropertyId(propertyId),
+                tax -> "paymentStatus=" + tax.getPaymentStatus());
+        inventoryRecord(observations, run, "flood_zone",
+                floodRepository.findByPropertyId(propertyId),
+                flood -> "riskLevel=" + flood.getRiskLevel());
+        inventoryRecord(observations, run, "building_permits",
+                permitRepository.findByPropertyId(propertyId),
+                permit -> "permitStatus=" + permit.getPermitStatus());
+        inventoryRecord(observations, run, "zoning",
+                zoningRepository.findByPropertyId(propertyId),
+                zoning -> "zoningStatus=" + zoning.getZoningStatus());
+        inventoryRecord(observations, run, "environmental",
+                environmentalRepository.findByPropertyId(propertyId),
+                env -> "status=" + env.getStatus());
+        inventoryOptional(observations, run, "ownership",
+                ownershipRepository.findByPropertyId(propertyId),
+                own -> "ownershipType=" + own.getOwnershipType());
+        inventoryCount(observations, run, "comparable_properties",
+                comparableRepository.findByPropertyId(propertyId).size());
+        inventoryCount(observations, run, "market_trends",
+                marketTrendsRepository.findByPropertyId(propertyId).size());
 
         providerObservationRepository.saveAll(observations);
-        run.setStatus(observations.stream().anyMatch(item -> "FAILED".equals(item.getStatus()))
-                ? "PARTIAL" : "COMPLETED_WITH_GAPS");
+        boolean gaps = observations.stream().anyMatch(item -> "MISSING".equals(item.getStatus()));
+        run.setStatus(gaps ? "COMPLETED_WITH_GAPS" : "COMPLETED");
         run.setCompletedAt(LocalDateTime.now());
         aggregationRunRepository.save(run);
+        log.info("Aggregated stored diligence data for property id={}: {} sections, gaps={}",
+                propertyId, observations.size(), gaps);
         return toResponse(run, observations);
     }
 
-    private void collectAvnester(AggregationRun run, Property property, AggregationRequest request,
-                                List<ProviderObservation> observations) {
-        try {
-            JsonNode response = avnesterClient.searchProperties(request);
-            String payload = response == null ? null : response.toString();
-            JsonNode listings = response == null ? null : response.path("listings");
-            if (response != null && response.path("supported").isBoolean() && !response.path("supported").asBoolean()) {
-                observations.add(observation(run, "AVNESTER", "search_properties", "COVERAGE_UNAVAILABLE", 200,
-                        payload, "AVnester does not currently support this city."));
-            } else {
-                if (listings != null && listings.isArray()) {
-                    for (JsonNode listing : listings) {
-                        comparableRepository.save(toComparable(property, listing));
-                    }
-                }
-                observations.add(observation(run, "AVNESTER", "search_properties", "SUCCESS", 200,
-                        payload, null));
-            }
-
-            if (request.getLocalityName() != null && !request.getLocalityName().isBlank()) {
-                JsonNode insights = avnesterClient.getLocalityInsights(request.getLocalityName(), request.getCity());
-                marketTrendsRepository.save(toMarketTrend(property, run, request, insights));
-                observations.add(observation(run, "AVNESTER", "get_locality_insights", "SUCCESS", 200,
-                        insights == null ? null : insights.toString(), null));
-            }
-        } catch (RestClientException ex) {
-            log.warn("AVnester aggregation failed for property {}: {}", property.getPropertyId(), ex.getMessage());
-            observations.add(observation(run, "AVNESTER", "aggregate", "FAILED", null, null, ex.getMessage()));
+    private <T> void inventoryRecord(List<ProviderObservation> observations, AggregationRun run,
+                                     String section, List<T> records, Function<T, String> summary) {
+        if (records == null || records.isEmpty()) {
+            observations.add(observation(run, section, "MISSING", "records=0"));
+        } else {
+            observations.add(observation(run, section, "AVAILABLE",
+                    "records=" + records.size() + "; " + summary.apply(records.get(0))));
         }
     }
 
-    private ComparablePropertyDetails toComparable(Property property, JsonNode listing) {
-        return ComparablePropertyDetails.builder()
-                .propertyId(property.getPropertyId())
-                .externalListingId(text(listing, "listingId"))
-                .city(text(listing, "city"))
-                .locality(text(listing, "localityName"))
-                .propertyType(text(listing, "propertyType"))
-                .bhk(text(listing, "bhk"))
-                .areaSqft(integer(listing, "areaSqft"))
-                .price(decimal(listing, "price"))
-                .pricePerSqft(decimal(listing, "pricePerSqft"))
-                .reraId(text(listing, "reraId"))
-                .ageYears(integer(listing, "ageYears"))
-                .floor(integer(listing, "floor"))
-                .totalFloors(integer(listing, "totalFloors"))
-                .handoffUrl(text(listing, "handoffUrl"))
-                .verified(listing.has("reraId") && !listing.path("reraId").isNull())
-                .source("AVNESTER")
-                .retrievedAt(LocalDateTime.now())
-                .build();
+    private <T> void inventoryOptional(List<ProviderObservation> observations, AggregationRun run,
+                                       String section, Optional<T> record, Function<T, String> summary) {
+        if (record == null || record.isEmpty()) {
+            observations.add(observation(run, section, "MISSING", "records=0"));
+        } else {
+            observations.add(observation(run, section, "AVAILABLE", "records=1; " + summary.apply(record.get())));
+        }
     }
 
-    private MarketTrends toMarketTrend(Property property, AggregationRun run, AggregationRequest request,
-                                       JsonNode insights) {
-        return MarketTrends.builder()
-                .propertyId(property.getPropertyId())
-                .aggregationRunId(run.getAggregationRunId())
-                .city(request.getCity())
-                .locality(request.getLocalityName())
-                .period("CURRENT")
-                .averagePricePerSqft(decimal(insights, "avgPricePerSqft"))
-                .supplyCount(integer(insights, "supplyCount"))
-                .demandPulse(decimal(insights, "demandPulse"))
-                .investmentGrade(text(insights, "investmentGrade"))
-                .livabilityGrade(text(insights, "livabilityGrade"))
-                .source("AVNESTER")
-                .retrievedAt(LocalDateTime.now())
-                .build();
+    private void inventoryCount(List<ProviderObservation> observations, AggregationRun run,
+                                String section, int count) {
+        observations.add(observation(run, section, count > 0 ? "AVAILABLE" : "MISSING", "records=" + count));
     }
 
-    private ProviderObservation observation(AggregationRun run, String provider, String operation, String status,
-                                           Integer httpStatus, String payload, String errorMessage) {
+    private ProviderObservation observation(AggregationRun run, String section, String status, String payload) {
         return ProviderObservation.builder()
                 .aggregationRunId(run.getAggregationRunId())
                 .propertyId(run.getPropertyId())
-                .provider(provider)
-                .operation(operation)
+                .provider("STORED_DATASET")
+                .operation(section)
                 .status(status)
-                .httpStatus(httpStatus)
                 .responsePayload(payload)
-                .errorMessage(errorMessage)
                 .retrievedAt(LocalDateTime.now())
                 .build();
     }
@@ -179,20 +150,5 @@ public class AggregationService {
                         .retrievedAt(item.getRetrievedAt())
                         .build()).toList())
                 .build();
-    }
-
-    private static String text(JsonNode node, String field) {
-        if (node == null || node.path(field).isMissingNode() || node.path(field).isNull()) return null;
-        return node.path(field).asText();
-    }
-
-    private static Integer integer(JsonNode node, String field) {
-        if (node == null || !node.hasNonNull(field)) return null;
-        return node.path(field).asInt();
-    }
-
-    private static BigDecimal decimal(JsonNode node, String field) {
-        if (node == null || !node.hasNonNull(field)) return null;
-        return node.path(field).decimalValue();
     }
 }

@@ -1,4 +1,4 @@
-package com.duedilligenceagent.backend.services;
+package com.duedilligenceagent.backend.service.search;
 
 import com.duedilligenceagent.backend.dto.Property.PropertyDetailsRequest;
 import com.duedilligenceagent.backend.entities.Property;

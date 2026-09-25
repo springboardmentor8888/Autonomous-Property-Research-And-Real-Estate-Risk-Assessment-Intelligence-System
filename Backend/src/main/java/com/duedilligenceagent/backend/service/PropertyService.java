@@ -11,6 +11,7 @@ import com.duedilligenceagent.backend.entities.ActivityLog;
 import com.duedilligenceagent.backend.entities.Property;
 import com.duedilligenceagent.backend.exception.ResourceNotFoundException;
 import com.duedilligenceagent.backend.repositories.ActivityLogRepository;
+import com.duedilligenceagent.backend.service.search.PropertySearchService;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 
 /**

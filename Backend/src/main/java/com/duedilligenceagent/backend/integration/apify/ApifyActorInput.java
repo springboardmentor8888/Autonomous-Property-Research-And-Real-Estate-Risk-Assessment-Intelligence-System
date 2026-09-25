@@ -1,4 +1,4 @@
-package com.duedilligenceagent.backend.dto.Apify;
+package com.duedilligenceagent.backend.integration.apify;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
@@ -12,7 +12,7 @@ import java.util.List;
  * External request model for the Apify 99acres actor run.
  * <p>
  * Provider-specific input schema (Apify actor input) — never exposed to the
- * internal domain. Built by {@link com.duedilligenceagent.backend.services.ApifyClient}
+ * internal domain. Built by {@link com.duedilligenceagent.backend.integration.apify.ApifyClient}
  * from the Google-resolved address.
  * <p>
  * Common 99acres actor input fields: {@code city} + {@code searchMode} build

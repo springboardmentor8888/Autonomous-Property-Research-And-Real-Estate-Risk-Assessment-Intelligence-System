@@ -1,6 +1,6 @@
-package com.duedilligenceagent.backend.services;
+package com.duedilligenceagent.backend.integration.google;
 
-import com.duedilligenceagent.backend.dto.Google.GooglePlacesDetailsResponse;
+import com.duedilligenceagent.backend.integration.google.GooglePlacesDetailsResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;

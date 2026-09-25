@@ -1,4 +1,4 @@
-package com.duedilligenceagent.backend.services;
+package com.duedilligenceagent.backend.integration.google;
 
 import com.duedilligenceagent.backend.entities.enums.PropertyType;
 

@@ -1,8 +1,8 @@
 package com.duedilligenceagent.backend.config;
 
-import com.duedilligenceagent.backend.services.AddressValidationStrategy;
-import com.duedilligenceagent.backend.services.GoogleAddressValidationStrategy;
-import com.duedilligenceagent.backend.services.GoogleGeocodingStrategy;
+import com.duedilligenceagent.backend.service.search.AddressValidationStrategy;
+import com.duedilligenceagent.backend.integration.google.GoogleAddressValidationStrategy;
+import com.duedilligenceagent.backend.integration.google.GoogleGeocodingStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

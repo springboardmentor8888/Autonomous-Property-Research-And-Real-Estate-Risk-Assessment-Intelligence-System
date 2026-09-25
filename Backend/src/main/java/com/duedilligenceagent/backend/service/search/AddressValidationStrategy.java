@@ -1,6 +1,6 @@
-package com.duedilligenceagent.backend.services;
+package com.duedilligenceagent.backend.service.search;
 
-import com.duedilligenceagent.backend.dto.Google.GoogleCandidate;
+import com.duedilligenceagent.backend.integration.google.GoogleCandidate;
 import com.duedilligenceagent.backend.dto.Property.PropertyDetailsRequest;
 
 import java.util.List;

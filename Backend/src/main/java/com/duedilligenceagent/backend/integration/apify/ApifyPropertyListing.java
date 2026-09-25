@@ -1,4 +1,4 @@
-package com.duedilligenceagent.backend.dto.Apify;
+package com.duedilligenceagent.backend.integration.apify;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -19,7 +19,7 @@ import java.util.List;
  * the camelCase / uppercase variants seen across actor versions. All scalar
  * fields are {@code String} so numeric or textual variants from the source
  * never break deserialization — typed parsing happens in
- * {@link com.duedilligenceagent.backend.services.ApifyPropertyMapper}.
+ * {@link com.duedilligenceagent.backend.integration.apify.ApifyPropertyMapper}.
  * <p>
  * Provider-specific shape — never exposed to the internal domain.
  */

@@ -13,4 +13,7 @@ public interface MarketTrendsRepository extends JpaRepository<MarketTrends, Long
 
     /** City-level market trend rows (locality null), newest period first. */
     List<MarketTrends> findByCityIgnoreCaseAndLocalityIsNullOrderByPeriodDesc(String city);
+
+    /** Market trend rows linked directly to a property. */
+    List<MarketTrends> findByPropertyId(Long propertyId);
 }

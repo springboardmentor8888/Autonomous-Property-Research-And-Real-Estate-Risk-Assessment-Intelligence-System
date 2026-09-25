@@ -85,19 +85,31 @@ function tierClass(tier?: string) {
     case 'HIGH':
       return 'bg-rose-50 text-rose-700 border-rose-200';
     default:
+      // INSUFFICIENT_DATA and anything unknown: neutral gray
       return 'bg-slate-100 text-slate-600 border-slate-200';
   }
 }
 
-/** 0-100 risk bar — higher means riskier. */
+/** 0-100 risk bar — higher means riskier. Null value = no records. */
 function RiskBar({ label, value }: { label: string; value?: number }) {
-  const v = value ?? 0;
+  if (value === null || value === undefined) {
+    return (
+      <div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-medium text-slate-600">{label}</span>
+          <span className="font-medium text-slate-400">No records</span>
+        </div>
+        <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100" />
+      </div>
+    );
+  }
+  const v = value;
   const color = v >= 55 ? 'bg-rose-500' : v >= 20 ? 'bg-amber-500' : 'bg-emerald-500';
   return (
     <div>
       <div className="flex items-center justify-between text-xs">
         <span className="font-medium text-slate-600">{label}</span>
-        <span className="font-semibold text-slate-900">{value === undefined ? '—' : v.toFixed(0)}</span>
+        <span className="font-semibold text-slate-900">{v.toFixed(0)}</span>
       </div>
       <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100">
         <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${Math.min(100, v)}%` }} />
@@ -492,7 +504,9 @@ function PropertyDetailsContent() {
             <div className="mt-6 space-y-6">
               <div className="flex flex-wrap items-center gap-3">
                 <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${tierClass(report.riskTier)}`}>
-                  {report.riskTier} RISK
+                  {report.riskTier === 'INSUFFICIENT_DATA'
+                    ? 'INSUFFICIENT DATA'
+                    : `${report.riskTier} RISK`}
                 </span>
                 <span className="text-xs text-slate-500">
                   Report #{report.reportId} · Generated {formatDateTime(report.generatedAt)}

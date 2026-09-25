@@ -1,7 +1,7 @@
-package com.duedilligenceagent.backend.services;
+package com.duedilligenceagent.backend.integration.apify;
 
-import com.duedilligenceagent.backend.dto.Apify.ApifyActorInput;
-import com.duedilligenceagent.backend.dto.Apify.ApifyPropertyListing;
+import com.duedilligenceagent.backend.integration.apify.ApifyActorInput;
+import com.duedilligenceagent.backend.integration.apify.ApifyPropertyListing;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;

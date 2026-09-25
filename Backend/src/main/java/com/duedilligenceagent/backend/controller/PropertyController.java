@@ -32,7 +32,7 @@ import com.duedilligenceagent.backend.dto.Property.PropertySearchApiResponse;
 import com.duedilligenceagent.backend.dto.PropertyResponse;
 import com.duedilligenceagent.backend.service.DiligenceService;
 import com.duedilligenceagent.backend.service.PropertyMonitoringService;
-import com.duedilligenceagent.backend.service.PropertySearchService;
+import com.duedilligenceagent.backend.service.search.PropertySearchService;
 import com.duedilligenceagent.backend.service.PropertyService;
 import com.duedilligenceagent.backend.service.ReportService;
 import com.duedilligenceagent.backend.service.AggregationService;
@@ -126,7 +126,9 @@ public class PropertyController {
     public ResponseEntity<AggregationResponse> aggregateProperty(
             @PathVariable Long id,
             @RequestBody AggregationRequest request) {
-        return ResponseEntity.ok(aggregationService.aggregate(id, null, request));
+        // Aggregation is standalone: it inventories the property's stored
+        // diligence data only — no external providers are called.
+        return ResponseEntity.ok(aggregationService.aggregate(id, null));
     }
 
     /** Past diligence aggregation runs for a property, newest first. */

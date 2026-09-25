@@ -1,6 +1,6 @@
-package com.duedilligenceagent.backend.services;
+package com.duedilligenceagent.backend.integration.apify;
 
-import com.duedilligenceagent.backend.dto.Apify.ApifyPropertyListing;
+import com.duedilligenceagent.backend.integration.apify.ApifyPropertyListing;
 import com.duedilligenceagent.backend.dto.Property.PropertyListing;
 import com.duedilligenceagent.backend.entities.ComparablePropertyDetails;
 import com.duedilligenceagent.backend.entities.Property;
