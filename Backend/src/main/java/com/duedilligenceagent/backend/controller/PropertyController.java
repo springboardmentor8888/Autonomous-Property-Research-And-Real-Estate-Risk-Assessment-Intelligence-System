@@ -9,6 +9,7 @@ import com.duedilligenceagent.backend.dto.DiligenceDataResponse;
 import com.duedilligenceagent.backend.dto.MonitoringStatusResponse;
 import com.duedilligenceagent.backend.dto.ReportResponse;
 import com.duedilligenceagent.backend.dto.RiskAssessmentResponse;
+import com.duedilligenceagent.backend.service.ReportPdfService;
 import com.duedilligenceagent.backend.entities.AggregationRun;
 import com.duedilligenceagent.backend.entities.RiskAssessmentDetails;
 import com.duedilligenceagent.backend.entities.User;
@@ -51,6 +52,7 @@ public class PropertyController {
     private final PropertyMonitoringService monitoringService;
     private final DiligenceService diligenceService;
     private final ReportService reportService;
+    private final ReportPdfService reportPdfService;
     private final AggregationRunRepository aggregationRunRepository;
     private final RiskAssessmentDetailsRepository riskAssessmentRepository;
     private final UserRepository userRepository;
@@ -61,6 +63,7 @@ public class PropertyController {
                               PropertyMonitoringService monitoringService,
                               DiligenceService diligenceService,
                               ReportService reportService,
+                              ReportPdfService reportPdfService,
                               AggregationRunRepository aggregationRunRepository,
                               RiskAssessmentDetailsRepository riskAssessmentRepository,
                               UserRepository userRepository) {
@@ -70,6 +73,7 @@ public class PropertyController {
         this.monitoringService = monitoringService;
         this.diligenceService = diligenceService;
         this.reportService = reportService;
+        this.reportPdfService = reportPdfService;
         this.aggregationRunRepository = aggregationRunRepository;
         this.riskAssessmentRepository = riskAssessmentRepository;
         this.userRepository = userRepository;
@@ -198,6 +202,26 @@ public class PropertyController {
         return report == null
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.ok(report);
+    }
+
+    /**
+     * Downloads the latest generated report as a PDF (SRS: reports must
+     * be downloadable). 404 when no report exists yet.
+     */
+    @GetMapping("/{id}/report/pdf")
+    public ResponseEntity<byte[]> downloadReportPdf(
+            @PathVariable Long id) {
+
+        ReportResponse report = reportService.latest(id);
+        if (report == null) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] pdf = reportPdfService.generate(report);
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/pdf")
+                .header("Content-Disposition",
+                        "attachment; filename=\"due-diligence-report-" + id + ".pdf\"")
+                .body(pdf);
     }
 
     /** Monitoring state of a property for the current user. */

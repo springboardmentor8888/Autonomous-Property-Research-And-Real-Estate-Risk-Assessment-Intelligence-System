@@ -90,30 +90,127 @@ function tierClass(tier?: string) {
   }
 }
 
-/** 0-100 risk bar — higher means riskier. Null value = no records. */
-function RiskBar({ label, value }: { label: string; value?: number }) {
-  if (value === null || value === undefined) {
-    return (
-      <div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-medium text-slate-600">{label}</span>
-          <span className="font-medium text-slate-400">No records</span>
-        </div>
-        <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100" />
-      </div>
-    );
-  }
-  const v = value;
-  const color = v >= 55 ? 'bg-rose-500' : v >= 20 ? 'bg-amber-500' : 'bg-emerald-500';
+/** Hex colors matching the risk tiers (0–100, higher = riskier). */
+function scoreHex(v: number): string {
+  if (v >= 55) return '#e11d48'; // rose-600 HIGH
+  if (v >= 20) return '#f59e0b'; // amber-500 ELEVATED
+  return '#10b981'; // emerald-500 LOW/MODERATE
+}
+
+function scoreChipClass(v: number): string {
+  if (v >= 55) return 'bg-rose-50 text-rose-700 border-rose-200';
+  if (v >= 20) return 'bg-amber-50 text-amber-700 border-amber-200';
+  return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+}
+
+/**
+ * Circular overall-risk gauge. A null score (insufficient data) renders
+ * a neutral gray ring with "N/A".
+ */
+function RiskGauge({ score, tier }: { score?: number; tier?: string }) {
+  const R = 54;
+  const CIRC = 2 * Math.PI * R;
+  const hasScore = score !== null && score !== undefined;
+  const v = hasScore ? Math.min(100, Math.max(0, score!)) : 0;
+  const color = hasScore ? scoreHex(v) : '#94a3b8';
+  const tierLabel = tier === 'INSUFFICIENT_DATA' ? 'INSUFFICIENT DATA' : `${tier ?? 'UNKNOWN'} RISK`;
+
   return (
-    <div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-medium text-slate-600">{label}</span>
-        <span className="font-semibold text-slate-900">{v.toFixed(0)}</span>
+    <div className="flex items-center gap-5">
+      <div className="relative h-32 w-32 shrink-0">
+        <svg viewBox="0 0 128 128" className="h-32 w-32 -rotate-90">
+          <circle cx="64" cy="64" r={R} fill="none" stroke="#e2e8f0" strokeWidth="11" />
+          {hasScore && (
+            <circle
+              cx="64"
+              cy="64"
+              r={R}
+              fill="none"
+              stroke={color}
+              strokeWidth="11"
+              strokeLinecap="round"
+              strokeDasharray={CIRC}
+              strokeDashoffset={CIRC - (CIRC * v) / 100}
+            />
+          )}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {hasScore ? (
+            <>
+              <span className="text-3xl font-bold tracking-tight" style={{ color }}>
+                {score!.toFixed(0)}
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                / 100
+              </span>
+            </>
+          ) : (
+            <span className="text-xl font-semibold text-slate-400">N/A</span>
+          )}
+        </div>
       </div>
-      <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100">
-        <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${Math.min(100, v)}%` }} />
+      <div>
+        <span
+          className={`inline-block rounded-full border px-3 py-1 text-xs font-bold tracking-wide ${tierClass(tier)}`}
+        >
+          {tierLabel}
+        </span>
+        <p className="mt-2 max-w-[220px] text-xs leading-relaxed text-slate-500">
+          {hasScore
+            ? 'Overall weighted risk across all verified diligence domains. Higher means riskier.'
+            : 'No diligence records are on file — risk could not be assessed.'}
+        </p>
       </div>
+    </div>
+  );
+}
+
+/** One risk-domain card: icon, score chip, colored progress bar. */
+function RiskDomainCard({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value?: number;
+  icon: string;
+}) {
+  const hasScore = value !== null && value !== undefined;
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+          <span aria-hidden>{icon}</span>
+          {label}
+        </span>
+        {hasScore ? (
+          <span
+            className={`rounded-full border px-2 py-0.5 text-xs font-bold ${scoreChipClass(value!)}`}
+          >
+            {value!.toFixed(0)}
+          </span>
+        ) : (
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-400">
+            No records
+          </span>
+        )}
+      </div>
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+        {hasScore && (
+          <div
+            className="h-2 rounded-full transition-all"
+            style={{
+              width: `${Math.min(100, value!)}%`,
+              backgroundColor: scoreHex(value!),
+            }}
+          />
+        )}
+      </div>
+      {hasScore && (
+        <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          {value! >= 55 ? 'High risk' : value! >= 20 ? 'Elevated risk' : 'Low risk'}
+        </p>
+      )}
     </div>
   );
 }
@@ -148,6 +245,8 @@ function PropertyDetailsContent() {
   const [done, setDone] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [monitorBusy, setMonitorBusy] = useState(false);
 
   const authReady = useAuthGuard({ loginPath: '/' });
@@ -192,6 +291,27 @@ function PropertyDetailsContent() {
       setGenerateError(err instanceof Error ? err.message : 'Failed to generate the report.');
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function downloadPdf() {
+    if (!details || downloading) return;
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const blob = await propertyApi.downloadReportPdf(details.propertyId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `due-diligence-report-${details.propertyId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Failed to download the report.');
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -487,54 +607,87 @@ function PropertyDetailsContent() {
             <div>
               <h2 className="text-sm font-semibold text-slate-700">Diligence Report</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Generates a report from the stored records: risk assessment, executive summary
-                and data coverage.
+                Risk assessment, executive summary and data coverage — generated from the
+                stored diligence records.
               </p>
             </div>
-            <button onClick={generateReport} disabled={generating} className="btn-primary">
-              {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Diligence Report'}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {report && (
+                <button onClick={downloadPdf} disabled={downloading} className="btn-secondary">
+                  {downloading ? 'Preparing…' : '⬇ Download PDF'}
+                </button>
+              )}
+              <button onClick={generateReport} disabled={generating} className="btn-primary">
+                {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Diligence Report'}
+              </button>
+            </div>
           </div>
 
           {generateError && (
             <p className="mt-3 text-xs font-medium text-rose-600">{generateError}</p>
           )}
+          {downloadError && (
+            <p className="mt-3 text-xs font-medium text-rose-600">{downloadError}</p>
+          )}
 
           {report ? (
             <div className="mt-6 space-y-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${tierClass(report.riskTier)}`}>
-                  {report.riskTier === 'INSUFFICIENT_DATA'
-                    ? 'INSUFFICIENT DATA'
-                    : `${report.riskTier} RISK`}
-                </span>
-                <span className="text-xs text-slate-500">
-                  Report #{report.reportId} · Generated {formatDateTime(report.generatedAt)}
-                </span>
+              {/* Risk overview hero: gauge + report meta */}
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6">
+                <div className="flex flex-wrap items-center justify-between gap-6">
+                  <RiskGauge score={report.risk?.overallScore ?? undefined} tier={report.riskTier} />
+                  <div className="text-right">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                      Report #{report.reportId}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Generated {formatDateTime(report.generatedAt)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Status: {report.status}</p>
+                  </div>
+                </div>
               </div>
 
-              <p className="text-sm leading-relaxed text-slate-700">{report.executiveSummary}</p>
+              {/* Executive summary */}
+              <div className="rounded-xl border-l-4 border-slate-800 bg-slate-50 p-5">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Executive Summary
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                  {report.executiveSummary}
+                </p>
+              </div>
 
+              {/* Domain risk cards */}
               {report.risk && (
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Risk Assessment (0–100, higher = riskier)
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Risk Analysis by Domain
                   </h3>
-                  <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-                    <RiskBar label="Overall" value={report.risk.overallScore ?? undefined} />
-                    <RiskBar label="Property Tax" value={report.risk.taxRisk ?? undefined} />
-                    <RiskBar label="Flood" value={report.risk.floodRisk ?? undefined} />
-                    <RiskBar label="Building Permits" value={report.risk.permitCompliance ?? undefined} />
-                    <RiskBar label="Zoning" value={report.risk.zoningCompliance ?? undefined} />
-                    <RiskBar label="Legal / Environmental" value={report.risk.legalRisk ?? undefined} />
-                    <RiskBar label="Ownership Verification" value={report.risk.ownershipVerification ?? undefined} />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    0–100 scale — higher means riskier. Green below 20 · Amber 20–54 · Red 55 and above
+                  </p>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <RiskDomainCard label="Property Tax" icon="🧾"
+                      value={report.risk.taxRisk ?? undefined} />
+                    <RiskDomainCard label="Flood Zone" icon="🌊"
+                      value={report.risk.floodRisk ?? undefined} />
+                    <RiskDomainCard label="Building Permits" icon="🏗️"
+                      value={report.risk.permitCompliance ?? undefined} />
+                    <RiskDomainCard label="Zoning" icon="🗺️"
+                      value={report.risk.zoningCompliance ?? undefined} />
+                    <RiskDomainCard label="Legal / Environmental" icon="⚖️"
+                      value={report.risk.legalRisk ?? undefined} />
+                    <RiskDomainCard label="Ownership Verification" icon="🔑"
+                      value={report.risk.ownershipVerification ?? undefined} />
                   </div>
                 </div>
               )}
 
+              {/* Record statuses */}
               {report.records && (
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
                     Record Statuses
                   </h3>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -572,18 +725,27 @@ function PropertyDetailsContent() {
                 </div>
               )}
 
+              {/* Data coverage */}
               {report.coverage && (
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <div className="rounded-xl border border-slate-200 p-5">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
                     Data Coverage
                   </h3>
                   <p className="mt-2 text-xs text-slate-600">
-                    {report.coverage.comparablesCount ?? 0} comparable listings ·{' '}
-                    {report.coverage.marketTrendsCount ?? 0} market trend periods
-                    {report.coverage.missingSections && report.coverage.missingSections.length > 0 && (
-                      <> · Not yet sourced: {report.coverage.missingSections.join(', ')}</>
-                    )}
+                    <span className="font-semibold text-slate-800">
+                      {report.coverage.comparablesCount ?? 0}
+                    </span>{' '}
+                    comparable listings ·{' '}
+                    <span className="font-semibold text-slate-800">
+                      {report.coverage.marketTrendsCount ?? 0}
+                    </span>{' '}
+                    market trend periods
                   </p>
+                  {report.coverage.missingSections && report.coverage.missingSections.length > 0 && (
+                    <p className="mt-2 text-xs text-amber-700">
+                      ⚠ Not yet sourced: {report.coverage.missingSections.join(', ')}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

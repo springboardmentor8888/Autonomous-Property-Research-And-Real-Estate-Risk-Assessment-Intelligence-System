@@ -54,6 +54,28 @@ export default function Reports() {
       .finally(() => setLoading(false));
   }, [authReady]);
 
+  const [pdfBusyId, setPdfBusyId] = useState<number | null>(null);
+
+  async function downloadPdf(propertyId: number) {
+    if (pdfBusyId !== null) return;
+    setPdfBusyId(propertyId);
+    try {
+      const blob = await propertyApi.downloadReportPdf(propertyId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `due-diligence-report-${propertyId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Non-blocking: the full download flow lives on the property page.
+    } finally {
+      setPdfBusyId(null);
+    }
+  }
+
   if (!authReady) return null;
 
   return (
@@ -116,19 +138,19 @@ export default function Reports() {
         <ul className="space-y-4">
           {reports.map((report) => (
             <li key={report.reportId}>
-              <button
-                onClick={() => router.push(`/property-details?propertyId=${report.propertyId}`)}
-                className="card block w-full p-6 text-left transition hover:border-slate-300 hover:shadow-sm"
-              >
+              <div className="card p-6 transition hover:border-slate-300 hover:shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <button
+                    onClick={() => router.push(`/property-details?propertyId=${report.propertyId}`)}
+                    className="min-w-0 flex-1 text-left"
+                  >
                     <p className="truncate text-sm font-semibold text-slate-900">
                       {report.propertyAddress ?? `Property #${report.propertyId}`}
                     </p>
                     <p className="mt-1 line-clamp-2 max-w-xl text-xs text-slate-500">
                       {report.executiveSummary}
                     </p>
-                  </div>
+                  </button>
                   <div className="shrink-0 text-right">
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tierClass(report.riskTier)}`}
@@ -140,9 +162,16 @@ export default function Reports() {
                     <p className="mt-2 text-xs text-slate-400">
                       {formatDateTime(report.generatedAt)}
                     </p>
+                    <button
+                      onClick={() => downloadPdf(report.propertyId)}
+                      disabled={pdfBusyId === report.propertyId}
+                      className="btn-secondary mt-2 px-3 py-1 text-xs"
+                    >
+                      {pdfBusyId === report.propertyId ? 'Preparing…' : '⬇ PDF'}
+                    </button>
                   </div>
                 </div>
-              </button>
+              </div>
             </li>
           ))}
         </ul>
