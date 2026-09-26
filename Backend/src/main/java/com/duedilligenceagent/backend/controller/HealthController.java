@@ -10,6 +10,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HealthController {
 
+    @GetMapping("/")
+    public String root() {
+        return "Real Estate Due Diligence Agent backend is running. Use /api/health or /swagger-ui.html.";
+    }
+
     @GetMapping("/api/health")
     public String health() {
         return "Backend is running";

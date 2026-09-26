@@ -2,6 +2,7 @@ package com.duedilligenceagent.backend.service;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -78,7 +79,7 @@ public class ChennaiGisClient {
 
         try {
             return objectMapper.readTree(response);
-        } catch (Exception ex) {
+        } catch (JsonProcessingException ex) {
             log.error(
                     "Failed to parse Chennai GIS response for layer {}: {}",
                     layerId,

@@ -33,7 +33,7 @@ public class RefreshToken {
     private LocalDateTime createdAt;
 
     @Column(name = "revoked", nullable = false)
-    private Boolean revoked = false;
+    private Boolean revoked;
 
     @Column(name = "replaced_by_token", length = 512)
     private String replacedByToken;
@@ -43,6 +43,9 @@ public class RefreshToken {
         this.createdAt = LocalDateTime.now();
         if (this.token == null) {
             this.token = UUID.randomUUID().toString();
+        }
+        if (this.revoked == null) {
+            this.revoked = false;
         }
     }
 
