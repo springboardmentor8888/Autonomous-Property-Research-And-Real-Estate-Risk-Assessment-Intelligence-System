@@ -27,6 +27,10 @@ public class DueDiligenceReport {
     @Column(name = "risk_assessment_id")
     private Long riskAssessmentId;
 
+    /** The stored-data aggregation run that fed this report. */
+    @Column(name = "aggregation_run_id")
+    private Long aggregationRunId;
+
     @Column(name = "executive_summary", length = 2000)
     private String executiveSummary;
 
@@ -50,6 +54,10 @@ public class DueDiligenceReport {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "risk_assessment_id", insertable = false, updatable = false)
     private RiskAssessmentDetails riskAssessmentDetails;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "aggregation_run_id", insertable = false, updatable = false)
+    private AggregationRun aggregationRun;
 
     @PrePersist
     protected void onCreate() {

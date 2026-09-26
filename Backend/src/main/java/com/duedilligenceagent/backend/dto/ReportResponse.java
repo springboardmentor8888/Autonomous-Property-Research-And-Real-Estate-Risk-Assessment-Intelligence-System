@@ -28,6 +28,10 @@ public class ReportResponse {
     private String status;
     private LocalDateTime generatedAt;
 
+    /** The stored-data aggregation run that fed this report. */
+    private Long aggregationRunId;
+    private String aggregationStatus;
+
     /** The calculated risk assessment linked to this report (0-100, higher = riskier). */
     private RiskAssessmentResponse risk;
 

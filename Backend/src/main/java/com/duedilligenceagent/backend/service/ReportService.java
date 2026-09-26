@@ -1,12 +1,14 @@
 package com.duedilligenceagent.backend.service;
 
 import com.duedilligenceagent.backend.dto.DiligenceDataResponse;
+import com.duedilligenceagent.backend.dto.AggregationResponse;
 import com.duedilligenceagent.backend.dto.ReportResponse;
 import com.duedilligenceagent.backend.dto.RiskAssessmentResponse;
 import com.duedilligenceagent.backend.entities.DueDiligenceReport;
 import com.duedilligenceagent.backend.entities.Property;
 import com.duedilligenceagent.backend.entities.RiskAssessmentDetails;
 import com.duedilligenceagent.backend.exception.ResourceNotFoundException;
+import com.duedilligenceagent.backend.repositories.AggregationRunRepository;
 import com.duedilligenceagent.backend.repositories.DueDiligenceReportRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import com.duedilligenceagent.backend.repositories.RiskAssessmentDetailsRepository;
@@ -21,10 +23,11 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Generates due-diligence reports from the property's stored data:
- * the risk engine calculates the assessment from the diligence records,
- * the executive summary is built from the actual record statuses, and the
- * report row is persisted with the generating user.
+ * Generates due-diligence reports as a single pipeline: the stored-data
+ * aggregation run inventories the property's diligence records first,
+ * the risk engine calculates the assessment from those records, the
+ * executive summary is built from the actual record statuses, and the
+ * report row is persisted with the generating user and the linked run.
  * <p>
  * Reports are user-facing: the response carries the summary, the risk
  * scores, the record statuses and the data coverage — never provider
@@ -40,14 +43,17 @@ public class ReportService {
     private final RiskAssessmentDetailsRepository riskAssessmentRepository;
     private final RiskAssessmentService riskAssessmentService;
     private final DiligenceService diligenceService;
+    private final AggregationService aggregationService;
+    private final AggregationRunRepository aggregationRunRepository;
 
-    /** Generates a fresh report: calculate risk → build summary → persist. */
+    /** Single pipeline: aggregation inventory → risk → executive summary → persist. */
     @Transactional
     public ReportResponse generate(Long propertyId, Long generatedByUserId) {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Property not found with id: " + propertyId));
 
+        AggregationResponse aggregation = aggregationService.aggregate(propertyId, null);
         RiskAssessmentDetails assessment = riskAssessmentService.calculateAndPersist(property);
         DiligenceDataResponse diligence = diligenceService.getDiligenceData(propertyId);
 
@@ -57,12 +63,13 @@ public class ReportService {
                 .propertyId(propertyId)
                 .generatedBy(generatedByUserId)
                 .riskAssessmentId(assessment.getRiskAssessmentId())
+                .aggregationRunId(aggregation.getAggregationRunId())
                 .executiveSummary(summary)
                 .status("COMPLETED")
                 .build());
 
-        log.info("Generated due-diligence report id={} for property id={} by user id={}",
-                report.getReportId(), propertyId, generatedByUserId);
+        log.info("Generated due-diligence report id={} for property id={} by user id={} from aggregation run id={}",
+                report.getReportId(), propertyId, generatedByUserId, aggregation.getAggregationRunId());
 
         return toResponse(report, property, assessment, diligence);
     }
@@ -101,6 +108,10 @@ public class ReportService {
 
     private ReportResponse toResponse(DueDiligenceReport report, Property property,
                                       RiskAssessmentDetails assessment, DiligenceDataResponse diligence) {
+        String aggregationStatus = report.getAggregationRunId() == null ? null
+                : aggregationRunRepository.findById(report.getAggregationRunId())
+                        .map(run -> run.getStatus())
+                        .orElse(null);
         return ReportResponse.builder()
                 .reportId(report.getReportId())
                 .propertyId(report.getPropertyId())
@@ -109,6 +120,8 @@ public class ReportService {
                 .executiveSummary(report.getExecutiveSummary())
                 .status(report.getStatus())
                 .generatedAt(report.getGeneratedAt())
+                .aggregationRunId(report.getAggregationRunId())
+                .aggregationStatus(aggregationStatus)
                 .risk(toRiskResponse(assessment))
                 .records(toRecordStatuses(diligence))
                 .coverage(toCoverage(diligence))
@@ -177,74 +190,134 @@ public class ReportService {
     }
 
     /**
-     * Builds the executive summary from the actual record statuses:
-     * tier + overall score, the key concerns (domains scoring ≥ 45) or the
-     * clean-bill phrases, and the market context when trends are stored.
+     * Builds the executive summary from the actual record statuses in a
+     * professional analyst voice: an overall-risk opening sentence,
+     * full-clause concerns (domains scoring ≥ 45) or a clean-bill sentence,
+     * the ownership position, market context when trends are stored, and a
+     * data-completeness closing line.
      */
     private String buildExecutiveSummary(Property property, RiskAssessmentDetails assessment,
                                         DiligenceDataResponse diligence) {
+        ReportResponse.DataCoverage coverage = toCoverage(diligence);
+
         // Insufficient data: no diligence records exist — no fabricated scores.
         if (assessment.getOverallScore() == null) {
-            return "No due-diligence records are available for this property yet — "
-                    + "risk scores could not be calculated. Run the diligence data "
-                    + "aggregation or connect record providers to populate the missing sections: "
-                    + String.join(", ", toCoverage(diligence).getMissingSections()) + ".";
+            return "No due-diligence records are available for this property yet, so a "
+                    + "risk assessment could not be performed. The following sections remain "
+                    + "unsourced and must be populated before the property can be evaluated: "
+                    + String.join(", ", coverage.getMissingSections()) + ".";
         }
 
         String tier = RiskAssessmentService.tierOf(assessment.getOverallScore());
-        StringBuilder sb = new StringBuilder("Overall risk ")
-                .append(tier)
+        String tierPhrase = switch (tier) {
+            case "LOW" -> "a low overall risk profile";
+            case "MODERATE" -> "a moderate overall risk profile";
+            case "ELEVATED" -> "an elevated overall risk profile";
+            case "HIGH" -> "a high overall risk profile";
+            default -> "an unclassified overall risk profile";
+        };
+        StringBuilder sb = new StringBuilder("This property presents ")
+                .append(tierPhrase)
                 .append(" (")
                 .append(assessment.getOverallScore().stripTrailingZeros().toPlainString())
                 .append("/100). ");
 
         List<String> concerns = concerns(assessment, diligence);
         if (concerns.isEmpty()) {
-            sb.append("No significant concerns identified in the stored records. ");
+            sb.append("No material concerns were identified in the available diligence records. ");
+        } else if (concerns.size() == 1) {
+            sb.append("The assessment identified one material concern. ")
+                    .append(concerns.get(0)).append(". ");
         } else {
-            sb.append("Key concerns: ").append(String.join("; ", concerns)).append(". ");
+            sb.append("The assessment identified material concerns. ")
+                    .append(String.join(". ", concerns)).append(". ");
         }
 
         if (diligence.getOwnership() != null) {
-            sb.append("Ownership record present (")
+            sb.append("Ownership is recorded as ")
                     .append(humanize(diligence.getOwnership().getOwnershipType()))
-                    .append("). ");
+                    .append(". ");
         }
 
         String market = marketContext(diligence);
         if (market != null) {
-            sb.append(market);
+            sb.append(market).append(' ');
         }
+
+        sb.append(completenessLine(coverage));
         return sb.toString().trim();
     }
 
     private List<String> concerns(RiskAssessmentDetails assessment, DiligenceDataResponse diligence) {
         List<String> concerns = new ArrayList<>();
         if (score(assessment.getTaxRisk()) >= 45) {
-            concerns.add("property tax " + humanize(statusOf(diligence.getTax() == null
-                    ? null : diligence.getTax().getPaymentStatus(), "record missing")));
+            String status = diligence.getTax() == null ? null : diligence.getTax().getPaymentStatus();
+            concerns.add(status == null
+                    ? "Property tax compliance could not be verified because no record is on file"
+                    : "Property tax payments are " + lowerHuman(statusOf(status, "pending")));
         }
         if (score(assessment.getFloodRisk()) >= 45) {
-            concerns.add("flood risk " + humanize(statusOf(diligence.getFlood() == null
-                    ? null : diligence.getFlood().getRiskLevel(), "record missing")));
+            String level = diligence.getFlood() == null ? null : diligence.getFlood().getRiskLevel();
+            concerns.add(level == null
+                    ? "Flood-zone exposure could not be verified because no record is on file"
+                    : "The property lies in a " + lowerHuman(level) + "-risk flood zone");
         }
         if (score(assessment.getPermitCompliance()) >= 45) {
             String permitStatus = diligence.getPermits() == null || diligence.getPermits().isEmpty()
                     ? null : diligence.getPermits().get(0).getPermitStatus();
-            concerns.add("building permit " + humanize(statusOf(permitStatus, "record missing")));
+            concerns.add(permitStatus == null
+                    ? "Building permits could not be verified because no record is on file"
+                    : "On building permits, " + permitPhrase(permitStatus));
         }
         if (score(assessment.getZoningCompliance()) >= 45) {
-            concerns.add("zoning " + humanize(statusOf(diligence.getZoning() == null
-                    ? null : diligence.getZoning().getZoningStatus(), "record missing")));
+            String status = diligence.getZoning() == null ? null : diligence.getZoning().getZoningStatus();
+            concerns.add(status == null
+                    ? "Zoning compliance could not be verified because no record is on file"
+                    : "Zoning compliance is " + lowerHuman(statusOf(status, "pending")));
         }
         if (score(assessment.getLegalRisk()) >= 45) {
-            concerns.add("environmental review " + humanize(statusOf(diligence.getEnvironmental() == null
-                    ? null : diligence.getEnvironmental().getStatus(), "record missing")));
+            String status = diligence.getEnvironmental() == null ? null : diligence.getEnvironmental().getStatus();
+            concerns.add(status == null
+                    ? "Environmental clearance could not be verified because no record is on file"
+                    : "The environmental review is " + lowerHuman(status));
         }
         if (score(assessment.getOwnershipVerification()) >= 45) {
-            concerns.add("ownership record could not be verified");
+            concerns.add("The ownership record could not be verified");
         }
         return concerns;
+    }
+
+    /** One-line data-completeness note derived from the coverage counts. */
+    private String completenessLine(ReportResponse.DataCoverage coverage) {
+        int have = 0;
+        if (coverage.isOwnershipRecord()) have++;
+        if (coverage.isTaxRecord()) have++;
+        if (coverage.isPermitRecord()) have++;
+        if (coverage.isZoningRecord()) have++;
+        if (coverage.isFloodRecord()) have++;
+        if (coverage.isEnvironmentalRecord()) have++;
+        if (coverage.isUtilityRecords()) have++;
+        int comparables = coverage.getComparablesCount() == null ? 0 : coverage.getComparablesCount();
+        int trends = coverage.getMarketTrendsCount() == null ? 0 : coverage.getMarketTrendsCount();
+
+        String base = "This assessment draws on " + have + " of 8 diligence record types"
+                + (comparables > 0 ? " and " + comparables + " comparable listings" : "") + ".";
+        if (coverage.getMissingSections() == null || coverage.getMissingSections().isEmpty()) {
+            return base.replace(".", " Complete coverage across all sections.");
+        }
+        return base + " Unavailable sections: "
+                + String.join(", ", coverage.getMissingSections()) + ".";
+    }
+
+    /** Permit phrasing that reads correctly in a sentence. */
+    private static String permitPhrase(String status) {
+        return switch (statusOf(status, "PENDING").toUpperCase(Locale.ROOT)) {
+            case "APPROVED" -> "the latest permit is approved";
+            case "COMPLETED" -> "permitted works are completed";
+            case "PENDING" -> "the latest permit remains pending approval";
+            case "EXPIRED" -> "the latest permit has expired";
+            default -> "the latest permit status is " + lowerHuman(status);
+        };
     }
 
     private String marketContext(DiligenceDataResponse diligence) {
@@ -253,9 +326,9 @@ public class ReportService {
         }
         DiligenceDataResponse.MarketTrendRecord latest = diligence.getMarketTrends().get(0);
         String locality = latest.getLocality() != null ? latest.getLocality() : "the city";
-        return "Market context: average price ₹"
+        return "Comparable market data indicates an average asking price of ₹"
                 + latest.getAvgPricePerSqft().stripTrailingZeros().toPlainString()
-                + "/sqft (" + locality + ", " + latest.getPeriod() + ").";
+                + "/sqft in " + locality + " for " + latest.getPeriod() + ".";
     }
 
     private static double score(java.math.BigDecimal value) {
@@ -272,6 +345,10 @@ public class ReportService {
         }
         String lower = value.trim().toLowerCase(Locale.ROOT).replace('_', ' ');
         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    }
+
+    private static String lowerHuman(String value) {
+        return humanize(value).toLowerCase(Locale.ROOT);
     }
 
     private static String nullSafe(String value) {

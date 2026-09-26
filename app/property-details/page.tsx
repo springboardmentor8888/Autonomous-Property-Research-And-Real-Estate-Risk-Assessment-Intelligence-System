@@ -605,10 +605,10 @@ function PropertyDetailsContent() {
         <section className="card mt-6 p-8">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-slate-700">Diligence Report</h2>
+              <h2 className="text-sm font-semibold text-slate-700">Due Diligence Report</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Risk assessment, executive summary and data coverage — generated from the
-                stored diligence records.
+                Runs the diligence aggregation pipeline on the stored records, calculates the
+                risk assessment and produces a downloadable report.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -618,7 +618,7 @@ function PropertyDetailsContent() {
                 </button>
               )}
               <button onClick={generateReport} disabled={generating} className="btn-primary">
-                {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Diligence Report'}
+                {generating ? 'Running pipeline…' : report ? 'Re-run Due Diligence Pipeline' : 'Run Due Diligence Pipeline'}
               </button>
             </div>
           </div>
@@ -640,6 +640,16 @@ function PropertyDetailsContent() {
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                       Report #{report.reportId}
                     </p>
+                    {report.aggregationRunId && (
+                      <p className="mt-1 inline-block rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-500">
+                        Pipeline run #{report.aggregationRunId}
+                        {report.aggregationStatus && (
+                          <span className={report.aggregationStatus === 'COMPLETED' ? ' text-emerald-600' : ' text-amber-600'}>
+                            {' '}· {report.aggregationStatus.replaceAll('_', ' ')}
+                          </span>
+                        )}
+                      </p>
+                    )}
                     <p className="mt-1 text-xs text-slate-500">
                       Generated {formatDateTime(report.generatedAt)}
                     </p>

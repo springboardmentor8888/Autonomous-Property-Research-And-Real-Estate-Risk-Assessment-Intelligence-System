@@ -499,6 +499,9 @@ export type ReportResponse = {
   propertyId: number;
   propertyAddress?: string;
   riskTier?: 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH' | 'UNKNOWN' | 'INSUFFICIENT_DATA';
+  /** The stored-data aggregation run that fed this report. */
+  aggregationRunId?: number;
+  aggregationStatus?: string;
   executiveSummary?: string;
   status?: string;
   generatedAt?: string;
