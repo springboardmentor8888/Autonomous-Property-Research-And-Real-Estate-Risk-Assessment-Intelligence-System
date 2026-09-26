@@ -6,10 +6,14 @@ import com.duedilligenceagent.backend.dto.AggregationRequest;
 import com.duedilligenceagent.backend.dto.AggregationResponse;
 import com.duedilligenceagent.backend.dto.AggregationRunSummary;
 import com.duedilligenceagent.backend.dto.DiligenceDataResponse;
+import com.duedilligenceagent.backend.dto.MarketAnalysisResponse;
 import com.duedilligenceagent.backend.dto.MonitoringStatusResponse;
 import com.duedilligenceagent.backend.dto.ReportResponse;
 import com.duedilligenceagent.backend.dto.RiskAssessmentResponse;
 import com.duedilligenceagent.backend.service.ReportPdfService;
+import com.duedilligenceagent.backend.service.RiskAssessmentService;
+import com.duedilligenceagent.backend.service.RiskAssessmentStageService;
+import com.duedilligenceagent.backend.service.MarketAnalysisService;
 import com.duedilligenceagent.backend.entities.AggregationRun;
 import com.duedilligenceagent.backend.entities.RiskAssessmentDetails;
 import com.duedilligenceagent.backend.entities.User;
@@ -53,6 +57,8 @@ public class PropertyController {
     private final DiligenceService diligenceService;
     private final ReportService reportService;
     private final ReportPdfService reportPdfService;
+    private final RiskAssessmentStageService riskAssessmentStageService;
+    private final MarketAnalysisService marketAnalysisService;
     private final AggregationRunRepository aggregationRunRepository;
     private final RiskAssessmentDetailsRepository riskAssessmentRepository;
     private final UserRepository userRepository;
@@ -64,6 +70,8 @@ public class PropertyController {
                               DiligenceService diligenceService,
                               ReportService reportService,
                               ReportPdfService reportPdfService,
+                              RiskAssessmentStageService riskAssessmentStageService,
+                              MarketAnalysisService marketAnalysisService,
                               AggregationRunRepository aggregationRunRepository,
                               RiskAssessmentDetailsRepository riskAssessmentRepository,
                               UserRepository userRepository) {
@@ -74,6 +82,8 @@ public class PropertyController {
         this.diligenceService = diligenceService;
         this.reportService = reportService;
         this.reportPdfService = reportPdfService;
+        this.riskAssessmentStageService = riskAssessmentStageService;
+        this.marketAnalysisService = marketAnalysisService;
         this.aggregationRunRepository = aggregationRunRepository;
         this.riskAssessmentRepository = riskAssessmentRepository;
         this.userRepository = userRepository;
@@ -163,6 +173,32 @@ public class PropertyController {
                 .map(this::toRiskResponse)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /**
+     * <b>Stage 1 of the diligence workflow</b>: executes the stored-data
+     * aggregation pipeline and calculates the risk assessment from the
+     * property's diligence records. User-triggered — the market-analysis
+     * and report stages become available after this completes.
+     */
+    @PostMapping("/{id}/risk-assessment")
+    public ResponseEntity<RiskAssessmentResponse> runRiskAssessment(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(riskAssessmentStageService.run(id));
+    }
+
+    /**
+     * <b>Stage 2 of the diligence workflow</b>: analyzes the stored
+     * comparables and market trends — comparable statistics, the property's
+     * market positioning and the latest trend record. Pure analysis over
+     * stored data; available after the risk-assessment stage.
+     */
+    @PostMapping("/{id}/market-analysis")
+    public ResponseEntity<MarketAnalysisResponse> runMarketAnalysis(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(marketAnalysisService.analyze(id));
     }
 
     /**
@@ -317,6 +353,7 @@ public class PropertyController {
                 .ownershipVerification(details.getOwnershipVerification())
                 .overallScore(details.getOverallScore())
                 .assessedAt(details.getAssessedAt())
+                .riskTier(RiskAssessmentService.tierOf(details.getOverallScore()))
                 .build();
     }
 }

@@ -9,13 +9,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Latest risk assessment for a property, as returned by
- * {@code GET /api/properties/{id}/risk-assessment}.
+ * Risk assessment for a property, as returned by
+ * {@code GET /api/properties/{id}/risk-assessment} (latest stored) and
+ * {@code POST /api/properties/{id}/risk-assessment} (runs the stage:
+ * aggregation pipeline + risk scoring).
  * <p>
  * All scores are 0–100 <b>risk</b> scores — higher means riskier — matching
  * the seeded demonstration dataset (e.g. a fully compliant property scores
- * ~7.75 overall, an overdue-tax/high-flood property ~52.5). Null until the
- * diligence pipeline has produced an assessment.
+ * ~7.75 overall, an overdue-tax/high-flood property ~52.5). Null scores
+ * mean no diligence records exist (INSUFFICIENT_DATA tier).
  */
 @Data
 @Builder
@@ -33,4 +35,11 @@ public class RiskAssessmentResponse {
     private BigDecimal ownershipVerification;
     private BigDecimal overallScore;
     private LocalDateTime assessedAt;
+
+    /** Risk tier derived from the overall score (INSUFFICIENT_DATA when null). */
+    private String riskTier;
+
+    /** The stored-data aggregation run executed by the risk-assessment stage. */
+    private Long aggregationRunId;
+    private String aggregationStatus;
 }

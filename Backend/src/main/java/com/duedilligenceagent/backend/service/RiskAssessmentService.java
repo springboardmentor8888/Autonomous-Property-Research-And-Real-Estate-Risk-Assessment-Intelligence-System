@@ -160,7 +160,7 @@ public class RiskAssessmentService {
     }
 
     /** Risk tier for an overall score: LOW / MODERATE / ELEVATED / HIGH; null → INSUFFICIENT_DATA. */
-    static String tierOf(BigDecimal overall) {
+    public static String tierOf(BigDecimal overall) {
         if (overall == null) {
             return "INSUFFICIENT_DATA";
         }

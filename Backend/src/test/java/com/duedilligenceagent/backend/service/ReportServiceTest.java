@@ -1,7 +1,7 @@
 package com.duedilligenceagent.backend.service;
 
-import com.duedilligenceagent.backend.dto.AggregationResponse;
 import com.duedilligenceagent.backend.dto.DiligenceDataResponse;
+import com.duedilligenceagent.backend.dto.MarketAnalysisResponse;
 import com.duedilligenceagent.backend.dto.ReportResponse;
 import com.duedilligenceagent.backend.entities.AggregationRun;
 import com.duedilligenceagent.backend.entities.DueDiligenceReport;
@@ -24,11 +24,15 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Verifies the report pipeline wiring (aggregation run linked into the
- * report) and the professional executive-summary wording.
+ * Verifies the report stage (stage 3): it consumes the outputs of the
+ * earlier stages — the latest stored risk assessment (stage 1) and the
+ * market analysis (stage 2) — links the latest aggregation run for
+ * provenance, and builds the professional executive summary.
  */
 @ExtendWith(MockitoExtension.class)
 class ReportServiceTest {
@@ -38,8 +42,8 @@ class ReportServiceTest {
     @Mock private RiskAssessmentDetailsRepository riskAssessmentRepository;
     @Mock private RiskAssessmentService riskAssessmentService;
     @Mock private DiligenceService diligenceService;
-    @Mock private AggregationService aggregationService;
     @Mock private AggregationRunRepository aggregationRunRepository;
+    @Mock private MarketAnalysisService marketAnalysisService;
 
     @InjectMocks private ReportService service;
 
@@ -50,16 +54,16 @@ class ReportServiceTest {
         return p;
     }
 
-    private void stubPipeline(Property property, RiskAssessmentDetails assessment,
-                              DiligenceDataResponse diligence) {
+    private void stubStages(Property property, RiskAssessmentDetails assessment,
+                            DiligenceDataResponse diligence, MarketAnalysisResponse market) {
         when(propertyRepository.findById(property.getPropertyId())).thenReturn(Optional.of(property));
-        when(aggregationService.aggregate(property.getPropertyId(), null))
-                .thenReturn(AggregationResponse.builder()
-                        .aggregationRunId(42L)
-                        .status("COMPLETED_WITH_GAPS")
-                        .build());
-        when(riskAssessmentService.calculateAndPersist(property)).thenReturn(assessment);
+        when(riskAssessmentRepository.findFirstByPropertyIdOrderByAssessedAtDesc(property.getPropertyId()))
+                .thenReturn(Optional.of(assessment));
         when(diligenceService.getDiligenceData(property.getPropertyId())).thenReturn(diligence);
+        when(marketAnalysisService.analyze(property.getPropertyId())).thenReturn(market);
+        when(aggregationRunRepository.findFirstByPropertyIdOrderByStartedAtDesc(property.getPropertyId()))
+                .thenReturn(Optional.of(AggregationRun.builder()
+                        .aggregationRunId(42L).status("COMPLETED_WITH_GAPS").build()));
         when(aggregationRunRepository.findById(42L))
                 .thenReturn(Optional.of(AggregationRun.builder().status("COMPLETED_WITH_GAPS").build()));
         when(reportRepository.save(any(DueDiligenceReport.class)))
@@ -68,6 +72,15 @@ class ReportServiceTest {
                     r.setReportId(7L);
                     return r;
                 });
+    }
+
+    private static MarketAnalysisResponse noMarket() {
+        return MarketAnalysisResponse.builder()
+                .positioning(MarketAnalysisResponse.Positioning.builder()
+                        .verdict("NO_COMPARABLES")
+                        .note("No comparable listings are stored for this property yet.")
+                        .build())
+                .build();
     }
 
     private static RiskAssessmentDetails assessment(double overall, double tax, double flood,
@@ -85,24 +98,48 @@ class ReportServiceTest {
     }
 
     @Test
-    void reportIsLinkedToItsAggregationRun() {
+    void reportUsesStoredRiskAssessmentWithoutRecalculating() {
         Property property = property(1004);
-        stubPipeline(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
-                DiligenceDataResponse.builder().build());
+        RiskAssessmentDetails stored = assessment(56.5, 75, 75, 45, 45, 45, 10);
+        stubStages(property, stored, DiligenceDataResponse.builder().build(), noMarket());
 
         ReportResponse response = service.generate(1004L, 1L);
 
+        // Stage-1 output is reused — the risk engine is NOT re-run.
+        verify(riskAssessmentService, never()).calculateAndPersist(any(Property.class));
         assertThat(response.getAggregationRunId()).isEqualTo(42L);
         assertThat(response.getAggregationStatus()).isEqualTo("COMPLETED_WITH_GAPS");
         ArgumentCaptor<DueDiligenceReport> captor = ArgumentCaptor.forClass(DueDiligenceReport.class);
-        org.mockito.Mockito.verify(reportRepository).save(captor.capture());
+        verify(reportRepository).save(captor.capture());
         assertThat(captor.getValue().getAggregationRunId()).isEqualTo(42L);
+    }
+
+    @Test
+    void reportRunsRiskStageWhenNoAssessmentStored() {
+        Property property = property(1004);
+        when(propertyRepository.findById(1004L)).thenReturn(Optional.of(property));
+        when(riskAssessmentRepository.findFirstByPropertyIdOrderByAssessedAtDesc(1004L))
+                .thenReturn(Optional.empty());
+        when(riskAssessmentService.calculateAndPersist(property))
+                .thenReturn(assessment(56.5, 75, 75, 45, 45, 45, 10));
+        when(diligenceService.getDiligenceData(1004L)).thenReturn(DiligenceDataResponse.builder().build());
+        when(marketAnalysisService.analyze(1004L)).thenReturn(noMarket());
+        when(aggregationRunRepository.findFirstByPropertyIdOrderByStartedAtDesc(1004L))
+                .thenReturn(Optional.empty());
+        when(reportRepository.save(any(DueDiligenceReport.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        ReportResponse response = service.generate(1004L, 1L);
+
+        // API robustness: the risk stage runs on demand when it never ran.
+        verify(riskAssessmentService).calculateAndPersist(property);
+        assertThat(response.getRiskTier()).isEqualTo("HIGH");
     }
 
     @Test
     void summaryReadsProfessionallyForHighRiskProperty() {
         Property property = property(1004);
-        stubPipeline(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
                 DiligenceDataResponse.builder()
                         .ownership(DiligenceDataResponse.OwnershipRecord.builder()
                                 .ownershipType("FREEHOLD").build())
@@ -119,7 +156,8 @@ class ReportServiceTest {
                         .comparables(List.of(
                                 DiligenceDataResponse.ComparableRecord.builder().build(),
                                 DiligenceDataResponse.ComparableRecord.builder().build()))
-                        .build());
+                        .build(),
+                noMarket());
 
         ReportResponse response = service.generate(1004L, 1L);
         String summary = response.getExecutiveSummary();
@@ -136,14 +174,37 @@ class ReportServiceTest {
     }
 
     @Test
+    void summaryIncludesMarketPositioningWhenComparablesExist() {
+        Property property = property(1004);
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+                DiligenceDataResponse.builder().build(),
+                MarketAnalysisResponse.builder()
+                        .positioning(MarketAnalysisResponse.Positioning.builder()
+                                .verdict("BELOW_MARKET")
+                                .deltaPercent(BigDecimal.valueOf(-12.5))
+                                .basis("total price")
+                                .build())
+                        .build());
+
+        ReportResponse response = service.generate(1004L, 1L);
+
+        assertThat(response.getExecutiveSummary())
+                .contains("priced 12.5% below average");
+        assertThat(response.getMarketPosition()).isNotNull();
+        assertThat(response.getMarketPosition().getVerdict()).isEqualTo("BELOW_MARKET");
+        assertThat(response.getMarketPosition().getDeltaPercent()).isEqualByComparingTo("-12.5");
+    }
+
+    @Test
     void summaryIsCleanPhrasedForLowRiskProperty() {
         Property property = property(1001);
-        stubPipeline(property, assessment(7.75, 5, 5, 10, 5, 10, 20),
+        stubStages(property, assessment(7.75, 5, 5, 10, 5, 10, 20),
                 DiligenceDataResponse.builder()
                         .ownership(DiligenceDataResponse.OwnershipRecord.builder()
                                 .ownershipType("JOINT_OWNERSHIP").build())
                         .tax(DiligenceDataResponse.TaxRecord.builder().paymentStatus("PAID").build())
-                        .build());
+                        .build(),
+                noMarket());
 
         ReportResponse response = service.generate(1001L, 1L);
 
@@ -157,7 +218,7 @@ class ReportServiceTest {
     void summaryStatesInsufficientDataWhenNoScores() {
         Property property = property(3);
         RiskAssessmentDetails noData = RiskAssessmentDetails.builder().propertyId(3L).build();
-        stubPipeline(property, noData, DiligenceDataResponse.builder().build());
+        stubStages(property, noData, DiligenceDataResponse.builder().build(), noMarket());
 
         ReportResponse response = service.generate(3L, 1L);
 

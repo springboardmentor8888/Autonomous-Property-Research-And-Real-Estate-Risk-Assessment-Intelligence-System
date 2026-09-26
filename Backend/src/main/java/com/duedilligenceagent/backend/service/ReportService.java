@@ -2,6 +2,7 @@ package com.duedilligenceagent.backend.service;
 
 import com.duedilligenceagent.backend.dto.DiligenceDataResponse;
 import com.duedilligenceagent.backend.dto.AggregationResponse;
+import com.duedilligenceagent.backend.dto.MarketAnalysisResponse;
 import com.duedilligenceagent.backend.dto.ReportResponse;
 import com.duedilligenceagent.backend.dto.RiskAssessmentResponse;
 import com.duedilligenceagent.backend.entities.DueDiligenceReport;
@@ -17,17 +18,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Generates due-diligence reports as a single pipeline: the stored-data
- * aggregation run inventories the property's diligence records first,
- * the risk engine calculates the assessment from those records, the
- * executive summary is built from the actual record statuses, and the
- * report row is persisted with the generating user and the linked run.
+ * <b>Stage 3 of the diligence workflow</b>: assembles the final report from
+ * the outputs of the earlier stages. The risk assessment comes from the
+ * latest stored row (created by the risk-assessment stage; run on demand
+ * when absent so the API stays robust), the aggregation-run link records
+ * the pipeline provenance, and the executive summary folds in the market
+ * positioning when comparables are stored.
  * <p>
  * Reports are user-facing: the response carries the summary, the risk
  * scores, the record statuses and the data coverage — never provider
@@ -43,35 +46,53 @@ public class ReportService {
     private final RiskAssessmentDetailsRepository riskAssessmentRepository;
     private final RiskAssessmentService riskAssessmentService;
     private final DiligenceService diligenceService;
-    private final AggregationService aggregationService;
     private final AggregationRunRepository aggregationRunRepository;
+    private final MarketAnalysisService marketAnalysisService;
 
-    /** Single pipeline: aggregation inventory → risk → executive summary → persist. */
+    /**
+     * Stage 3: report generation from the stage outputs. Uses the latest
+     * stored risk assessment (running the risk stage first when none
+     * exists) and links the latest aggregation run for provenance.
+     */
     @Transactional
     public ReportResponse generate(Long propertyId, Long generatedByUserId) {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Property not found with id: " + propertyId));
 
-        AggregationResponse aggregation = aggregationService.aggregate(propertyId, null);
-        RiskAssessmentDetails assessment = riskAssessmentService.calculateAndPersist(property);
+        // Stage-1 output: the latest stored risk assessment (run on demand
+        // when the stage was never executed — keeps the API robust).
+        RiskAssessmentDetails assessment =
+                riskAssessmentRepository.findFirstByPropertyIdOrderByAssessedAtDesc(propertyId)
+                        .orElseGet(() -> riskAssessmentService.calculateAndPersist(property));
+
         DiligenceDataResponse diligence = diligenceService.getDiligenceData(propertyId);
 
-        String summary = buildExecutiveSummary(property, assessment, diligence);
+        // Stage-2 output: market positioning folded into the summary.
+            MarketAnalysisResponse marketAnalysis = marketAnalysisService.analyze(propertyId);
+
+        String summary = buildExecutiveSummary(property, assessment, diligence, marketAnalysis);
 
         DueDiligenceReport report = reportRepository.save(DueDiligenceReport.builder()
                 .propertyId(propertyId)
                 .generatedBy(generatedByUserId)
                 .riskAssessmentId(assessment.getRiskAssessmentId())
-                .aggregationRunId(aggregation.getAggregationRunId())
+                .aggregationRunId(latestRunId(propertyId))
                 .executiveSummary(summary)
                 .status("COMPLETED")
                 .build());
 
-        log.info("Generated due-diligence report id={} for property id={} by user id={} from aggregation run id={}",
-                report.getReportId(), propertyId, generatedByUserId, aggregation.getAggregationRunId());
+        log.info("Generated due-diligence report id={} for property id={} by user id={} (risk assessment id={})",
+                report.getReportId(), propertyId, generatedByUserId, assessment.getRiskAssessmentId());
 
-        return toResponse(report, property, assessment, diligence);
+        return toResponse(report, property, assessment, diligence, marketAnalysis);
+    }
+
+    /** Latest aggregation run id for the property, when any run exists. */
+    private Long latestRunId(Long propertyId) {
+        return aggregationRunRepository.findFirstByPropertyIdOrderByStartedAtDesc(propertyId)
+                .map(run -> run.getAggregationRunId())
+                .orElse(null);
     }
 
     /** Latest stored report for a property, or empty when none was generated. */
@@ -103,11 +124,13 @@ public class ReportService {
         RiskAssessmentDetails assessment = report.getRiskAssessmentId() == null ? null
                 : riskAssessmentRepository.findById(report.getRiskAssessmentId()).orElse(null);
         DiligenceDataResponse diligence = diligenceService.getDiligenceData(report.getPropertyId());
-        return toResponse(report, property, assessment, diligence);
+        MarketAnalysisResponse marketAnalysis = marketAnalysisService.analyze(report.getPropertyId());
+        return toResponse(report, property, assessment, diligence, marketAnalysis);
     }
 
     private ReportResponse toResponse(DueDiligenceReport report, Property property,
-                                      RiskAssessmentDetails assessment, DiligenceDataResponse diligence) {
+                                      RiskAssessmentDetails assessment, DiligenceDataResponse diligence,
+                                      MarketAnalysisResponse marketAnalysis) {
         String aggregationStatus = report.getAggregationRunId() == null ? null
                 : aggregationRunRepository.findById(report.getAggregationRunId())
                         .map(run -> run.getStatus())
@@ -122,6 +145,12 @@ public class ReportService {
                 .generatedAt(report.getGeneratedAt())
                 .aggregationRunId(report.getAggregationRunId())
                 .aggregationStatus(aggregationStatus)
+                .marketPosition(marketAnalysis == null || marketAnalysis.getPositioning() == null
+                        ? null : ReportResponse.MarketPosition.builder()
+                                .verdict(marketAnalysis.getPositioning().getVerdict())
+                                .deltaPercent(marketAnalysis.getPositioning().getDeltaPercent())
+                                .basis(marketAnalysis.getPositioning().getBasis())
+                                .build())
                 .risk(toRiskResponse(assessment))
                 .records(toRecordStatuses(diligence))
                 .coverage(toCoverage(diligence))
@@ -197,7 +226,8 @@ public class ReportService {
      * data-completeness closing line.
      */
     private String buildExecutiveSummary(Property property, RiskAssessmentDetails assessment,
-                                        DiligenceDataResponse diligence) {
+                                        DiligenceDataResponse diligence,
+                                        MarketAnalysisResponse marketAnalysis) {
         ReportResponse.DataCoverage coverage = toCoverage(diligence);
 
         // Insufficient data: no diligence records exist — no fabricated scores.
@@ -239,6 +269,21 @@ public class ReportService {
                     .append(". ");
         }
 
+        // Stage-2 output: market positioning against the stored comparables.
+        if (marketAnalysis != null && marketAnalysis.getPositioning() != null
+                && marketAnalysis.getPositioning().getDeltaPercent() != null) {
+            BigDecimal delta = marketAnalysis.getPositioning().getDeltaPercent();
+            if ("BELOW_MARKET".equals(marketAnalysis.getPositioning().getVerdict())) {
+                sb.append("Against the comparable market, the property is priced ")
+                        .append(delta.abs().toPlainString()).append("% below average. ");
+            } else if ("ABOVE_MARKET".equals(marketAnalysis.getPositioning().getVerdict())) {
+                sb.append("Against the comparable market, the property is priced ")
+                        .append(delta.toPlainString()).append("% above average. ");
+            } else if ("ALIGNED".equals(marketAnalysis.getPositioning().getVerdict())) {
+                sb.append("The asking price is in line with the comparable market. ");
+            }
+        }
+
         String market = marketContext(diligence);
         if (market != null) {
             sb.append(market).append(' ');
@@ -258,9 +303,13 @@ public class ReportService {
         }
         if (score(assessment.getFloodRisk()) >= 45) {
             String level = diligence.getFlood() == null ? null : diligence.getFlood().getRiskLevel();
-            concerns.add(level == null
-                    ? "Flood-zone exposure could not be verified because no record is on file"
-                    : "The property lies in a " + lowerHuman(level) + "-risk flood zone");
+            if (level == null) {
+                concerns.add("Flood-zone exposure could not be verified because no record is on file");
+            } else if ("UNKNOWN".equalsIgnoreCase(level.trim())) {
+                concerns.add("The property's flood-zone risk level is unknown");
+            } else {
+                concerns.add("The property lies in a " + lowerHuman(level) + "-risk flood zone");
+            }
         }
         if (score(assessment.getPermitCompliance()) >= 45) {
             String permitStatus = diligence.getPermits() == null || diligence.getPermits().isEmpty()
@@ -271,15 +320,26 @@ public class ReportService {
         }
         if (score(assessment.getZoningCompliance()) >= 45) {
             String status = diligence.getZoning() == null ? null : diligence.getZoning().getZoningStatus();
-            concerns.add(status == null
-                    ? "Zoning compliance could not be verified because no record is on file"
-                    : "Zoning compliance is " + lowerHuman(statusOf(status, "pending")));
+            if (status == null) {
+                concerns.add("Zoning compliance could not be verified because no record is on file");
+            } else {
+                concerns.add(switch (statusOf(status, "PENDING").toUpperCase(Locale.ROOT)) {
+                    case "PENDING" -> "Zoning compliance is pending review";
+                    case "NON_COMPLIANT" -> "The property is non-compliant with zoning regulations";
+                    default -> "Zoning compliance is " + lowerHuman(status);
+                });
+            }
         }
         if (score(assessment.getLegalRisk()) >= 45) {
             String status = diligence.getEnvironmental() == null ? null : diligence.getEnvironmental().getStatus();
-            concerns.add(status == null
-                    ? "Environmental clearance could not be verified because no record is on file"
-                    : "The environmental review is " + lowerHuman(status));
+            if (status == null) {
+                concerns.add("Environmental clearance could not be verified because no record is on file");
+            } else {
+                concerns.add(switch (statusOf(status, "PENDING").toUpperCase(Locale.ROOT)) {
+                    case "NOT_FOUND" -> "No environmental clearance was found on record";
+                    default -> "The environmental review is " + lowerHuman(status);
+                });
+            }
         }
         if (score(assessment.getOwnershipVerification()) >= 45) {
             concerns.add("The ownership record could not be verified");

@@ -215,6 +215,20 @@ export const propertyApi = {
     return fetchWithAuth<RiskAssessment | undefined>(`/properties/${id}/risk-assessment`);
   },
 
+  /** Stage 1: runs the aggregation pipeline + risk scoring. */
+  async runRiskAssessment(id: number | string) {
+    return fetchWithAuth<RiskAssessment>(`/properties/${id}/risk-assessment`, {
+      method: 'POST',
+    });
+  },
+
+  /** Stage 2: analyzes stored comparables + market trends. */
+  async runMarketAnalysis(id: number | string) {
+    return fetchWithAuth<MarketAnalysis>(`/properties/${id}/market-analysis`, {
+      method: 'POST',
+    });
+  },
+
   async getMonitoring(id: number | string) {
     return fetchWithAuth<MonitoringStatus>(`/properties/${id}/monitoring`);
   },
@@ -394,7 +408,7 @@ export type MonitoringStatus = {
   monitoredSince?: string;
 };
 
-/** GET /properties/{id}/risk-assessment — latest risk scores (0-100, higher = riskier). */
+/** GET/POST /properties/{id}/risk-assessment — risk scores (0-100, higher = riskier). */
 export type RiskAssessment = {
   riskAssessmentId: number;
   propertyId: number;
@@ -406,6 +420,39 @@ export type RiskAssessment = {
   ownershipVerification?: number;
   overallScore?: number;
   assessedAt?: string;
+  riskTier?: string;
+  aggregationRunId?: number;
+  aggregationStatus?: string;
+};
+
+/** POST /properties/{id}/market-analysis — stage-2 comparables + trends analysis. */
+export type MarketAnalysis = {
+  propertyId: number;
+  analyzedAt?: string;
+  comparables?: {
+    count: number;
+    averagePrice?: number;
+    medianPrice?: number;
+    lowestPrice?: number;
+    highestPrice?: number;
+    averagePricePerSqft?: number;
+  };
+  positioning?: {
+    verdict: 'BELOW_MARKET' | 'ABOVE_MARKET' | 'ALIGNED' | 'UNKNOWN' | 'NO_COMPARABLES';
+    propertyPrice?: number;
+    marketAveragePrice?: number;
+    deltaPercent?: number;
+    basis?: string;
+    note?: string;
+  };
+  trend?: {
+    locality?: string;
+    period?: string;
+    avgPricePerSqft?: number;
+    supplyCount?: number;
+    demandPulse?: number;
+  };
+  summary?: string;
 };
 
 /** GET /properties/{id}/diligence — the stored due-diligence record set. */
@@ -502,6 +549,12 @@ export type ReportResponse = {
   /** The stored-data aggregation run that fed this report. */
   aggregationRunId?: number;
   aggregationStatus?: string;
+  /** Stage-2 output: the property's market positioning (null when no comparables). */
+  marketPosition?: {
+    verdict: string;
+    deltaPercent?: number;
+    basis?: string;
+  };
   executiveSummary?: string;
   status?: string;
   generatedAt?: string;

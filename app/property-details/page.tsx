@@ -6,9 +6,11 @@ import { useAuthGuard } from '@/lib/useAuth';
 import {
   propertyApi,
   type DiligenceData,
+  type MarketAnalysis,
   type MonitoringStatus,
   type PropertyDetailsResponse,
   type ReportResponse,
+  type RiskAssessment,
 } from '@/lib/api';
 
 function formatDateTime(value?: string) {
@@ -242,11 +244,17 @@ function PropertyDetailsContent() {
   const [diligence, setDiligence] = useState<DiligenceData | null>(null);
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [monitoring, setMonitoring] = useState<MonitoringStatus | null>(null);
+  const [riskStage, setRiskStage] = useState<RiskAssessment | null>(null);
+  const [marketStage, setMarketStage] = useState<MarketAnalysis | null>(null);
   const [done, setDone] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [riskBusy, setRiskBusy] = useState(false);
+  const [riskError, setRiskError] = useState<string | null>(null);
+  const [marketBusy, setMarketBusy] = useState(false);
+  const [marketError, setMarketError] = useState<string | null>(null);
   const [monitorBusy, setMonitorBusy] = useState(false);
 
   const authReady = useAuthGuard({ loginPath: '/' });
@@ -271,12 +279,47 @@ function PropertyDetailsContent() {
       propertyApi.getDiligence(id).catch(() => null),
       propertyApi.getReport(id).catch(() => undefined),
       propertyApi.getMonitoring(id).catch(() => null),
-    ]).then(([diligenceData, latestReport, monitoringStatus]) => {
+      propertyApi.getRiskAssessment(id).catch(() => undefined),
+    ]).then(([diligenceData, latestReport, monitoringStatus, latestRisk]) => {
       setDiligence(diligenceData);
       setReport(latestReport ?? null);
       setMonitoring(monitoringStatus);
+      // A stored assessment means stage 1 already ran — unlock stages 2 and 3.
+      setRiskStage(latestRisk ?? null);
     });
   }, [propertyId, authReady]);
+
+  /** Stage 1: aggregation pipeline + risk scoring. */
+  async function runRiskAssessment() {
+    if (!details || riskBusy) return;
+    setRiskBusy(true);
+    setRiskError(null);
+    try {
+      const result = await propertyApi.runRiskAssessment(details.propertyId);
+      setRiskStage(result);
+      const refreshed = await propertyApi.getDiligence(details.propertyId).catch(() => null);
+      if (refreshed) setDiligence(refreshed);
+    } catch (err) {
+      setRiskError(err instanceof Error ? err.message : 'Failed to run the risk assessment.');
+    } finally {
+      setRiskBusy(false);
+    }
+  }
+
+  /** Stage 2: market-trends and comparable-property analysis. */
+  async function runMarketAnalysis() {
+    if (!details || marketBusy) return;
+    setMarketBusy(true);
+    setMarketError(null);
+    try {
+      const result = await propertyApi.runMarketAnalysis(details.propertyId);
+      setMarketStage(result);
+    } catch (err) {
+      setMarketError(err instanceof Error ? err.message : 'Failed to run the market analysis.');
+    } finally {
+      setMarketBusy(false);
+    }
+  }
 
   async function generateReport() {
     if (!details || generating) return;
@@ -603,25 +646,206 @@ function PropertyDetailsContent() {
 
       {details && (
         <section className="card mt-6 p-8">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-700">Due Diligence Report</h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Runs the diligence aggregation pipeline on the stored records, calculates the
-                risk assessment and produces a downloadable report.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {report && (
-                <button onClick={downloadPdf} disabled={downloading} className="btn-secondary">
-                  {downloading ? 'Preparing…' : '⬇ Download PDF'}
-                </button>
-              )}
-              <button onClick={generateReport} disabled={generating} className="btn-primary">
-                {generating ? 'Running pipeline…' : report ? 'Re-run Due Diligence Pipeline' : 'Run Due Diligence Pipeline'}
+          <div>
+            <h2 className="text-sm font-semibold text-slate-700">Due Diligence Workflow</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Run the stages in order: the risk assessment executes the aggregation pipeline
+              and scores the stored records; the market analysis positions the property against
+              its comparables; the report assembles everything into a downloadable document.
+            </p>
+          </div>
+
+          {/* Stepper */}
+          <ol className="mt-5 flex flex-wrap items-center gap-2 text-xs font-medium">
+            <li className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
+              riskStage ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-slate-300 bg-white text-slate-700'}`}>
+              <span className={riskStage ? 'text-emerald-600' : 'text-slate-400'}>{riskStage ? '✓' : '①'}</span>
+              Risk Assessment
+            </li>
+            <span className="text-slate-300">→</span>
+            <li className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
+              marketStage ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : riskStage ? 'border-slate-300 bg-white text-slate-700'
+                             : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+              <span className={marketStage ? 'text-emerald-600' : 'text-slate-400'}>{marketStage ? '✓' : '②'}</span>
+              Market & Comparables
+            </li>
+            <span className="text-slate-300">→</span>
+            <li className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
+              report ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : riskStage ? 'border-slate-300 bg-white text-slate-700'
+                             : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+              <span className={report ? 'text-emerald-600' : 'text-slate-400'}>{report ? '✓' : '③'}</span>
+              Report
+            </li>
+          </ol>
+
+          {/* Stage 1: Risk Assessment */}
+          <div className="mt-6 rounded-xl border border-slate-200 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Stage 1 · Risk Assessment
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Executes the aggregation pipeline over the stored records and calculates the
+                  risk scores.
+                </p>
+              </div>
+              <button onClick={runRiskAssessment} disabled={riskBusy} className="btn-primary">
+                {riskBusy ? 'Assessing…' : riskStage ? 'Re-run Risk Assessment' : 'Run Risk Assessment'}
               </button>
             </div>
+            {riskError && <p className="mt-3 text-xs font-medium text-rose-600">{riskError}</p>}
+            {riskStage && (
+              <div className="mt-4 space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${tierClass(riskStage.riskTier)}`}>
+                    {riskStage.riskTier === 'INSUFFICIENT_DATA' ? 'INSUFFICIENT DATA' : `${riskStage.riskTier} RISK`}
+                  </span>
+                  {riskStage.overallScore !== null && riskStage.overallScore !== undefined && (
+                    <span className="text-xs font-semibold text-slate-700">
+                      Overall {riskStage.overallScore}/100
+                    </span>
+                  )}
+                  {riskStage.aggregationRunId && (
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-500">
+                      Pipeline run #{riskStage.aggregationRunId}
+                      {riskStage.aggregationStatus && (
+                        <span className={riskStage.aggregationStatus === 'COMPLETED' ? ' text-emerald-600' : ' text-amber-600'}>
+                          {' '}· {riskStage.aggregationStatus.replaceAll('_', ' ')}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  <span className="text-xs text-slate-400">
+                    Assessed {formatDateTime(riskStage.assessedAt)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <RiskDomainCard label="Property Tax" icon="🧾" value={riskStage.taxRisk ?? undefined} />
+                  <RiskDomainCard label="Flood Zone" icon="🌊" value={riskStage.floodRisk ?? undefined} />
+                  <RiskDomainCard label="Building Permits" icon="🏗️" value={riskStage.permitCompliance ?? undefined} />
+                  <RiskDomainCard label="Zoning" icon="🗺️" value={riskStage.zoningCompliance ?? undefined} />
+                  <RiskDomainCard label="Legal / Environmental" icon="⚖️" value={riskStage.legalRisk ?? undefined} />
+                  <RiskDomainCard label="Ownership Verification" icon="🔑" value={riskStage.ownershipVerification ?? undefined} />
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Stage 2: Market & Comparable Analysis — unlocked after stage 1 */}
+          {riskStage && (
+            <div className="mt-4 rounded-xl border border-slate-200 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Stage 2 · Market & Comparable Analysis
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Positions the property against its stored comparables and the latest
+                    market-trend data.
+                  </p>
+                </div>
+                <button onClick={runMarketAnalysis} disabled={marketBusy} className="btn-primary">
+                  {marketBusy ? 'Analyzing…' : marketStage ? 'Re-run Analysis' : 'Analyze Market & Comparables'}
+                </button>
+              </div>
+              {marketError && <p className="mt-3 text-xs font-medium text-rose-600">{marketError}</p>}
+              {marketStage && (
+                <div className="mt-4 space-y-3">
+                  {marketStage.summary && (
+                    <p className="text-sm leading-relaxed text-slate-700">{marketStage.summary}</p>
+                  )}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {marketStage.positioning && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Market Position</p>
+                        <p className={`mt-1 text-sm font-semibold ${
+                          marketStage.positioning.verdict === 'BELOW_MARKET' ? 'text-emerald-600'
+                          : marketStage.positioning.verdict === 'ABOVE_MARKET' ? 'text-rose-600'
+                          : 'text-slate-700'}`}>
+                          {marketStage.positioning.verdict === 'BELOW_MARKET' && marketStage.positioning.deltaPercent !== undefined
+                            ? `${Math.abs(marketStage.positioning.deltaPercent)}% below market`
+                            : marketStage.positioning.verdict === 'ABOVE_MARKET' && marketStage.positioning.deltaPercent !== undefined
+                              ? `${marketStage.positioning.deltaPercent}% above market`
+                              : marketStage.positioning.verdict.replaceAll('_', ' ')}
+                        </p>
+                        {marketStage.positioning.note && (
+                          <p className="mt-1 text-[11px] text-slate-400">{marketStage.positioning.note}</p>
+                        )}
+                      </div>
+                    )}
+                    {marketStage.comparables && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Comparables</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {marketStage.comparables.count} listings
+                        </p>
+                        {marketStage.comparables.averagePrice !== undefined && (
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            avg ₹{marketStage.comparables.averagePrice.toLocaleString('en-IN')}
+                          </p>
+                        )}
+                        {marketStage.comparables.averagePricePerSqft !== undefined && (
+                          <p className="text-[11px] text-slate-500">
+                            avg ₹{marketStage.comparables.averagePricePerSqft.toLocaleString('en-IN')}/sqft
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {marketStage.trend && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Market Trend</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {marketStage.trend.locality ?? 'City'} · {marketStage.trend.period}
+                        </p>
+                        {marketStage.trend.avgPricePerSqft !== undefined && (
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            ₹{marketStage.trend.avgPricePerSqft.toLocaleString('en-IN')}/sqft
+                            {marketStage.trend.supplyCount !== undefined && ` · ${marketStage.trend.supplyCount} listings`}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Stage 3: Report — unlocked after stage 1 */}
+          {riskStage && (
+            <div className="mt-4 rounded-xl border border-slate-200 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Stage 3 · Generate Report
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Assembles the risk assessment{marketStage ? ', market analysis' : ''} and record
+                    statuses into the final due-diligence report.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {report && (
+                    <button onClick={downloadPdf} disabled={downloading} className="btn-secondary">
+                      {downloading ? 'Preparing…' : '⬇ Download PDF'}
+                    </button>
+                  )}
+                  <button onClick={generateReport} disabled={generating} className="btn-primary">
+                    {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Report'}
+                  </button>
+                </div>
+              </div>
+              {!report && !generating && (
+                <p className="mt-3 text-xs text-slate-500">
+                  No report generated yet — run stages 1 and 2, then generate the final report.
+                </p>
+              )}
+            </div>
+          )}
 
           {generateError && (
             <p className="mt-3 text-xs font-medium text-rose-600">{generateError}</p>
@@ -666,6 +890,18 @@ function PropertyDetailsContent() {
                 <p className="mt-2 text-sm leading-relaxed text-slate-700">
                   {report.executiveSummary}
                 </p>
+                {report.marketPosition && report.marketPosition.verdict !== 'NO_COMPARABLES'
+                  && report.marketPosition.verdict !== 'UNKNOWN' && (
+                  <p className="mt-3 inline-block rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
+                    Market position: {report.marketPosition.verdict.replaceAll('_', ' ').toLowerCase()}
+                    {report.marketPosition.deltaPercent !== undefined && (
+                      <span className="text-slate-400">
+                        {' '}({report.marketPosition.deltaPercent > 0 ? '+' : ''}
+                        {report.marketPosition.deltaPercent}% vs comparables)
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
 
               {/* Domain risk cards */}
@@ -759,10 +995,6 @@ function PropertyDetailsContent() {
                 </div>
               )}
             </div>
-          ) : !generating ? (
-            <p className="mt-4 text-xs text-slate-500">
-              No report generated yet for this property.
-            </p>
           ) : null}
         </section>
       )}

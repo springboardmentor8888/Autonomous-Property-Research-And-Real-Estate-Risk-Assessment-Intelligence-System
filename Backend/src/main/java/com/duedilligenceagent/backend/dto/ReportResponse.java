@@ -32,6 +32,9 @@ public class ReportResponse {
     private Long aggregationRunId;
     private String aggregationStatus;
 
+    /** Stage-2 output: the property's market positioning (null when no comparables). */
+    private MarketPosition marketPosition;
+
     /** The calculated risk assessment linked to this report (0-100, higher = riskier). */
     private RiskAssessmentResponse risk;
 
@@ -40,6 +43,19 @@ public class ReportResponse {
 
     /** What data was available for this report. */
     private DataCoverage coverage;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MarketPosition {
+        /** BELOW_MARKET / ABOVE_MARKET / ALIGNED / UNKNOWN / NO_COMPARABLES. */
+        private String verdict;
+        /** (property − market) / market × 100; null when unknown. */
+        private java.math.BigDecimal deltaPercent;
+        /** "total price" or "price per sqft". */
+        private String basis;
+    }
 
     @Data
     @Builder
