@@ -15,13 +15,27 @@ public interface PropertyService {
 
     List<PropertyResponseDTO> getAllProperties();
 
-    PropertyResponseDTO updateProperty(Long id, PropertyRequestDTO requestDTO);
+    PropertyResponseDTO updateProperty(
+            Long id,
+            PropertyRequestDTO requestDTO
+    );
 
     void deleteProperty(Long id);
 
-    List<PropertyResponseDTO> searchProperties(PropertySearchCriteriaDTO criteria);
+    List<PropertyResponseDTO> searchProperties(
+            PropertySearchCriteriaDTO criteria
+    );
 
-    List<PropertyHistoryDTO> getPropertyHistory(Long propertyId);
+    List<PropertyResponseDTO> getComparableProperties(
+            Long propertyId
+    );
 
-    PropertyHistoryDTO addPropertyHistory(Long propertyId, PropertyHistoryDTO historyDTO);
+    List<PropertyHistoryDTO> getPropertyHistory(
+            Long propertyId
+    );
+
+    PropertyHistoryDTO addPropertyHistory(
+            Long propertyId,
+            PropertyHistoryDTO historyDTO
+    );
 }

@@ -29,7 +29,6 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
            "LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(p.address) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(p.city) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
-
            "(:city IS NULL OR LOWER(p.city) = LOWER(:city)) AND " +
            "(:state IS NULL OR LOWER(p.state) = LOWER(:state)) AND " +
            "(:zipCode IS NULL OR p.zipCode = :zipCode) AND " +
@@ -50,5 +49,18 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             @Param("minBedrooms") Integer minBedrooms,
             @Param("minBathrooms") Integer minBathrooms,
             @Param("status") String status
+    );
+
+    @Query("SELECT p FROM Property p WHERE " +
+           "p.id <> :propertyId AND " +
+           "LOWER(p.city) = LOWER(:city) AND " +
+           "LOWER(p.propertyType) = LOWER(:propertyType) AND " +
+           "p.price BETWEEN :minPrice AND :maxPrice")
+    List<Property> findComparableProperties(
+            @Param("propertyId") Long propertyId,
+            @Param("city") String city,
+            @Param("propertyType") String propertyType,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice
     );
 }

@@ -28,36 +28,78 @@ public class PropertyController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<PropertyResponseDTO>> createProperty(@Valid @RequestBody PropertyRequestDTO requestDTO) {
-        PropertyResponseDTO created = propertyService.createProperty(requestDTO);
+    public ResponseEntity<ApiResponse<PropertyResponseDTO>> createProperty(
+            @Valid @RequestBody PropertyRequestDTO requestDTO) {
+
+        PropertyResponseDTO created =
+                propertyService.createProperty(requestDTO);
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Property created successfully", created));
+                .body(
+                        ApiResponse.success(
+                                "Property created successfully",
+                                created
+                        )
+                );
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PropertyResponseDTO>> getPropertyById(@PathVariable Long id) {
-        PropertyResponseDTO property = propertyService.getPropertyById(id);
-        return ResponseEntity.ok(ApiResponse.success("Property retrieved successfully", property));
+    public ResponseEntity<ApiResponse<PropertyResponseDTO>> getPropertyById(
+            @PathVariable Long id) {
+
+        PropertyResponseDTO property =
+                propertyService.getPropertyById(id);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Property retrieved successfully",
+                        property
+                )
+        );
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<PropertyResponseDTO>>> getAllProperties() {
-        List<PropertyResponseDTO> properties = propertyService.getAllProperties();
-        return ResponseEntity.ok(ApiResponse.success("Fetched all properties", properties));
+
+        List<PropertyResponseDTO> properties =
+                propertyService.getAllProperties();
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Fetched all properties",
+                        properties
+                )
+        );
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<PropertyResponseDTO>> updateProperty(
             @PathVariable Long id,
             @Valid @RequestBody PropertyRequestDTO requestDTO) {
-        PropertyResponseDTO updated = propertyService.updateProperty(id, requestDTO);
-        return ResponseEntity.ok(ApiResponse.success("Property updated successfully", updated));
+
+        PropertyResponseDTO updated =
+                propertyService.updateProperty(id, requestDTO);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Property updated successfully",
+                        updated
+                )
+        );
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteProperty(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteProperty(
+            @PathVariable Long id) {
+
         propertyService.deleteProperty(id);
-        return ResponseEntity.ok(ApiResponse.success("Property deleted successfully", null));
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Property deleted successfully",
+                        null
+                )
+        );
     }
 
     @GetMapping("/search")
@@ -73,7 +115,9 @@ public class PropertyController {
             @RequestParam(required = false) Integer minBathrooms,
             @RequestParam(required = false) String status) {
 
-        PropertySearchCriteriaDTO criteria = new PropertySearchCriteriaDTO();
+        PropertySearchCriteriaDTO criteria =
+                new PropertySearchCriteriaDTO();
+
         criteria.setQuery(query);
         criteria.setCity(city);
         criteria.setState(state);
@@ -85,22 +129,66 @@ public class PropertyController {
         criteria.setMinBathrooms(minBathrooms);
         criteria.setStatus(status);
 
-        List<PropertyResponseDTO> results = propertyService.searchProperties(criteria);
-        return ResponseEntity.ok(ApiResponse.success("Search completed with " + results.size() + " properties found", results));
+        List<PropertyResponseDTO> results =
+                propertyService.searchProperties(criteria);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Search completed with "
+                                + results.size()
+                                + " properties found",
+                        results
+                )
+        );
+    }
+
+    @GetMapping("/{id}/comparables")
+    public ResponseEntity<ApiResponse<List<PropertyResponseDTO>>> getComparableProperties(
+            @PathVariable Long id) {
+
+        List<PropertyResponseDTO> comparables =
+                propertyService.getComparableProperties(id);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Comparable properties retrieved successfully",
+                        comparables
+                )
+        );
     }
 
     @GetMapping("/{id}/history")
-    public ResponseEntity<ApiResponse<List<PropertyHistoryDTO>>> getPropertyHistory(@PathVariable Long id) {
-        List<PropertyHistoryDTO> history = propertyService.getPropertyHistory(id);
-        return ResponseEntity.ok(ApiResponse.success("Property history retrieved successfully", history));
+    public ResponseEntity<ApiResponse<List<PropertyHistoryDTO>>> getPropertyHistory(
+            @PathVariable Long id) {
+
+        List<PropertyHistoryDTO> history =
+                propertyService.getPropertyHistory(id);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Property history retrieved successfully",
+                        history
+                )
+        );
     }
 
     @PostMapping("/{id}/history")
     public ResponseEntity<ApiResponse<PropertyHistoryDTO>> addPropertyHistory(
             @PathVariable Long id,
             @Valid @RequestBody PropertyHistoryDTO historyDTO) {
-        PropertyHistoryDTO createdHistory = propertyService.addPropertyHistory(id, historyDTO);
+
+        PropertyHistoryDTO createdHistory =
+                propertyService.addPropertyHistory(
+                        id,
+                        historyDTO
+                );
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("History record added successfully", createdHistory));
+                .body(
+                        ApiResponse.success(
+                                "History record added successfully",
+                                createdHistory
+                        )
+                );
     }
 }
