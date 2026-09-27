@@ -229,6 +229,18 @@ export const propertyApi = {
     });
   },
 
+  /** Runs the stored-data aggregation pipeline (diligence inventory). */
+  async runAggregation(id: number | string) {
+    return fetchWithAuth<AggregationResponse>(`/properties/${id}/aggregate`, {
+      method: 'POST',
+    });
+  },
+
+  /** Past aggregation runs for a property, newest first. */
+  async getAggregationRuns(id: number | string) {
+    return fetchWithAuth<AggregationRunSummary[]>(`/properties/${id}/aggregations`);
+  },
+
   async getMonitoring(id: number | string) {
     return fetchWithAuth<MonitoringStatus>(`/properties/${id}/monitoring`);
   },
@@ -423,6 +435,33 @@ export type RiskAssessment = {
   riskTier?: string;
   aggregationRunId?: number;
   aggregationStatus?: string;
+};
+
+/** POST /properties/{id}/aggregate — stored-data aggregation pipeline run. */
+export type AggregationResponse = {
+  aggregationRunId: number;
+  propertyId: number;
+  status: string;
+  startedAt?: string;
+  completedAt?: string;
+  observations?: {
+    provider: string;
+    operation: string;
+    status: string;
+    httpStatus?: number;
+    errorMessage?: string;
+    retrievedAt?: string;
+  }[];
+};
+
+/** GET /properties/{id}/aggregations — past pipeline runs, newest first. */
+export type AggregationRunSummary = {
+  aggregationRunId: number;
+  propertyId: number;
+  requestedAddress?: string;
+  status: string;
+  startedAt?: string;
+  completedAt?: string;
 };
 
 /** POST /properties/{id}/market-analysis — stage-2 comparables + trends analysis. */

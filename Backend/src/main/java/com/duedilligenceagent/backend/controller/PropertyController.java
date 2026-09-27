@@ -139,7 +139,7 @@ public class PropertyController {
     @PostMapping("/{id}/aggregate")
     public ResponseEntity<AggregationResponse> aggregateProperty(
             @PathVariable Long id,
-            @RequestBody AggregationRequest request) {
+            @RequestBody(required = false) AggregationRequest request) {
         // Aggregation is standalone: it inventories the property's stored
         // diligence data only — no external providers are called.
         return ResponseEntity.ok(aggregationService.aggregate(id, null));
