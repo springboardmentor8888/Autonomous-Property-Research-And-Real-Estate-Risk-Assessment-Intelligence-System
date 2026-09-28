@@ -27,6 +27,7 @@ public class PropertyMonitoring {
     private Long userId;
 
     @Column(name = "enabled", nullable = false)
+    @Builder.Default
     private Boolean enabled = true;
 
     @Column(name = "last_checked_at")
