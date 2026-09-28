@@ -4,9 +4,12 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import PropertySearch from "./pages/PropertySearch";
+import PropertyDetails from "./pages/PropertyDetails";
 import DueDiligence from "./pages/DueDiligence";
 import RiskAssessment from "./pages/RiskAssessment";
 import Reports from "./pages/Reports";
+import Monitoring from "./pages/Monitoring";
+import AIIntelligence from "./pages/AIIntelligence";
 import Settings from "./pages/Settings";
 
 import Sidebar from "./components/Sidebar";
@@ -21,14 +24,52 @@ function AppLayout() {
       <div className="flex-1 min-w-0">
         <Navbar />
 
-        <main className="p-8">
+        <main className="p-0">
           <Routes>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/properties" element={<PropertySearch />} />
-            <Route path="/due-diligence" element={<DueDiligence />} />
-            <Route path="/risk-assessment" element={<RiskAssessment />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/dashboard"
+              element={<Dashboard />}
+            />
+
+            <Route
+              path="/properties"
+              element={<PropertySearch />}
+            />
+
+            <Route
+              path="/property-details"
+              element={<PropertyDetails />}
+            />
+
+            <Route
+              path="/due-diligence"
+              element={<DueDiligence />}
+            />
+
+            <Route
+              path="/risk-assessment"
+              element={<RiskAssessment />}
+            />
+
+            <Route
+              path="/reports"
+              element={<Reports />}
+            />
+
+            <Route
+              path="/monitoring"
+              element={<Monitoring />}
+            />
+
+            <Route
+              path="/ai-intelligence"
+              element={<AIIntelligence />}
+            />
+
+            <Route
+              path="/settings"
+              element={<Settings />}
+            />
           </Routes>
         </main>
       </div>
@@ -40,9 +81,20 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/"
+          element={<Login />}
+        />
+
+        <Route
+          path="/login"
+          element={<Login />}
+        />
+
+        <Route
+          path="/register"
+          element={<Register />}
+        />
 
         <Route
           path="/*"

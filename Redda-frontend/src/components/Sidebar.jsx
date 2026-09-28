@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   ShieldAlert,
   FileText,
+  Activity,
   Settings,
   ChevronRight,
   Sparkles,
@@ -37,6 +38,16 @@ function Sidebar() {
       name: "Reports",
       path: "/reports",
       icon: FileText,
+    },
+    {
+      name: "Monitoring",
+      path: "/monitoring",
+      icon: Activity,
+    },
+    {
+      name: "AI Intelligence",
+      path: "/ai-intelligence",
+      icon: Sparkles,
     },
     {
       name: "Settings",

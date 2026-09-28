@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Clock3,
   X,
+  Eye,
 } from "lucide-react";
 
 function PropertySearch() {
@@ -18,7 +19,6 @@ function PropertySearch() {
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
 
-  // Load recent searches when page opens
   useEffect(() => {
     const savedSearches = localStorage.getItem("recentSearches");
 
@@ -27,7 +27,6 @@ function PropertySearch() {
     }
   }, []);
 
-  // Search property
   const handleSearch = () => {
     const cleanAddress = address.trim();
 
@@ -54,13 +53,11 @@ function PropertySearch() {
 
       setProperty(newProperty);
 
-      // Save selected property
       localStorage.setItem(
         "selectedProperty",
         JSON.stringify(newProperty)
       );
 
-      // Add to recent searches
       const oldSearches =
         JSON.parse(localStorage.getItem("recentSearches")) || [];
 
@@ -84,7 +81,19 @@ function PropertySearch() {
     }, 1000);
   };
 
-  // Start AI research
+  const handleViewDetails = () => {
+    if (!property) {
+      alert("Please search for a property first.");
+      return;
+    }
+
+    navigate("/property-details", {
+      state: {
+        property: property,
+      },
+    });
+  };
+
   const handleStartResearch = () => {
     if (!property) {
       alert("Please search for a property first.");
@@ -98,7 +107,6 @@ function PropertySearch() {
     });
   };
 
-  // Select property from recent searches
   const handleRecentProperty = (item) => {
     setProperty(item);
     setAddress(item.address);
@@ -109,7 +117,19 @@ function PropertySearch() {
     );
   };
 
-  // Remove recent search
+  const handleRecentViewDetails = (item) => {
+    localStorage.setItem(
+      "selectedProperty",
+      JSON.stringify(item)
+    );
+
+    navigate("/property-details", {
+      state: {
+        property: item,
+      },
+    });
+  };
+
   const removeRecentSearch = (id) => {
     const updatedSearches = recentSearches.filter(
       (item) => item.id !== id
@@ -197,8 +217,6 @@ function PropertySearch() {
 
             </div>
 
-            {/* SEARCH BUTTON */}
-
             <button
               onClick={handleSearch}
               disabled={loading}
@@ -216,7 +234,6 @@ function PropertySearch() {
               ) : (
                 <>
                   <Search size={19} />
-
                   Search Property
                 </>
               )}
@@ -324,20 +341,33 @@ function PropertySearch() {
 
             </div>
 
-            {/* AI RESEARCH BUTTON */}
+            {/* ACTION BUTTONS */}
 
-            <button
-              onClick={handleStartResearch}
-              className="mt-6 flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-lg font-medium transition"
-            >
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
 
-              <Sparkles size={19} />
+              <button
+                onClick={handleViewDetails}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-medium transition"
+              >
+                <Eye size={19} />
 
-              Start AI Due Diligence
+                View Property Details
 
-              <ArrowRight size={18} />
+                <ArrowRight size={18} />
+              </button>
 
-            </button>
+              <button
+                onClick={handleStartResearch}
+                className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-lg font-medium transition"
+              >
+                <Sparkles size={19} />
+
+                Start AI Due Diligence
+
+                <ArrowRight size={18} />
+              </button>
+
+            </div>
 
           </div>
         )}
@@ -456,17 +486,17 @@ function PropertySearch() {
 
                 <div
                   key={item.id}
-                  className="flex items-center justify-between border rounded-lg p-4 hover:bg-gray-50 transition"
+                  className="flex flex-col md:flex-row md:items-center justify-between gap-3 border rounded-lg p-4 hover:bg-gray-50 transition"
                 >
 
                   <button
                     onClick={() =>
                       handleRecentProperty(item)
                     }
-                    className="flex items-center gap-3 text-left flex-1"
+                    className="flex items-center gap-3 text-left flex-1 min-w-0"
                   >
 
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
 
                       <MapPin
                         size={18}
@@ -475,9 +505,9 @@ function PropertySearch() {
 
                     </div>
 
-                    <div>
+                    <div className="min-w-0">
 
-                      <p className="font-medium text-gray-800">
+                      <p className="font-medium text-gray-800 truncate">
                         {item.address}
                       </p>
 
@@ -489,17 +519,31 @@ function PropertySearch() {
 
                   </button>
 
-                  <button
-                    onClick={() =>
-                      removeRecentSearch(item.id)
-                    }
-                    className="p-2 text-gray-400 hover:text-red-500 transition"
-                    title="Remove"
-                  >
+                  <div className="flex items-center gap-2">
 
-                    <X size={18} />
+                    <button
+                      onClick={() =>
+                        handleRecentViewDetails(item)
+                      }
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
+                    >
+                      <Eye size={16} />
+                      Details
+                    </button>
 
-                  </button>
+                    <button
+                      onClick={() =>
+                        removeRecentSearch(item.id)
+                      }
+                      className="p-2 text-gray-400 hover:text-red-500 transition"
+                      title="Remove"
+                    >
+
+                      <X size={18} />
+
+                    </button>
+
+                  </div>
 
                 </div>
 
