@@ -22,91 +22,112 @@ public class PropertyDataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (propertyRepository.count() == 0) {
-            log.info("Seeding initial properties into database...");
+        // Clear old sample records if they exist to refresh with Maharashtra properties
+        boolean needsMaharashtrianData = propertyRepository.findAll().stream()
+                .noneMatch(p -> "Pune".equalsIgnoreCase(p.getCity()) || "Mumbai".equalsIgnoreCase(p.getCity()));
+
+        if (propertyRepository.count() == 0 || needsMaharashtrianData) {
+            log.info("Refreshing database with Maharashtra properties (Pune, Mumbai, Nashik, Nagpur, Sambhajinagar)...");
+            propertyRepository.deleteAll();
 
             Property p1 = new Property();
-            p1.setTitle("Modern Coastal Villa");
-            p1.setAddress("742 Evergreen Terrace");
-            p1.setCity("Miami");
-            p1.setState("FL");
-            p1.setZipCode("33139");
-            p1.setCountry("USA");
-            p1.setPrice(new BigDecimal("1250000.00"));
+            p1.setTitle("Kothrud Heritage Bungalow & Garden");
+            p1.setAddress("Plot 14, Mayur Colony, Kothrud");
+            p1.setCity("Pune");
+            p1.setState("MH");
+            p1.setZipCode("411038");
+            p1.setCountry("India");
+            p1.setPrice(new BigDecimal("28500000.00")); // ₹2.85 Cr
             p1.setBedrooms(4);
-            p1.setBathrooms(3);
-            p1.setSquareFeet(3200.0);
-            p1.setPropertyType("Single Family");
-            p1.setYearBuilt(2021);
-            p1.setDescription("Luxury waterfront villa with smart home automation and pool.");
+            p1.setBathrooms(4);
+            p1.setSquareFeet(3400.0);
+            p1.setPropertyType("Villa");
+            p1.setYearBuilt(2022);
+            p1.setDescription("Spacious independent bungalow with private garden, solar setup, and clear NA title near Karve Road.");
             p1.setStatus("AVAILABLE");
 
             Property p2 = new Property();
-            p2.setTitle("Downtown Luxury Penthouse");
-            p2.setAddress("1200 Brickell Bay Dr, Apt 42B");
-            p2.setCity("Miami");
-            p2.setState("FL");
-            p2.setZipCode("33131");
-            p2.setCountry("USA");
-            p2.setPrice(new BigDecimal("890000.00"));
-            p2.setBedrooms(2);
-            p2.setBathrooms(2);
-            p2.setSquareFeet(1650.0);
-            p2.setPropertyType("Condo");
-            p2.setYearBuilt(2023);
-            p2.setDescription("High-rise penthouse overlooking Biscayne Bay with concierge service.");
+            p2.setTitle("Bandra West Sea-Facing Luxury Apartment");
+            p2.setAddress("Flat 1202, Pali Hill Road, Bandra West");
+            p2.setCity("Mumbai");
+            p2.setState("MH");
+            p2.setZipCode("400050");
+            p2.setCountry("India");
+            p2.setPrice(new BigDecimal("65000000.00")); // ₹6.50 Cr
+            p2.setBedrooms(3);
+            p2.setBathrooms(3);
+            p2.setSquareFeet(1950.0);
+            p2.setPropertyType("Luxury Apartment");
+            p2.setYearBuilt(2024);
+            p2.setDescription("Ultra-luxury sea-facing flat with high-speed elevators, 2 covered car parks, and BMC occupancy certificate.");
             p2.setStatus("AVAILABLE");
 
             Property p3 = new Property();
-            p3.setTitle("Historic Brownstone Residence");
-            p3.setAddress("456 Pine Lane");
-            p3.setCity("Orlando");
-            p3.setState("FL");
-            p3.setZipCode("32801");
-            p3.setCountry("USA");
-            p3.setPrice(new BigDecimal("575000.00"));
+            p3.setTitle("Baner High-Rise Smart Condominium");
+            p3.setAddress("Tower B-1504, Pancard Club Road, Baner");
+            p3.setCity("Pune");
+            p3.setState("MH");
+            p3.setZipCode("411045");
+            p3.setCountry("India");
+            p3.setPrice(new BigDecimal("14500000.00")); // ₹1.45 Cr
             p3.setBedrooms(3);
-            p3.setBathrooms(2);
-            p3.setSquareFeet(2100.0);
-            p3.setPropertyType("Townhouse");
-            p3.setYearBuilt(2018);
-            p3.setDescription("Renovated brick townhouse near city center and parks.");
-            p3.setStatus("PENDING");
+            p3.setBathrooms(3);
+            p3.setSquareFeet(1550.0);
+            p3.setPropertyType("Condominium");
+            p3.setYearBuilt(2023);
+            p3.setDescription("Modern smart home with clubhouse, EV charging stations, and close proximity to Hinjewadi IT Park.");
+            p3.setStatus("AVAILABLE");
 
             Property p4 = new Property();
-            p4.setTitle("Suburban Craftsman Estate");
-            p4.setAddress("88 Ocean Drive");
-            p4.setCity("Tampa");
-            p4.setState("FL");
-            p4.setZipCode("33602");
-            p4.setCountry("USA");
-            p4.setPrice(new BigDecimal("420000.00"));
+            p4.setTitle("Gangapur Road Vineyard View Duplex");
+            p4.setAddress("Bungalow 7, Serene Meadows, Gangapur Road");
+            p4.setCity("Nashik");
+            p4.setState("MH");
+            p4.setZipCode("422013");
+            p4.setCountry("India");
+            p4.setPrice(new BigDecimal("9800000.00")); // ₹98 Lakhs
             p4.setBedrooms(3);
-            p4.setBathrooms(2);
-            p4.setSquareFeet(1850.0);
-            p4.setPropertyType("Single Family");
-            p4.setYearBuilt(2019);
-            p4.setDescription("Spacious single-story home with large backyard and upgraded kitchen.");
+            p4.setBathrooms(3);
+            p4.setSquareFeet(2200.0);
+            p4.setPropertyType("Duplex");
+            p4.setYearBuilt(2021);
+            p4.setDescription("Scenic duplex home near Godavari river belt with tranquil green surroundings and NMC sanctions.");
             p4.setStatus("AVAILABLE");
 
             Property p5 = new Property();
-            p5.setTitle("Metro Commercial Office Plaza");
-            p5.setAddress("500 West Grand Avenue");
-            p5.setCity("Jacksonville");
-            p5.setState("FL");
-            p5.setZipCode("32202");
-            p5.setCountry("USA");
-            p5.setPrice(new BigDecimal("2100000.00"));
-            p5.setBedrooms(0);
-            p5.setBathrooms(4);
-            p5.setSquareFeet(8500.0);
-            p5.setPropertyType("Commercial");
-            p5.setYearBuilt(2015);
-            p5.setDescription("Prime commercial parcel zoned for multi-tenant retail and corporate offices.");
-            p5.setStatus("AVAILABLE");
+            p5.setTitle("Civil Lines Premium Green Residence");
+            p5.setAddress("Flat 5A, Palm Grove, Civil Lines");
+            p5.setCity("Nagpur");
+            p5.setState("MH");
+            p5.setZipCode("440001");
+            p5.setCountry("India");
+            p5.setPrice(new BigDecimal("12000000.00")); // ₹1.20 Cr
+            p5.setBedrooms(3);
+            p5.setBathrooms(2);
+            p5.setSquareFeet(1800.0);
+            p5.setPropertyType("Apartment");
+            p5.setYearBuilt(2020);
+            p5.setDescription("Centrally located residence in green zone near High Court and Vidhan Bhavan with RERA clearance.");
+            p5.setStatus("PENDING");
 
-            propertyRepository.saveAll(List.of(p1, p2, p3, p4, p5));
-            log.info("Successfully seeded 5 properties into database.");
+            Property p6 = new Property();
+            p6.setTitle("CIDCO Commercial Tech & Office Park");
+            p6.setAddress("Sector N-1, Town Centre, Jalna Road, CIDCO");
+            p6.setCity("Chhatrapati Sambhajinagar");
+            p6.setState("MH");
+            p6.setZipCode("431003");
+            p6.setCountry("India");
+            p6.setPrice(new BigDecimal("45000000.00")); // ₹4.50 Cr
+            p6.setBedrooms(0);
+            p6.setBathrooms(6);
+            p6.setSquareFeet(9200.0);
+            p6.setPropertyType("Commercial");
+            p6.setYearBuilt(2019);
+            p6.setDescription("Multi-tenant commercial building with MIDC clearances and high footfall frontage on main highway.");
+            p6.setStatus("AVAILABLE");
+
+            propertyRepository.saveAll(List.of(p1, p2, p3, p4, p5, p6));
+            log.info("Successfully seeded 6 Maharashtra properties into database (Pune, Mumbai, Nashik, Nagpur, Sambhajinagar).");
         }
     }
 }

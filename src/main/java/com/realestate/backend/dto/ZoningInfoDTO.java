@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ZoningInfoDTO {
-    private String zoneType;          // e.g., R-1 (Single Family Residential), C-2 (Commercial), M-1 (Industrial)
+    private String zoneType;          // ex., R-1 (Single Family Residential), C-2 (Commercial), M-1 (Industrial)
     private Boolean compliant;
     private String jurisdiction;
     private List<String> permittedUses;

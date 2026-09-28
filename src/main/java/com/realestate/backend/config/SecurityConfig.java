@@ -48,6 +48,8 @@ public class SecurityConfig {
                     "/api/properties/**",
                     "/api/address/**",
                     "/api/validation/**",
+                    "/api/cma/**",
+                    "/api/reports/**",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html"
