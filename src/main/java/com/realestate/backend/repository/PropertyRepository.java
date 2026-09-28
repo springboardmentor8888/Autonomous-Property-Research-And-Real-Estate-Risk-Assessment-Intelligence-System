@@ -12,13 +12,7 @@ import java.util.List;
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, Long> {
 
-    List<Property> findByCity(String city);
-
     List<Property> findByCityIgnoreCase(String city);
-
-    List<Property> findByPriceLessThanEqual(BigDecimal maxPrice);
-
-    List<Property> findByCityAndPriceLessThanEqual(String city, BigDecimal maxPrice);
 
     List<Property> findByZipCode(String zipCode);
 
@@ -26,19 +20,24 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 
     List<Property> findByStatusIgnoreCase(String status);
 
-    List<Property> findByAddressContainingIgnoreCase(String address);
+    List<Property> findAllByOrderByPriceAsc();
+
+    List<Property> findAllByOrderByPriceDesc();
 
     @Query("SELECT p FROM Property p WHERE " +
-           "(:query IS NULL OR LOWER(p.title) LIKE CONCAT('%', LOWER(CAST(:query AS String)), '%') OR LOWER(p.address) LIKE CONCAT('%', LOWER(CAST(:query AS String)), '%') OR LOWER(p.city) LIKE CONCAT('%', LOWER(CAST(:query AS String)), '%')) AND " +
-           "(:city IS NULL OR LOWER(p.city) = LOWER(CAST(:city AS String))) AND " +
-           "(:state IS NULL OR LOWER(p.state) = LOWER(CAST(:state AS String))) AND " +
+           "(:query IS NULL OR " +
+           "LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.address) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.city) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
+           "(:city IS NULL OR LOWER(p.city) = LOWER(:city)) AND " +
+           "(:state IS NULL OR LOWER(p.state) = LOWER(:state)) AND " +
            "(:zipCode IS NULL OR p.zipCode = :zipCode) AND " +
-           "(:propertyType IS NULL OR LOWER(p.propertyType) = LOWER(CAST(:propertyType AS String))) AND " +
+           "(:propertyType IS NULL OR LOWER(p.propertyType) = LOWER(:propertyType)) AND " +
            "(:minPrice IS NULL OR p.price >= :minPrice) AND " +
            "(:maxPrice IS NULL OR p.price <= :maxPrice) AND " +
            "(:minBedrooms IS NULL OR p.bedrooms >= :minBedrooms) AND " +
            "(:minBathrooms IS NULL OR p.bathrooms >= :minBathrooms) AND " +
-           "(:status IS NULL OR LOWER(p.status) = LOWER(CAST(:status AS String)))")
+           "(:status IS NULL OR LOWER(p.status) = LOWER(:status))")
     List<Property> searchProperties(
             @Param("query") String query,
             @Param("city") String city,
@@ -51,5 +50,17 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             @Param("minBathrooms") Integer minBathrooms,
             @Param("status") String status
     );
-}
 
+    @Query("SELECT p FROM Property p WHERE " +
+           "p.id <> :propertyId AND " +
+           "LOWER(p.city) = LOWER(:city) AND " +
+           "LOWER(p.propertyType) = LOWER(:propertyType) AND " +
+           "p.price BETWEEN :minPrice AND :maxPrice")
+    List<Property> findComparableProperties(
+            @Param("propertyId") Long propertyId,
+            @Param("city") String city,
+            @Param("propertyType") String propertyType,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice
+    );
+}
