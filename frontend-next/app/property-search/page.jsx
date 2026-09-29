@@ -1,233 +1,157 @@
 "use client";
 
 import { useState } from "react";
+import { MapPin } from "lucide-react";
 
-// Backend base URL — update if deployed elsewhere.
-const BASE_URL = "/api";
+const BASE_URL = "http://localhost:8080/api";
 
 export default function PropertySearchPage() {
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [result, setResult] = useState(null);
 
   async function handleSearch(event) {
     event.preventDefault();
-
     setError("");
-    setSuccess("");
     setResult(null);
 
     const cleanAddress = address.trim();
-
-    // -----------------------------
-    // BASIC ADDRESS VALIDATION
-    // -----------------------------
 
     if (!cleanAddress) {
       setError("Please enter a property address.");
       return;
     }
 
-    if (cleanAddress.length < 8) {
-      setError("Please enter a complete property address.");
+    if (cleanAddress.length < 3) {
+      setError("Please enter a valid property address.");
       return;
     }
 
     setLoading(true);
 
     try {
-      // -----------------------------
-      // CALL OUR BACKEND
-      // -----------------------------
+      const token = localStorage.getItem("token");
 
-      const token =
-        typeof window !== "undefined"
-          ? localStorage.getItem("token")
-          : null;
-
-      const response = await fetch(`${BASE_URL}/properties/validate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ address: cleanAddress }),
-      });
+      const response = await fetch(
+        `${BASE_URL}/properties/search?address=${encodeURIComponent(
+          cleanAddress
+        )}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
 
       const data = await response.json().catch(() => null);
 
-      // -----------------------------
-      // HTTP / BACKEND ERROR
-      // -----------------------------
-
       if (!response.ok) {
         throw new Error(
-          data?.error?.message ||
           data?.message ||
-          `Request failed (${response.status})`
+          data?.error?.message ||
+          `Search failed (${response.status})`
         );
       }
 
-      // -----------------------------
-      // CHECK IF ADDRESS IS VALID
-      // -----------------------------
+      const properties = Array.isArray(data)
+        ? data
+        : data?.data || [];
 
-      const payload = data?.data || data;
-
-      if (!payload || payload.isValid === false) {
-        throw new Error(
-          payload?.message || "No matching address was found."
-        );
+      if (!Array.isArray(properties) || properties.length === 0) {
+        throw new Error("No matching property found");
       }
 
-      // -----------------------------
-      // BUILD PROPERTY RESULT
-      // -----------------------------
+      const property = properties[0];
 
       const propertyResult = {
-        formattedAddress:
-          payload.formattedAddress ||
-          payload.validatedAddress ||
-          payload.address ||
-          cleanAddress,
-
-        city: payload.city || "Not available",
-
-        state: payload.state || "Not available",
-
-        postalCode: payload.postalCode || "Not available",
-
-        country: payload.country || "Not available",
-
-        latitude: payload.latitude ?? payload.lat ?? null,
-
-        longitude: payload.longitude ?? payload.lng ?? null,
-
-        propertyId: payload.propertyId || payload.id || null,
-
-        originalAddress: cleanAddress,
-
-        rawResponse: payload,
+        formattedAddress: property.address || cleanAddress,
+        city: property.city || "Not available",
+        state: property.state || "Not available",
+        postalCode:
+          property.zipCode || property.zip_code || "Not available",
+        country: property.country || "Not available",
+        latitude: property.latitude ?? property.lat ?? null,
+        longitude: property.longitude ?? property.lng ?? null,
+        propertyId: property.id ?? null,
+        propertyType:
+          property.propertyType ||
+          property.property_type ||
+          "Not available",
       };
-
-      // -----------------------------
-      // SAVE RESULT
-      // -----------------------------
 
       setResult(propertyResult);
 
-      setSuccess("Address successfully validated.");
-
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(
-          "selectedProperty",
-          JSON.stringify(propertyResult)
-        );
-      }
+      sessionStorage.setItem(
+        "selectedProperty",
+        JSON.stringify(propertyResult)
+      );
     } catch (searchError) {
-      console.error("Address validation error:", searchError);
-
+      console.error("Property search error:", searchError);
       setError(
-        searchError.message ||
-        "We could not validate that address. Please check the address and try again."
+        searchError.message || "Unable to search for this property."
       );
     } finally {
       setLoading(false);
     }
   }
 
+  // Map URL: use coordinates when available, otherwise search by address.
+  const mapUrl =
+    result?.latitude != null && result?.longitude != null
+      ? `https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=17/${result.latitude}/${result.longitude}`
+      : result
+        ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(
+          result.formattedAddress
+        )}`
+        : "#";
+
   return (
     <main className="min-h-screen bg-[#0b0b0b] text-white">
-
       {/* BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-
         <div className="absolute left-[-200px] top-[5%] h-[550px] w-[550px] rounded-full bg-orange-500/[0.06] blur-[150px]" />
-
         <div className="absolute right-[-200px] top-[35%] h-[650px] w-[650px] rounded-full bg-blue-500/[0.05] blur-[170px]" />
-
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.035),transparent_45%)]" />
-
       </div>
 
       {/* HEADER */}
       <section className="border-b border-white/10 px-6 pb-20 pt-32 sm:px-10 md:px-16 lg:px-24">
-
         <div className="mx-auto max-w-[1400px]">
-
           <p className="mb-7 text-xs font-semibold tracking-[0.35em] text-white/35">
             PROPERTY SEARCH
           </p>
 
           <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
-
             Start with
-
             <br />
-
-            <span className="text-white/35">
-              the address.
-            </span>
-
+            <span className="text-white/35">the address.</span>
           </h1>
 
           <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
-            Enter a property address to validate its location and begin the
-            due-diligence journey.
+            Enter a property address to find matching records in your
+            database and begin the due-diligence journey.
           </p>
-
         </div>
-
       </section>
 
-      {/* SEARCH SECTION */}
+      {/* SEARCH */}
       <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
-
         <div className="mx-auto max-w-[1400px]">
-
           <form
             onSubmit={handleSearch}
             className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 backdrop-blur-xl md:p-8"
           >
-
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
-              <label
-                htmlFor="property-address"
-                className="text-xs font-semibold tracking-[0.3em] text-white/40"
-              >
-                PROPERTY ADDRESS
-              </label>
-
-              <span className="flex items-center gap-2 text-xs">
-
-                <span
-                  className={`h-2 w-2 rounded-full ${success
-                    ? "bg-emerald-400"
-                    : "bg-yellow-400"
-                    }`}
-                />
-
-                <span
-                  className={
-                    success
-                      ? "text-emerald-400/70"
-                      : "text-yellow-400/70"
-                  }
-                >
-                  {success
-                    ? "Address service ready"
-                    : "Backend Geocoding"}
-                </span>
-
-              </span>
-
-            </div>
+            <label
+              htmlFor="property-address"
+              className="mb-5 block text-xs font-semibold tracking-[0.3em] text-white/40"
+            >
+              PROPERTY ADDRESS
+            </label>
 
             <div className="flex flex-col gap-3 lg:flex-row">
-
               <input
                 id="property-address"
                 type="text"
@@ -235,10 +159,9 @@ export default function PropertySearchPage() {
                 onChange={(event) => {
                   setAddress(event.target.value);
                   setError("");
-                  setSuccess("");
                   setResult(null);
                 }}
-                placeholder="1600 Pennsylvania Avenue NW, Washington, D.C. 20500"
+                placeholder="Enter a property address"
                 autoComplete="street-address"
                 className="min-h-[62px] flex-1 rounded-xl border border-white/10 bg-black/30 px-5 text-base text-white outline-none transition placeholder:text-white/20 focus:border-white/30 focus:bg-black/50"
               />
@@ -248,387 +171,233 @@ export default function PropertySearchPage() {
                 disabled={loading}
                 className="min-h-[62px] rounded-xl border border-white/20 px-8 text-sm font-medium transition duration-300 hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-40"
               >
-
                 {loading ? (
-
                   <span className="flex items-center justify-center gap-3">
-
                     <span className="h-4 w-4 animate-spin rounded-full border border-white/20 border-t-white" />
-
-                    Validating...
-
+                    Searching...
                   </span>
-
                 ) : (
-
                   <span className="flex items-center gap-3">
-
-                    Validate Location
-
-                    <span className="text-lg">
-                      →
-                    </span>
-
+                    Search Property <span className="text-lg">→</span>
                   </span>
-
                 )}
-
               </button>
-
             </div>
 
-            {success && (
+            {/* ERROR MESSAGE */}
+            {error && (
+              <div className="mt-6 flex items-center gap-4 rounded-xl border border-red-400/20 bg-red-400/[0.05] px-6 py-5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-400/40 text-lg font-semibold text-red-400">
+                  !
+                </span>
+                <p className="text-lg font-semibold leading-7 text-red-300 md:text-xl">
+                  {error}
+                </p>
+              </div>
+            )}
 
-              <div className="mt-5 flex items-center gap-3 text-sm text-emerald-400">
-
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400/30">
+            {/* SUCCESS MESSAGE */}
+            {result && (
+              <div className="mt-6 flex items-center gap-4 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.04] px-6 py-5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 text-lg font-semibold text-emerald-400">
                   ✓
                 </span>
-
-                {success}
-
+                <p className="text-lg font-medium leading-7 text-emerald-400 md:text-xl">
+                  Property found
+                </p>
               </div>
-
             )}
-
-            {error && (
-
-              <div className="mt-5 rounded-xl border border-red-400/10 bg-red-400/[0.04] px-5 py-4">
-
-                <div className="flex items-start gap-3">
-
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-red-400/40 text-xs text-red-400">
-                    !
-                  </span>
-
-                  <p className="text-sm leading-6 text-red-300/80">
-                    {error}
-                  </p>
-
-                </div>
-
-              </div>
-
-            )}
-
           </form>
-
         </div>
-
       </section>
 
       {/* EMPTY STATE */}
       {!result && !loading && (
-
         <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
-
-          <div className="mx-auto max-w-[1400px]">
-
-            <div className="grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-3">
-
-              <InfoBlock
-                number="01"
-                title="Enter an address"
-                text="Start with the full address of the property you want to research."
-              />
-
-              <InfoBlock
-                number="02"
-                title="Validate location"
-                text="The address is resolved through our backend's geocoding service."
-              />
-
-              <InfoBlock
-                number="03"
-                title="Begin due diligence"
-                text="Use the validated location as the starting point for the next research stages."
-              />
-
-            </div>
-
+          <div className="mx-auto grid max-w-[1400px] gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-3">
+            <InfoBlock
+              number="01"
+              title="Enter an address"
+              text="Enter the address of a property stored in your database."
+            />
+            <InfoBlock
+              number="02"
+              title="Search database"
+              text="The backend searches your existing property records for matching addresses."
+            />
+            <InfoBlock
+              number="03"
+              title="Begin due diligence"
+              text="View the matching property details and continue to the next research stage."
+            />
           </div>
-
         </section>
-
       )}
 
       {/* LOADING */}
       {loading && (
-
         <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
-
-          <div className="mx-auto max-w-[1400px]">
-
-            <div className="border-t border-white/10 pt-16">
-
-              <div className="flex items-center gap-5">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10">
-
-                  <div className="h-4 w-4 animate-spin rounded-full border border-white/20 border-t-white" />
-
-                </div>
-
-                <div>
-
-                  <p className="text-lg font-light text-white/70">
-                    Validating property address...
-                  </p>
-
-                  <p className="mt-1 text-sm text-white/30">
-                    Resolving the address through our backend.
-                  </p>
-
-                </div>
-
+          <div className="mx-auto max-w-[1400px] border-t border-white/10 pt-16">
+            <div className="flex items-center gap-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10">
+                <div className="h-4 w-4 animate-spin rounded-full border border-white/20 border-t-white" />
               </div>
-
+              <div>
+                <p className="text-lg font-light text-white/70">
+                  Searching property records...
+                </p>
+                <p className="mt-1 text-sm text-white/30">
+                  Retrieving matching records from your database.
+                </p>
+              </div>
             </div>
-
           </div>
-
         </section>
-
       )}
 
-      {/* RESULT */}
+      {/* PROPERTY DETAILS */}
       {result && (
-
         <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
-
           <div className="mx-auto max-w-[1400px]">
-
             <div className="border-t border-white/10 pt-16">
-
-              <div className="flex items-center gap-3">
-
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400/30 text-xs text-emerald-400">
-                  ✓
-                </span>
-
-                <span className="text-xs font-semibold tracking-[0.3em] text-emerald-400/70">
-                  ADDRESS VALIDATED
-                </span>
-
-              </div>
-
               <h2 className="mt-6 max-w-5xl text-4xl font-light leading-tight tracking-tight md:text-6xl">
                 {result.formattedAddress}
               </h2>
-
             </div>
 
             <div className="mt-16">
-
               <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
-                LOCATION DETAILS
+                PROPERTY DETAILS
               </p>
 
               <div className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
-
                 <DetailCard
-                  label="City"
-                  value={result.city}
+                  label="Property ID"
+                  value={result.propertyId ?? "Not available"}
                 />
-
                 <DetailCard
-                  label="State"
-                  value={result.state}
+                  label="Property Type"
+                  value={result.propertyType}
                 />
-
+                <DetailCard label="City" value={result.city} />
+                <DetailCard label="State" value={result.state} />
                 <DetailCard
                   label="Postal Code"
                   value={result.postalCode}
                 />
-
-                <DetailCard
-                  label="Country"
-                  value={result.country}
-                />
-
+                <DetailCard label="Country" value={result.country} />
               </div>
-
-              {(result.latitude || result.longitude) && (
-
-                <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
-
-                  <p className="text-xs tracking-[0.25em] text-white/25">
-                    COORDINATES
-                  </p>
-
-                  <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
-
-                    <div>
-
-                      <p className="text-sm text-white/30">
-                        Latitude
-                      </p>
-
-                      <p className="mt-2 text-lg text-white/80">
-                        {result.latitude?.toFixed(6) ?? "—"}
-                      </p>
-
-                    </div>
-
-                    <div>
-
-                      <p className="text-sm text-white/30">
-                        Longitude
-                      </p>
-
-                      <p className="mt-2 text-lg text-white/80">
-                        {result.longitude?.toFixed(6) ?? "—"}
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-              )}
-
-              <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-7">
-
-                <p className="text-xs tracking-[0.25em] text-white/25">
-                  LOCATION
-                </p>
-
-                <p className="mt-4 text-sm leading-6 text-white/40">
-                  The address was successfully converted into geographic
-                  coordinates.
-                </p>
-
-                {result.latitude && result.longitude && (
-
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=18/${result.latitude}/${result.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/20 px-6 py-3 text-sm transition hover:bg-white hover:text-black"
-                  >
-                    Open Location on Map
-                    <span>↗</span>
-                  </a>
-
-                )}
-
-              </div>
-
-              <div className="mt-20 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
-
-                <div>
-
-                  <p className="text-xs font-semibold tracking-[0.3em] text-white/25">
-                    NEXT STEP
-                  </p>
-
-                  <p className="mt-3 text-xl font-light text-white/70">
-                    Continue to property details and due diligence.
-                  </p>
-
-                </div>
-
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm font-medium transition duration-300 hover:bg-white hover:text-black"
-                  onClick={() =>
-                    alert(
-                      "Property details module will be connected next."
-                    )
-                  }
-                >
-                  View Property Details
-                  <span>↗</span>
-                </button>
-
-              </div>
-
             </div>
 
+            {/* PROPERTY LOCATION — ADDED */}
+            <div className="mt-16">
+              <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
+                PROPERTY LOCATION
+              </p>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
+                <div className="grid gap-10 md:grid-cols-2">
+                  {/* COORDINATES */}
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <MapPin size={20} className="text-white/40" />
+                      <p className="text-xs tracking-[0.25em] text-white/40">
+                        COORDINATES
+                      </p>
+                    </div>
+
+                    <div className="mt-7 grid gap-6 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs text-white/40">LATITUDE</p>
+                        <p className="mt-2 break-words text-lg text-white/70">
+                          {result.latitude != null
+                            ? result.latitude
+                            : "Not available"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-white/40">LONGITUDE</p>
+                        <p className="mt-2 break-words text-lg text-white/70">
+                          {result.longitude != null
+                            ? result.longitude
+                            : "Not available"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* MAP LOCATION */}
+                  <div>
+                    <p className="text-xs tracking-[0.25em] text-white/40">
+                      MAP LOCATION
+                    </p>
+
+                    <p className="mt-4 break-words text-lg text-white/80">
+                      {result.formattedAddress}
+                    </p>
+
+                    <a
+                      href={mapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/15 px-6 py-3 text-sm text-white/65 transition hover:border-white/30 hover:bg-white hover:text-black"
+                    >
+                      Open Map <span>↗</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* END PROPERTY LOCATION */}
           </div>
-
         </section>
-
       )}
 
-      {/* ========================================================= */}
-      {/* NEXT RESEARCH STAGE - OWNERSHIP / LAND REGISTRY */}
-      {/* ========================================================= */}
-
+      {/* OWNERSHIP SECTION */}
       <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
-
         <div className="mx-auto max-w-[1400px]">
-
           <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 md:p-12 lg:p-14">
-
-            {/* LABEL */}
             <p className="text-xs font-semibold tracking-[0.35em] text-white/30">
               NEXT RESEARCH STAGE
             </p>
 
-            {/* TITLE */}
             <h2 className="mt-6 text-4xl font-light tracking-tight text-white md:text-5xl">
-              Land Registry & Ownership Records
+              Land Registry &amp; Ownership Records
             </h2>
 
-            {/* DESCRIPTION */}
             <p className="mt-5 max-w-4xl text-base leading-8 text-white/40 md:text-lg">
               Review public land registry information, ownership records,
               property ownership details, and available registry information
               associated with the property.
             </p>
 
-            {/* BUTTONS */}
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-
-              {/* OWNERSHIP PAGE */}
               <a
                 href="/ownership"
                 className="inline-flex items-center justify-center gap-4 rounded-full border border-white/20 px-9 py-5 text-sm font-medium text-white transition duration-300 hover:bg-white hover:text-black"
               >
-                View Ownership Records
-                <span className="text-xl">
-                  →
-                </span>
+                View Ownership Records <span className="text-xl">→</span>
               </a>
 
-              {/* PROPERTY SEARCH */}
               <a
                 href="/property-search"
                 className="inline-flex items-center justify-center gap-4 rounded-full border border-white/10 px-9 py-5 text-sm font-medium text-white/50 transition duration-300 hover:border-white/20 hover:bg-white/[0.03] hover:text-white"
               >
-                Property Search
-                <span className="text-xl">
-                  ←
-                </span>
+                Property Search <span className="text-xl">←</span>
               </a>
-
             </div>
-
           </div>
-
         </div>
-
       </section>
 
       {/* FOOTER */}
       <footer className="border-t border-white/10 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
-
         <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs text-white/25 md:flex-row">
-
-          <span>
-            PROP DUE
-          </span>
-
-          <span>
-            PROPERTY DUE DILIGENCE PLATFORM
-          </span>
-
+          <span>PROP DUE</span>
+          <span>PROPERTY DUE DILIGENCE PLATFORM</span>
         </div>
-
       </footer>
-
     </main>
   );
 }
@@ -636,19 +405,9 @@ export default function PropertySearchPage() {
 function InfoBlock({ number, title, text }) {
   return (
     <div className="bg-[#101010] p-8 md:p-10">
-
-      <p className="text-xs tracking-[0.25em] text-white/25">
-        {number}
-      </p>
-
-      <h3 className="mt-12 text-2xl font-medium">
-        {title}
-      </h3>
-
-      <p className="mt-4 text-sm leading-7 text-white/40">
-        {text}
-      </p>
-
+      <p className="text-xs tracking-[0.25em] text-white/25">{number}</p>
+      <h3 className="mt-12 text-2xl font-medium">{title}</h3>
+      <p className="mt-4 text-sm leading-7 text-white/40">{text}</p>
     </div>
   );
 }
@@ -656,15 +415,10 @@ function InfoBlock({ number, title, text }) {
 function DetailCard({ label, value }) {
   return (
     <div className="bg-[#101010] p-6">
-
-      <p className="text-xs tracking-[0.2em] text-white/25">
-        {label}
-      </p>
-
+      <p className="text-xs tracking-[0.2em] text-white/25">{label}</p>
       <p className="mt-4 break-words text-base font-medium text-white/80">
         {value}
       </p>
-
     </div>
   );
 }

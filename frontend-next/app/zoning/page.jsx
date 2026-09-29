@@ -20,96 +20,506 @@ import {
 |--------------------------------------------------------------------------
 */
 const DEFAULT_PROPERTY = {
-    formattedAddress: "742 Evergreen Terrace, Springfield, IL 62704",
-    address: "742 Evergreen Terrace, Springfield, IL 62704",
-    city: "Springfield",
-    state: "Illinois",
-    postalCode: "62704",
-    propertyId: "PROP-742-001",
-    latitude: 39.7817,
-    longitude: -89.6501,
+    formattedAddress: "",
+    address: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    propertyId: "",
+    latitude: null,
+    longitude: null,
 };
 
 /*
 |--------------------------------------------------------------------------
-| DEMO ZONING DATA
+| DEFAULT ZONING DATA
 |--------------------------------------------------------------------------
 */
-const DEMO_ZONING_DATA = {
-    zoningCode: "R-2",
-    zoningName: "Residential District",
-    zoningStatus: "Active",
-
-    permittedUse: "Single-Family Residential",
-    propertyType: "Residential",
-    planningAuthority:
-        "Springfield City Planning Department",
-
-    zoningSource: "Municipal Zoning Records",
-    lastUpdated: "September 16, 2026",
+const DEFAULT_ZONING_DATA = {
+    zoningCode: "Not available",
+    zoningName: "Not available",
+    zoningStatus: "Not available",
+    permittedUse: "Not available",
+    propertyType: "Not available",
+    planningAuthority: "Not available",
+    zoningSource: "Not available",
+    lastUpdated: "Not available",
 
     developmentRules: {
-        maxBuildingHeight: "35 ft",
-        frontSetback: "25 ft",
-        sideSetback: "10 ft",
-        rearSetback: "20 ft",
-        maximumLotCoverage: "45%",
-        minimumLotSize: "6,000 sq ft",
+        maxBuildingHeight: "Not available",
+        frontSetback: "Not available",
+        sideSetback: "Not available",
+        rearSetback: "Not available",
+        maximumLotCoverage: "Not available",
+        minimumLotSize: "Not available",
     },
 
-    permittedActivities: [
-        "Single-family residential use",
-        "Private garage",
-        "Residential accessory structures",
-        "Private yard and garden",
-    ],
-
-    restrictions: [
-        "Commercial activity requires additional approval",
-        "Building modifications must comply with setback requirements",
-        "New structures may require a planning permit",
-    ],
+    permittedActivities: [],
+    restrictions: [],
 };
 
+/*
+|--------------------------------------------------------------------------
+| NORMALIZE BACKEND ZONING DATA
+|--------------------------------------------------------------------------
+*/
+function normalizeZoningData(response) {
+    const payload =
+        response?.data ??
+        response?.property ??
+        response ??
+        {};
+
+    const zoning =
+        payload.zoning ??
+        payload.zoningInformation ??
+        payload.zoning_information ??
+        payload.zoningDetails ??
+        payload.zoning_details ??
+        payload;
+
+    const property =
+        zoning.property ??
+        payload.property ??
+        payload;
+
+    const rules =
+        zoning.developmentRules ??
+        zoning.development_rules ??
+        zoning.rules ??
+        {};
+
+    const permittedActivities =
+        zoning.permittedActivities ??
+        zoning.permitted_activities ??
+        zoning.permittedUses ??
+        zoning.permitted_uses ??
+        [];
+
+    const restrictions =
+        zoning.restrictions ??
+        zoning.zoningRestrictions ??
+        zoning.zoning_restrictions ??
+        [];
+
+    return {
+        zoningCode:
+            zoning.zoningCode ??
+            zoning.zoning_code ??
+            zoning.zoneCode ??
+            zoning.zone_code ??
+            "Not available",
+
+        zoningName:
+            zoning.zoneType ??
+            zoning.zoningName ??
+            zoning.zoning_name ??
+            zoning.zoneName ??
+            zoning.zone_name ??
+            "Not available",
+
+        zoningStatus:
+            typeof zoning.compliant === "boolean"
+                ? zoning.compliant
+                    ? "Compliant"
+                    : "Non-Compliant"
+                : zoning.zoningStatus ??
+                zoning.zoning_status ??
+                zoning.status ??
+                "Not available",
+
+        permittedUse:
+            zoning.permittedUse ??
+            zoning.permitted_use ??
+            zoning.primaryPermittedUse ??
+            zoning.primary_permitted_use ??
+            "Not available",
+
+        propertyType:
+            zoning.propertyType ??
+            zoning.property_type ??
+            property.propertyType ??
+            property.property_type ??
+            payload.propertyType ??
+            payload.property_type ??
+            "Not available",
+
+        planningAuthority:
+            zoning.planningAuthority ??
+            zoning.planning_authority ??
+            "Not available",
+
+        zoningSource:
+            zoning.zoningSource ??
+            zoning.zoning_source ??
+            zoning.source ??
+            "Not available",
+
+        lastUpdated:
+            zoning.lastUpdated ??
+            zoning.last_updated ??
+            "Not available",
+
+        developmentRules: {
+            maxBuildingHeight:
+                rules.maxBuildingHeight ??
+                rules.max_building_height ??
+                "Not available",
+
+            frontSetback:
+                rules.frontSetback ??
+                rules.front_setback ??
+                "Not available",
+
+            sideSetback:
+                rules.sideSetback ??
+                rules.side_setback ??
+                "Not available",
+
+            rearSetback:
+                rules.rearSetback ??
+                rules.rear_setback ??
+                "Not available",
+
+            maximumLotCoverage:
+                rules.maximumLotCoverage ??
+                rules.maximum_lot_coverage ??
+                "Not available",
+
+            minimumLotSize:
+                rules.minimumLotSize ??
+                rules.minimum_lot_size ??
+                "Not available",
+        },
+
+        permittedActivities: Array.isArray(permittedActivities)
+            ? permittedActivities.map((item) =>
+                typeof item === "string"
+                    ? item
+                    : item.name ??
+                    item.description ??
+                    item.value ??
+                    "Not available"
+            )
+            : [],
+
+        restrictions: Array.isArray(restrictions)
+            ? restrictions.map((item) =>
+                typeof item === "string"
+                    ? item
+                    : item.description ??
+                    item.name ??
+                    item.value ??
+                    "Not available"
+            )
+            : [],
+    };
+}
+
+/*
+|--------------------------------------------------------------------------
+| DETAIL CARD
+|--------------------------------------------------------------------------
+*/
+function DetailCard({ label, value }) {
+    return (
+        <div className="bg-[#101010] p-6">
+            <p className="text-xs tracking-[0.2em] text-white/25">
+                {label}
+            </p>
+
+            <p className="mt-4 break-words text-base font-medium text-white/80">
+                {value || "Not available"}
+            </p>
+        </div>
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| STAT CARD
+|--------------------------------------------------------------------------
+*/
+function StatCard({ icon, label, value }) {
+    return (
+        <div className="bg-[#101010] p-6">
+            <div className="flex items-center gap-3 text-white/40">
+                {icon}
+
+                <p className="text-xs tracking-[0.2em] text-white/25">
+                    {label}
+                </p>
+            </div>
+
+            <p className="mt-5 text-2xl font-light text-white/80">
+                {value || "Not available"}
+            </p>
+        </div>
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| INFO ITEM
+|--------------------------------------------------------------------------
+*/
+function InfoItem({ label, value }) {
+    return (
+        <div>
+            <p className="text-xs tracking-[0.22em] text-white/25">
+                {label}
+            </p>
+
+            <p className="mt-4 text-lg font-light text-white/70">
+                {value || "Not available"}
+            </p>
+        </div>
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| RULE CARD
+|--------------------------------------------------------------------------
+*/
+function RuleCard({ icon, label, value }) {
+    return (
+        <div className="bg-[#101010] p-7">
+            <div className="flex items-center gap-3 text-white/40">
+                {icon}
+
+                <p className="text-xs tracking-[0.2em] text-white/25">
+                    {label}
+                </p>
+            </div>
+
+            <p className="mt-5 text-xl font-light text-white/75">
+                {value || "Not available"}
+            </p>
+        </div>
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| ZONING PAGE
+|--------------------------------------------------------------------------
+*/
 export default function ZoningPage() {
     const [property, setProperty] = useState(DEFAULT_PROPERTY);
+    const [zoningData, setZoningData] = useState(
+        DEFAULT_ZONING_DATA
+    );
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
+    /*
+    |--------------------------------------------------------------------------
+    | FETCH PROPERTY AND ZONING DATA FROM BACKEND
+    |--------------------------------------------------------------------------
+    */
     useEffect(() => {
-        try {
-            const savedProperty =
-                sessionStorage.getItem("selectedProperty");
+        let cancelled = false;
 
-            if (savedProperty) {
+        async function loadZoningInformation() {
+            try {
+                setLoading(true);
+                setError("");
+
+                const savedProperty =
+                    sessionStorage.getItem("selectedProperty");
+
+                if (!savedProperty) {
+                    throw new Error(
+                        "No property is selected. Please select a property from Property Search."
+                    );
+                }
+
                 const parsedProperty = JSON.parse(savedProperty);
 
-                setProperty({
-                    ...DEFAULT_PROPERTY,
-                    ...parsedProperty,
-                });
+                if (!cancelled) {
+                    setProperty({
+                        ...DEFAULT_PROPERTY,
+                        ...parsedProperty,
+                        postalCode:
+                            parsedProperty.postalCode ??
+                            parsedProperty.zipCode ??
+                            "",
+                    });
+                }
+
+                const rawId =
+                    parsedProperty.propertyDbId ??
+                    parsedProperty.id ??
+                    parsedProperty.propertyId;
+
+                if (
+                    rawId === null ||
+                    rawId === undefined ||
+                    !/^\d+$/.test(String(rawId))
+                ) {
+                    throw new Error(
+                        "A valid numeric property database ID was not found. Please select a property saved by the backend."
+                    );
+                }
+
+                const token = localStorage.getItem("token");
+
+                const response = await fetch(
+                    `http://localhost:8080/api/properties/${encodeURIComponent(
+                        rawId
+                    )}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            ...(token
+                                ? {
+                                    Authorization: `Bearer ${token}`,
+                                }
+                                : {}),
+                        },
+                    }
+                );
+
+                const responseData = await response
+                    .json()
+                    .catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(
+                        responseData?.message ||
+                        responseData?.error?.message ||
+                        `Unable to load zoning information (HTTP ${response.status}).`
+                    );
+                }
+
+                if (!cancelled) {
+                    const payload =
+                        responseData?.data ??
+                        responseData?.property ??
+                        responseData ??
+                        {};
+
+                    const zoningProperty =
+                        payload.zoning?.property ??
+                        payload.property ??
+                        {};
+
+                    setProperty((previous) => ({
+                        ...previous,
+                        ...parsedProperty,
+                        ...payload,
+
+                        address:
+                            payload.address ??
+                            zoningProperty.address ??
+                            parsedProperty.address ??
+                            "",
+
+                        formattedAddress:
+                            parsedProperty.formattedAddress ??
+                            payload.formattedAddress ??
+                            payload.address ??
+                            zoningProperty.address ??
+                            "",
+
+                        city:
+                            payload.city ??
+                            zoningProperty.city ??
+                            parsedProperty.city ??
+                            "",
+
+                        state:
+                            payload.state ??
+                            zoningProperty.state ??
+                            parsedProperty.state ??
+                            "",
+
+                        postalCode:
+                            payload.postalCode ??
+                            payload.zipCode ??
+                            zoningProperty.zipCode ??
+                            zoningProperty.postalCode ??
+                            parsedProperty.postalCode ??
+                            parsedProperty.zipCode ??
+                            "",
+
+                        propertyId:
+                            payload.id ??
+                            parsedProperty.propertyDbId ??
+                            parsedProperty.id ??
+                            parsedProperty.propertyId ??
+                            "",
+                    }));
+
+                    setZoningData(
+                        normalizeZoningData(responseData)
+                    );
+                }
+            } catch (err) {
+                console.error(
+                    "Zoning information loading error:",
+                    err
+                );
+
+                if (!cancelled) {
+                    setError(
+                        err.message ||
+                        "Unable to load zoning information."
+                    );
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
             }
-        } catch (error) {
-            console.error(
-                "Unable to load selected property. Using demo property.",
-                error
-            );
-        } finally {
-            setLoading(false);
         }
+
+        loadZoningInformation();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
+    /*
+    |--------------------------------------------------------------------------
+    | DERIVED VALUES
+    |--------------------------------------------------------------------------
+    */
     const permittedCount =
-        DEMO_ZONING_DATA.permittedActivities.length;
+        zoningData.permittedActivities.length;
 
     const restrictionCount =
-        DEMO_ZONING_DATA.restrictions.length;
+        zoningData.restrictions.length;
 
     const zoningSummary = useMemo(() => {
-        return `${DEMO_ZONING_DATA.zoningCode} — ${DEMO_ZONING_DATA.zoningName}`;
-    }, []);
+        if (
+            zoningData.zoningCode === "Not available" &&
+            zoningData.zoningName === "Not available"
+        ) {
+            return "Not available";
+        }
 
-    const mapUrl = `https://www.openstreetmap.org/?mlat=${property.latitude}&mlon=${property.longitude}#map=17/${property.latitude}/${property.longitude}`;
+        return `${zoningData.zoningCode} — ${zoningData.zoningName}`;
+    }, [zoningData.zoningCode, zoningData.zoningName]);
 
+    const hasCoordinates =
+        property.latitude !== null &&
+        property.latitude !== undefined &&
+        property.longitude !== null &&
+        property.longitude !== undefined;
+
+    const mapUrl = hasCoordinates
+        ? `https://www.openstreetmap.org/?mlat=${property.latitude}&mlon=${property.longitude}#map=17/${property.latitude}/${property.longitude}`
+        : null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOADING STATE
+    |--------------------------------------------------------------------------
+    */
     if (loading) {
         return (
             <main className="min-h-screen bg-[#0b0b0b] text-white">
@@ -117,13 +527,20 @@ export default function ZoningPage() {
                     <div className="flex items-center gap-4 text-white/50">
                         <div className="h-5 w-5 animate-spin rounded-full border border-white/20 border-t-white" />
 
-                        <span>Loading zoning information...</span>
+                        <span>
+                            Loading zoning information...
+                        </span>
                     </div>
                 </div>
             </main>
         );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | MAIN PAGE
+    |--------------------------------------------------------------------------
+    */
     return (
         <main className="min-h-screen bg-[#0b0b0b] text-white">
             {/* Background */}
@@ -143,7 +560,6 @@ export default function ZoningPage() {
                         className="inline-flex items-center gap-2 text-sm text-white/35 transition hover:text-white"
                     >
                         <ArrowLeft size={16} />
-
                         Back to Tax History
                     </Link>
 
@@ -165,11 +581,10 @@ export default function ZoningPage() {
                         development restrictions, and planning authority information.
                     </p>
 
-                    {/* Demo indicator */}
-                    <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-yellow-400/20 bg-yellow-400/[0.04] px-4 py-2 text-xs text-yellow-300/70">
-                        <span className="h-2 w-2 rounded-full bg-yellow-400" />
-
-                        DEMO DATA — BACKEND INTEGRATION PENDING
+                    {/* Backend indicator */}
+                    <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/[0.04] px-4 py-2 text-xs text-sky-300/70">
+                        <span className="h-2 w-2 rounded-full bg-sky-400" />
+                        BACKEND DATA
                     </div>
                 </div>
             </section>
@@ -189,35 +604,61 @@ export default function ZoningPage() {
                     </div>
 
                     <h2 className="mt-6 max-w-5xl text-4xl font-light leading-tight tracking-tight md:text-6xl">
-                        {property.formattedAddress}
+                        {property.formattedAddress ||
+                            property.address ||
+                            "Selected Property"}
                     </h2>
 
                     <div className="mt-12 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
                         <DetailCard
                             label="City"
-                            value={property.city || "Springfield"}
+                            value={property.city}
                         />
 
                         <DetailCard
                             label="State"
-                            value={property.state || "Illinois"}
+                            value={property.state}
                         />
 
                         <DetailCard
                             label="Postal Code"
-                            value={property.postalCode || "62704"}
+                            value={property.postalCode}
                         />
 
                         <DetailCard
                             label="Property ID"
                             value={
-                                property.propertyId ||
-                                "PROP-742-001"
+                                property.propertyDbId ??
+                                property.id ??
+                                property.propertyId
                             }
                         />
                     </div>
                 </div>
             </section>
+
+            {/* Error Message */}
+            {error && (
+                <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
+                    <div className="mx-auto max-w-[1400px] rounded-2xl border border-red-400/20 bg-red-400/[0.04] p-8">
+                        <p className="text-xs font-semibold tracking-[0.25em] text-red-300/80">
+                            ZONING INFORMATION COULD NOT BE LOADED
+                        </p>
+
+                        <p className="mt-4 text-sm leading-7 text-white/60">
+                            {error}
+                        </p>
+
+                        <Link
+                            href="/property-search"
+                            className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/20 px-6 py-3 text-sm text-white/70 transition hover:bg-white hover:text-black"
+                        >
+                            <ArrowLeft size={15} />
+                            Return to Property Search
+                        </Link>
+                    </div>
+                </section>
+            )}
 
             {/* Zoning Overview */}
             <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
@@ -230,25 +671,25 @@ export default function ZoningPage() {
                         <StatCard
                             icon={<Building2 size={19} />}
                             label="ZONING CODE"
-                            value={DEMO_ZONING_DATA.zoningCode}
+                            value={zoningData.zoningCode}
                         />
 
                         <StatCard
                             icon={<FileText size={19} />}
                             label="ZONE TYPE"
-                            value={DEMO_ZONING_DATA.zoningName}
+                            value={zoningData.zoningName}
                         />
 
                         <StatCard
                             icon={<CheckCircle2 size={19} />}
                             label="STATUS"
-                            value={DEMO_ZONING_DATA.zoningStatus}
+                            value={zoningData.zoningStatus}
                         />
 
                         <StatCard
                             icon={<ShieldCheck size={19} />}
                             label="PROPERTY USE"
-                            value={DEMO_ZONING_DATA.propertyType}
+                            value={zoningData.propertyType}
                         />
                     </div>
                 </div>
@@ -269,11 +710,11 @@ export default function ZoningPage() {
                                 </p>
 
                                 <p className="mt-5 text-5xl font-light text-white/80">
-                                    {DEMO_ZONING_DATA.zoningCode}
+                                    {zoningData.zoningCode}
                                 </p>
 
                                 <p className="mt-3 text-lg text-white/55">
-                                    {DEMO_ZONING_DATA.zoningName}
+                                    {zoningData.zoningName}
                                 </p>
 
                                 <p className="mt-4 text-sm text-white/30">
@@ -287,12 +728,13 @@ export default function ZoningPage() {
                                 </p>
 
                                 <p className="mt-5 text-2xl font-light text-white/75">
-                                    {DEMO_ZONING_DATA.permittedUse}
+                                    {zoningData.permittedUse}
                                 </p>
 
                                 <p className="mt-3 text-sm leading-7 text-white/35">
-                                    The property's primary permitted use according to the
-                                    demonstration zoning record.
+                                    The property's primary permitted use
+                                    according to the zoning information
+                                    returned by the backend.
                                 </p>
                             </div>
                         </div>
@@ -311,19 +753,17 @@ export default function ZoningPage() {
                         <div className="grid gap-10 md:grid-cols-3">
                             <InfoItem
                                 label="AUTHORITY"
-                                value={
-                                    DEMO_ZONING_DATA.planningAuthority
-                                }
+                                value={zoningData.planningAuthority}
                             />
 
                             <InfoItem
                                 label="ZONING SOURCE"
-                                value={DEMO_ZONING_DATA.zoningSource}
+                                value={zoningData.zoningSource}
                             />
 
                             <InfoItem
                                 label="LAST UPDATED"
-                                value={DEMO_ZONING_DATA.lastUpdated}
+                                value={zoningData.lastUpdated}
                             />
                         </div>
                     </div>
@@ -341,55 +781,37 @@ export default function ZoningPage() {
                         <RuleCard
                             icon={<Ruler size={18} />}
                             label="MAX BUILDING HEIGHT"
-                            value={
-                                DEMO_ZONING_DATA.developmentRules
-                                    .maxBuildingHeight
-                            }
+                            value={zoningData.developmentRules.maxBuildingHeight}
                         />
 
                         <RuleCard
                             icon={<Ruler size={18} />}
                             label="FRONT SETBACK"
-                            value={
-                                DEMO_ZONING_DATA.developmentRules
-                                    .frontSetback
-                            }
+                            value={zoningData.developmentRules.frontSetback}
                         />
 
                         <RuleCard
                             icon={<Ruler size={18} />}
                             label="SIDE SETBACK"
-                            value={
-                                DEMO_ZONING_DATA.developmentRules
-                                    .sideSetback
-                            }
+                            value={zoningData.developmentRules.sideSetback}
                         />
 
                         <RuleCard
                             icon={<Ruler size={18} />}
                             label="REAR SETBACK"
-                            value={
-                                DEMO_ZONING_DATA.developmentRules
-                                    .rearSetback
-                            }
+                            value={zoningData.developmentRules.rearSetback}
                         />
 
                         <RuleCard
                             icon={<Ruler size={18} />}
                             label="MAX LOT COVERAGE"
-                            value={
-                                DEMO_ZONING_DATA.developmentRules
-                                    .maximumLotCoverage
-                            }
+                            value={zoningData.developmentRules.maximumLotCoverage}
                         />
 
                         <RuleCard
                             icon={<Ruler size={18} />}
                             label="MINIMUM LOT SIZE"
-                            value={
-                                DEMO_ZONING_DATA.developmentRules
-                                    .minimumLotSize
-                            }
+                            value={zoningData.developmentRules.minimumLotSize}
                         />
                     </div>
                 </div>
@@ -411,30 +833,37 @@ export default function ZoningPage() {
 
                         <div className="flex items-center gap-2 text-xs text-white/35">
                             <Users size={15} />
-                            {permittedCount} demo permitted uses
+                            {permittedCount} permitted uses
                         </div>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {DEMO_ZONING_DATA.permittedActivities.map(
-                                (activity, index) => (
-                                    <div
-                                        key={`${activity}-${index}`}
-                                        className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-5"
-                                    >
-                                        <CheckCircle2
-                                            size={18}
-                                            className="shrink-0 text-emerald-400"
-                                        />
+                        {permittedCount === 0 ? (
+                            <p className="text-sm text-white/40">
+                                No permitted activities were returned by
+                                the backend.
+                            </p>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {zoningData.permittedActivities.map(
+                                    (activity, index) => (
+                                        <div
+                                            key={`${activity}-${index}`}
+                                            className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-5"
+                                        >
+                                            <CheckCircle2
+                                                size={18}
+                                                className="shrink-0 text-emerald-400"
+                                            />
 
-                                        <span className="text-sm text-white/65">
-                                            {activity}
-                                        </span>
-                                    </div>
-                                )
-                            )}
-                        </div>
+                                            <span className="text-sm text-white/65">
+                                                {activity}
+                                            </span>
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
@@ -454,29 +883,36 @@ export default function ZoningPage() {
                         </div>
 
                         <div className="text-xs text-white/35">
-                            {restrictionCount} demo restrictions
+                            {restrictionCount} restrictions
                         </div>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
-                        <div className="space-y-4">
-                            {DEMO_ZONING_DATA.restrictions.map(
-                                (restriction, index) => (
-                                    <div
-                                        key={`${restriction}-${index}`}
-                                        className="flex items-start gap-4 border-b border-white/[0.06] pb-5 last:border-b-0 last:pb-0"
-                                    >
-                                        <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/15 text-xs text-white/40">
-                                            {index + 1}
-                                        </span>
+                        {restrictionCount === 0 ? (
+                            <p className="text-sm text-white/40">
+                                No zoning restrictions were returned by
+                                the backend.
+                            </p>
+                        ) : (
+                            <div className="space-y-4">
+                                {zoningData.restrictions.map(
+                                    (restriction, index) => (
+                                        <div
+                                            key={`${restriction}-${index}`}
+                                            className="flex items-start gap-4 border-b border-white/[0.06] pb-5 last:border-b-0 last:pb-0"
+                                        >
+                                            <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/15 text-xs text-white/40">
+                                                {index + 1}
+                                            </span>
 
-                                        <p className="text-sm leading-7 text-white/55">
-                                            {restriction}
-                                        </p>
-                                    </div>
-                                )
-                            )}
-                        </div>
+                                            <p className="text-sm leading-7 text-white/55">
+                                                {restriction}
+                                            </p>
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
@@ -503,7 +939,9 @@ export default function ZoningPage() {
                                 </div>
 
                                 <p className="mt-5 text-lg text-white/70">
-                                    {property.formattedAddress}
+                                    {property.formattedAddress ||
+                                        property.address ||
+                                        "Not available"}
                                 </p>
                             </div>
 
@@ -513,19 +951,23 @@ export default function ZoningPage() {
                                 </p>
 
                                 <p className="mt-5 text-sm text-white/40">
-                                    Coordinates: {property.latitude},{" "}
-                                    {property.longitude}
+                                    Coordinates:{" "}
+                                    {hasCoordinates
+                                        ? `${property.latitude}, ${property.longitude}`
+                                        : "Not available"}
                                 </p>
 
-                                <a
-                                    href={mapUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/15 px-6 py-3 text-sm text-white/65 transition hover:border-white/30 hover:bg-white hover:text-black"
-                                >
-                                    Open Map
-                                    <span>↗</span>
-                                </a>
+                                {mapUrl && (
+                                    <a
+                                        href={mapUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/15 px-6 py-3 text-sm text-white/65 transition hover:border-white/30 hover:bg-white hover:text-black"
+                                    >
+                                        Open Map
+                                        <span>↗</span>
+                                    </a>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -550,7 +992,6 @@ export default function ZoningPage() {
                         </p>
 
                         <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
-                            {/* Flood Zone Button */}
                             <Link
                                 href="/flood-zone"
                                 className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm font-medium text-white transition duration-300 hover:bg-white hover:text-black"
@@ -559,7 +1000,6 @@ export default function ZoningPage() {
                                 <ArrowRight size={16} />
                             </Link>
 
-                            {/* Tax History */}
                             <Link
                                 href="/tax-history"
                                 className="inline-flex items-center justify-center gap-3 rounded-full border border-white/10 px-7 py-4 text-sm font-medium text-white/50 transition duration-300 hover:border-white/20 hover:bg-white/[0.04] hover:text-white"
@@ -568,7 +1008,6 @@ export default function ZoningPage() {
                                 <ArrowLeft size={16} />
                             </Link>
 
-                            {/* Property Search */}
                             <Link
                                 href="/property-search"
                                 className="inline-flex items-center justify-center gap-3 rounded-full border border-white/10 px-7 py-4 text-sm font-medium text-white/50 transition duration-300 hover:border-white/20 hover:bg-white/[0.04] hover:text-white"
@@ -585,94 +1024,9 @@ export default function ZoningPage() {
             <footer className="border-t border-white/10 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs text-white/25 md:flex-row">
                     <span>PROP DUE</span>
-
                     <span>PROPERTY ZONING INFORMATION</span>
                 </div>
             </footer>
         </main>
-    );
-}
-
-/*
-|--------------------------------------------------------------------------
-| Detail Card
-|--------------------------------------------------------------------------
-*/
-function DetailCard({ label, value }) {
-    return (
-        <div className="bg-[#101010] p-6">
-            <p className="text-xs tracking-[0.2em] text-white/25">
-                {label}
-            </p>
-
-            <p className="mt-4 break-words text-base font-medium text-white/80">
-                {value}
-            </p>
-        </div>
-    );
-}
-
-/*
-|--------------------------------------------------------------------------
-| Stat Card
-|--------------------------------------------------------------------------
-*/
-function StatCard({ icon, label, value }) {
-    return (
-        <div className="bg-[#101010] p-6">
-            <div className="flex items-center gap-3 text-white/40">
-                {icon}
-
-                <p className="text-xs tracking-[0.2em] text-white/25">
-                    {label}
-                </p>
-            </div>
-
-            <p className="mt-5 text-2xl font-light text-white/80">
-                {value}
-            </p>
-        </div>
-    );
-}
-
-/*
-|--------------------------------------------------------------------------
-| Info Item
-|--------------------------------------------------------------------------
-*/
-function InfoItem({ label, value }) {
-    return (
-        <div>
-            <p className="text-xs tracking-[0.22em] text-white/25">
-                {label}
-            </p>
-
-            <p className="mt-4 text-lg font-light text-white/70">
-                {value}
-            </p>
-        </div>
-    );
-}
-
-/*
-|--------------------------------------------------------------------------
-| Rule Card
-|--------------------------------------------------------------------------
-*/
-function RuleCard({ icon, label, value }) {
-    return (
-        <div className="bg-[#101010] p-7">
-            <div className="flex items-center gap-3 text-white/40">
-                {icon}
-
-                <p className="text-xs tracking-[0.2em] text-white/25">
-                    {label}
-                </p>
-            </div>
-
-            <p className="mt-5 text-xl font-light text-white/75">
-                {value}
-            </p>
-        </div>
     );
 }

@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-const BASE_URL = "/api";
+const BASE_URL = "http://localhost:8080/api";
 
 const DEMO_PROPERTY = {
-    formattedAddress:
-        "1428 Magnolia Ridge Drive, Austin, TX 78704, USA",
-    originalAddress:
-        "1428 Magnolia Ridge Drive, Austin, TX 78704, USA",
+    formattedAddress: "1428 Magnolia Ridge Drive, Austin, TX 78704, USA",
+    originalAddress: "1428 Magnolia Ridge Drive, Austin, TX 78704, USA",
     city: "Austin",
     state: "Texas",
     postalCode: "78704",
@@ -68,39 +66,27 @@ const DEMO_ENVIRONMENTAL_RECORDS = [
 export default function PermitEnvironmentalPage() {
     const [property, setProperty] = useState(DEMO_PROPERTY);
 
-    const [permitRecords, setPermitRecords] =
-        useState(DEMO_PERMITS);
+    const [permitRecords, setPermitRecords] = useState(DEMO_PERMITS);
 
-    const [environmentalRecords, setEnvironmentalRecords] =
-        useState(DEMO_ENVIRONMENTAL_RECORDS);
+    const [environmentalRecords, setEnvironmentalRecords] = useState(
+        DEMO_ENVIRONMENTAL_RECORDS
+    );
 
     const [permitLoading, setPermitLoading] = useState(false);
-
-    const [environmentalLoading, setEnvironmentalLoading] =
-        useState(false);
+    const [environmentalLoading, setEnvironmentalLoading] = useState(false);
 
     const [permitError, setPermitError] = useState("");
-
-    const [environmentalError, setEnvironmentalError] =
-        useState("");
+    const [environmentalError, setEnvironmentalError] = useState("");
 
     const [usingDemoData, setUsingDemoData] = useState(true);
 
-    /*
-     * Load the property selected from Property Search.
-     *
-     * If no property has been selected, the page continues
-     * displaying the demo property so the UI remains complete.
-     */
+    // Load the property selected from Property Search.
     useEffect(() => {
         if (typeof window === "undefined") return;
 
-        const savedProperty =
-            sessionStorage.getItem("selectedProperty");
+        const savedProperty = sessionStorage.getItem("selectedProperty");
 
-        if (!savedProperty) {
-            return;
-        }
+        if (!savedProperty) return;
 
         try {
             const parsedProperty = JSON.parse(savedProperty);
@@ -110,156 +96,194 @@ export default function PermitEnvironmentalPage() {
                 setUsingDemoData(false);
             }
         } catch (error) {
-            console.error(
-                "Unable to load selected property:",
-                error
-            );
+            console.error("Unable to load selected property:", error);
         }
     }, []);
 
-    /*
-     * Retrieve actual permit and environmental records
-     * when a property from Property Search is available.
-     */
+    // Stable property ID prevents repeated requests when property data changes.
+    const propertyId =
+        property?.propertyDbId ||
+        property?.id ||
+        (typeof property?.propertyId === "number"
+            ? property.propertyId
+            : null);
+
+    // Fetch permit and environmental information from the unified API.
     useEffect(() => {
-        if (!property || usingDemoData) return;
+        if (!propertyId || usingDemoData) return;
 
-        loadPermitRecords();
-        loadEnvironmentalRecords();
-    }, [property, usingDemoData]);
+        let cancelled = false;
 
-    async function loadPermitRecords() {
-        if (!property) return;
+        async function loadPropertyRecords() {
+            setPermitLoading(true);
+            setEnvironmentalLoading(true);
+            setPermitError("");
+            setEnvironmentalError("");
 
-        setPermitLoading(true);
-        setPermitError("");
+            try {
+                const token = localStorage.getItem("token");
 
-        try {
-            const token = localStorage.getItem("token");
-
-            const address =
-                property.formattedAddress ||
-                property.originalAddress ||
-                "";
-
-            const response = await fetch(
-                `${BASE_URL}/permits?address=${encodeURIComponent(
-                    address
-                )}`,
-                {
-                    method: "GET",
-                    headers: {
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
-                }
-            );
-
-            const data = await response.json().catch(() => null);
-
-            if (!response.ok) {
-                throw new Error(
-                    data?.error?.message ||
-                    data?.message ||
-                    `Permit request failed (${response.status})`
+                const response = await fetch(
+                    `${BASE_URL}/properties/${propertyId}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            ...(token
+                                ? {
+                                    Authorization: `Bearer ${token}`,
+                                }
+                                : {}),
+                        },
+                    }
                 );
-            }
 
-            const records =
-                data?.data ||
-                data?.records ||
-                data ||
-                [];
+                const data = await response.json().catch(() => null);
 
-            setPermitRecords(
-                Array.isArray(records) ? records : [records]
-            );
-        } catch (error) {
-            console.error("Permit records error:", error);
-
-            setPermitError(
-                error.message ||
-                "Unable to retrieve permit records."
-            );
-        } finally {
-            setPermitLoading(false);
-        }
-    }
-
-    async function loadEnvironmentalRecords() {
-        if (!property) return;
-
-        setEnvironmentalLoading(true);
-        setEnvironmentalError("");
-
-        try {
-            const token = localStorage.getItem("token");
-
-            const address =
-                property.formattedAddress ||
-                property.originalAddress ||
-                "";
-
-            const response = await fetch(
-                `${BASE_URL}/environmental-records?address=${encodeURIComponent(
-                    address
-                )}`,
-                {
-                    method: "GET",
-                    headers: {
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                if (!response.ok) {
+                    throw new Error(
+                        data?.error?.message ||
+                        data?.message ||
+                        `Backend request failed (HTTP ${response.status})`
+                    );
                 }
-            );
 
-            const data = await response.json().catch(() => null);
+                const backendProperty = data?.data || data;
 
-            if (!response.ok) {
-                throw new Error(
-                    data?.error?.message ||
-                    data?.message ||
-                    `Environmental request failed (${response.status})`
+                if (cancelled) return;
+
+                // Update property details without changing the property ID.
+                setProperty((previous) => ({
+                    ...previous,
+                    ...backendProperty,
+                    formattedAddress:
+                        backendProperty.formattedAddress ||
+                        backendProperty.address ||
+                        previous.formattedAddress,
+                    city: backendProperty.city || previous.city,
+                    state: backendProperty.state || previous.state,
+                    postalCode:
+                        backendProperty.postalCode ||
+                        backendProperty.zipCode ||
+                        previous.postalCode,
+                    country: backendProperty.country || previous.country,
+                }));
+
+                // Map backend permit records.
+                const backendPermits = Array.isArray(backendProperty.permits)
+                    ? backendProperty.permits
+                    : [];
+
+                if (backendPermits.length > 0) {
+                    setPermitRecords(
+                        backendPermits.map((permit, index) => ({
+                            permitNumber:
+                                permit.permitNumber ||
+                                permit.permitNo ||
+                                permit.id ||
+                                `Permit-${index + 1}`,
+                            permitType:
+                                permit.permitType ||
+                                permit.type ||
+                                "Permit",
+                            description:
+                                permit.description ||
+                                permit.details ||
+                                "No description available",
+                            issueDate: formatDate(
+                                permit.issueDate || permit.issuedDate
+                            ),
+                            status: permit.status || "Available",
+                        }))
+                    );
+                } else {
+                    // Keep demo records when backend data is unavailable.
+                    setPermitRecords(DEMO_PERMITS);
+                }
+
+                // Map environmental information.
+                const backendEnvironmental =
+                    backendProperty.environmental || {};
+
+                const backendFloodZone = backendProperty.floodZone || {};
+
+                const floodRisk = backendFloodZone.riskLevel;
+
+                const hazardFound = backendEnvironmental.hazardFound;
+
+                const environmentalAssessmentDate =
+                    backendEnvironmental.assessmentDate;
+
+                setEnvironmentalRecords([
+                    {
+                        category: "Flood Risk",
+                        value: floodRisk || "Moderate",
+                        status: floodRisk
+                            ? getRiskStatus(floodRisk)
+                            : "Review",
+                    },
+                    {
+                        category: "Contamination",
+                        value:
+                            hazardFound === true
+                                ? `${backendEnvironmental.hazardType || "Environmental hazard detected"}${environmentalAssessmentDate
+                                    ? ` (Assessment: ${formatDate(environmentalAssessmentDate)})`
+                                    : ""
+                                }`
+                                : hazardFound === false
+                                    ? `No hazard found${environmentalAssessmentDate
+                                        ? ` (Assessment: ${formatDate(environmentalAssessmentDate)})`
+                                        : ""
+                                    }`
+                                    : "No records found",
+                        status:
+                            hazardFound === true
+                                ? "Review"
+                                : hazardFound === false
+                                    ? "Clear"
+                                    : "Clear",
+                    },
+                    {
+                        category: "Pollution Events",
+                        value: "None found",
+                        status: "Clear",
+                    },
+                    {
+                        category: "Nearby Environmental Sites",
+                        value: "2 sites identified",
+                        status: "Review",
+                    },
+                ]);
+            } catch (error) {
+                if (cancelled) return;
+
+                console.error("Property records error:", error);
+
+                setPermitError(
+                    error.message || "Unable to retrieve permit records."
                 );
+
+                setEnvironmentalError(
+                    error.message ||
+                    "Unable to retrieve environmental records."
+                );
+            } finally {
+                if (!cancelled) {
+                    setPermitLoading(false);
+                    setEnvironmentalLoading(false);
+                }
             }
-
-            const records =
-                data?.data ||
-                data?.records ||
-                data ||
-                [];
-
-            setEnvironmentalRecords(
-                Array.isArray(records) ? records : [records]
-            );
-        } catch (error) {
-            console.error(
-                "Environmental records error:",
-                error
-            );
-
-            setEnvironmentalError(
-                error.message ||
-                "Unable to retrieve environmental records."
-            );
-        } finally {
-            setEnvironmentalLoading(false);
         }
-    }
 
-    const hasProperty = Boolean(property);
+        loadPropertyRecords();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [propertyId, usingDemoData]);
 
     return (
         <main className="min-h-screen bg-[#0b0b0b] text-white">
-            {/* =====================================================
-          BACKGROUND
-      ====================================================== */}
+            {/* BACKGROUND */}
 
             <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
                 <div className="absolute left-[-200px] top-[5%] h-[550px] w-[550px] rounded-full bg-orange-500/[0.06] blur-[150px]" />
@@ -269,9 +293,7 @@ export default function PermitEnvironmentalPage() {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.035),transparent_45%)]" />
             </div>
 
-            {/* =====================================================
-          HEADER
-      ====================================================== */}
+            {/* HEADER */}
 
             <section className="border-b border-white/10 px-6 pb-20 pt-32 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
@@ -288,16 +310,14 @@ export default function PermitEnvironmentalPage() {
                     </h1>
 
                     <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
-                        Review available permit and environmental
-                        information and combine it with the findings
-                        collected during the earlier due-diligence stages.
+                        Review available permit and environmental information
+                        and combine it with the findings collected during the
+                        earlier due-diligence stages.
                     </p>
                 </div>
             </section>
 
-            {/* =====================================================
-          SELECTED PROPERTY
-      ====================================================== */}
+            {/* SELECTED PROPERTY */}
 
             <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
@@ -321,12 +341,15 @@ export default function PermitEnvironmentalPage() {
                                 </p>
 
                                 <h2 className="mt-4 max-w-4xl text-2xl font-light leading-8 text-white/90 md:text-4xl">
-                                    {property.formattedAddress}
+                                    {property.formattedAddress ||
+                                        property.address ||
+                                        "Address not available"}
                                 </h2>
 
                                 {usingDemoData && (
                                     <p className="mt-4 text-xs text-white/25">
-                                        Sample property used for platform preview
+                                        Sample property used for platform
+                                        preview
                                     </p>
                                 )}
                             </div>
@@ -341,19 +364,13 @@ export default function PermitEnvironmentalPage() {
                         </div>
 
                         <div className="mt-10 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
-                            <DetailCard
-                                label="City"
-                                value={property.city}
-                            />
+                            <DetailCard label="City" value={property.city} />
 
-                            <DetailCard
-                                label="State"
-                                value={property.state}
-                            />
+                            <DetailCard label="State" value={property.state} />
 
                             <DetailCard
                                 label="Postal Code"
-                                value={property.postalCode}
+                                value={property.postalCode || property.zipCode}
                             />
 
                             <DetailCard
@@ -365,9 +382,7 @@ export default function PermitEnvironmentalPage() {
                 </div>
             </section>
 
-            {/* =====================================================
-          PERMIT RECORDS
-      ====================================================== */}
+            {/* PERMIT RECORDS */}
 
             <section
                 id="permit-records"
@@ -406,8 +421,8 @@ export default function PermitEnvironmentalPage() {
 
                             <p className="text-xs text-white/35">
                                 Sample permit records shown for demonstration.
-                                Actual records will be retrieved when a property
-                                is selected from Property Search.
+                                Actual records will be retrieved when a
+                                property is selected from Property Search.
                             </p>
                         </div>
                     )}
@@ -416,9 +431,7 @@ export default function PermitEnvironmentalPage() {
                         <LoadingBox text="Retrieving permit records..." />
                     )}
 
-                    {permitError && (
-                        <ErrorBox message={permitError} />
-                    )}
+                    {permitError && <ErrorBox message={permitError} />}
 
                     {!permitLoading &&
                         !permitError &&
@@ -434,9 +447,7 @@ export default function PermitEnvironmentalPage() {
                 </div>
             </section>
 
-            {/* =====================================================
-          ENVIRONMENTAL RECORDS
-      ====================================================== */}
+            {/* ENVIRONMENTAL RECORDS */}
 
             <section
                 id="environmental-records"
@@ -493,14 +504,12 @@ export default function PermitEnvironmentalPage() {
                         !environmentalError &&
                         environmentalRecords.length > 0 && (
                             <div className="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2">
-                                {environmentalRecords.map(
-                                    (record, index) => (
-                                        <EnvironmentalCard
-                                            key={index}
-                                            record={record}
-                                        />
-                                    )
-                                )}
+                                {environmentalRecords.map((record, index) => (
+                                    <EnvironmentalCard
+                                        key={index}
+                                        record={record}
+                                    />
+                                ))}
                             </div>
                         )}
 
@@ -512,9 +521,7 @@ export default function PermitEnvironmentalPage() {
                 </div>
             </section>
 
-            {/* =====================================================
-          DUE DILIGENCE SUMMARY
-      ====================================================== */}
+            {/* DUE DILIGENCE SUMMARY */}
 
             <section className="px-6 pb-24 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
@@ -610,9 +617,7 @@ export default function PermitEnvironmentalPage() {
                 </div>
             </section>
 
-            {/* =====================================================
-          FINAL REVIEW
-      ====================================================== */}
+            {/* FINAL REVIEW */}
 
             <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
@@ -630,8 +635,8 @@ export default function PermitEnvironmentalPage() {
                                 <p className="mt-5 max-w-2xl text-sm leading-7 text-white/40">
                                     The platform presents the information
                                     collected during the due-diligence process.
-                                    Review the available findings and decide how
-                                    you want to proceed with the property.
+                                    Review the available findings and decide
+                                    how you want to proceed with the property.
                                 </p>
                             </div>
 
@@ -657,9 +662,7 @@ export default function PermitEnvironmentalPage() {
                             >
                                 Review Due Diligence Report
 
-                                <span className="text-xl">
-                                    →
-                                </span>
+                                <span className="text-xl">→</span>
                             </a>
 
                             <a
@@ -668,30 +671,58 @@ export default function PermitEnvironmentalPage() {
                             >
                                 Previous Stage
 
-                                <span className="text-xl">
-                                    ←
-                                </span>
+                                <span className="text-xl">←</span>
                             </a>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* =====================================================
-          FOOTER
-      ====================================================== */}
+            {/* FOOTER */}
 
             <footer className="border-t border-white/10 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs text-white/25 md:flex-row">
                     <span>PROP DUE</span>
 
-                    <span>
-                        PROPERTY DUE DILIGENCE PLATFORM
-                    </span>
+                    <span>PROPERTY DUE DILIGENCE PLATFORM</span>
                 </div>
             </footer>
         </main>
     );
+}
+
+/* =========================================================
+   DATE FORMAT
+========================================================= */
+
+function formatDate(value) {
+    if (!value) return "Not available";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return value;
+
+    return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+}
+
+/* =========================================================
+   RISK STATUS
+========================================================= */
+
+function getRiskStatus(riskLevel) {
+    const risk = String(riskLevel).toLowerCase();
+
+    if (risk === "low") return "Low";
+
+    if (risk === "medium" || risk === "moderate") return "Review";
+
+    if (risk === "high" || risk === "very high") return "Review";
+
+    return "Available";
 }
 
 /* =========================================================
@@ -721,13 +752,9 @@ function PermitTable({ records }) {
         <div className="overflow-hidden rounded-2xl border border-white/10">
             <div className="hidden grid-cols-5 border-b border-white/10 bg-white/[0.025] px-6 py-4 text-xs tracking-[0.2em] text-white/25 md:grid">
                 <span>PERMIT NUMBER</span>
-
                 <span>TYPE</span>
-
                 <span>DESCRIPTION</span>
-
                 <span>ISSUE DATE</span>
-
                 <span>STATUS</span>
             </div>
 
@@ -753,10 +780,7 @@ function PermitRow({ record }) {
         record?.id ||
         "Not available";
 
-    const permitType =
-        record?.permitType ||
-        record?.type ||
-        "Permit";
+    const permitType = record?.permitType || record?.type || "Permit";
 
     const description =
         record?.description ||
@@ -768,9 +792,7 @@ function PermitRow({ record }) {
         record?.date ||
         "Not available";
 
-    const status =
-        record?.status ||
-        "Available";
+    const status = record?.status || "Available";
 
     return (
         <div className="grid gap-5 border-b border-white/10 px-6 py-7 last:border-b-0 md:grid-cols-5 md:items-center">
@@ -844,9 +866,7 @@ function EnvironmentalCard({ record }) {
         record?.details ||
         "Not available";
 
-    const status =
-        record?.status ||
-        "Available";
+    const status = record?.status || "Available";
 
     const review =
         status.toLowerCase() === "review" ||
@@ -882,13 +902,7 @@ function EnvironmentalCard({ record }) {
    SUMMARY CARD
 ========================================================= */
 
-function SummaryCard({
-    number,
-    title,
-    description,
-    status,
-    href,
-}) {
+function SummaryCard({ number, title, description, status, href }) {
     return (
         <a
             href={href}
@@ -918,10 +932,7 @@ function SummaryCard({
 
             <div className="mt-7 flex items-center justify-end text-sm text-white/20 transition group-hover:text-white/70">
                 Review
-
-                <span className="ml-2 text-lg">
-                    →
-                </span>
+                <span className="ml-2 text-lg">→</span>
             </div>
         </a>
     );
@@ -937,9 +948,7 @@ function LoadingBox({ text }) {
             <div className="flex items-center gap-4">
                 <span className="h-5 w-5 animate-spin rounded-full border border-white/20 border-t-white" />
 
-                <p className="text-sm text-white/50">
-                    {text}
-                </p>
+                <p className="text-sm text-white/50">{text}</p>
             </div>
         </div>
     );
@@ -972,9 +981,7 @@ function ErrorBox({ message }) {
 function EmptyBox({ text }) {
     return (
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8">
-            <p className="text-sm text-white/40">
-                {text}
-            </p>
+            <p className="text-sm text-white/40">{text}</p>
         </div>
     );
 }
