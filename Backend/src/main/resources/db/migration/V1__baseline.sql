@@ -1,4 +1,16 @@
 --
+-- Flyway V1 baseline: the complete schema as it exists in the live
+-- duedilligence_db database (PostgreSQL 18.6), regenerated 2026-09-28
+-- via pg_dump --schema-only. Baseline-on-migrate marks existing
+-- databases as pre-V1 (this file is NOT applied there); on a FRESH
+-- database Flyway applies it to create the exact schema. Hibernate
+-- ddl-auto=validate then only validates against it.
+--
+-- Data (admin user, 50-property seed) is loaded separately via
+-- spring.sql.init.data-locations AFTER schema creation.
+--
+
+--
 -- PostgreSQL database dump
 --
 
@@ -195,7 +207,8 @@ CREATE TABLE public.due_diligence_reports (
     property_id bigint NOT NULL,
     risk_assessment_id bigint,
     status character varying(30),
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    aggregation_run_id bigint
 );
 
 
@@ -376,19 +389,6 @@ CREATE TABLE public.property_details (
     property_id bigint NOT NULL,
     address character varying(255) NOT NULL,
     address_complete boolean,
-    city character varying(100) NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    geocode_granularity character varying(40),
-    google_place_id character varying(150),
-    government_identifier character varying(150),
-    latitude numeric(10,8),
-    longitude numeric(11,8),
-    municipal_assessment_identifier character varying(150),
-    postal_code character varying(20),
-    property_type character varying(50),
-    state character varying(100) NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    validation_granularity character varying(40),
     age character varying(50),
     amenities character varying(4000),
     area_text character varying(100),
@@ -398,6 +398,8 @@ CREATE TABLE public.property_details (
     bedrooms integer,
     brokerage numeric(15,2),
     carpet_area_sqft numeric(10,2),
+    city character varying(100) NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
     dealer character varying(150),
     deposit numeric(15,2),
     description oid,
@@ -407,31 +409,43 @@ CREATE TABLE public.property_details (
     floor character varying(20),
     furnishing character varying(50),
     gated_community boolean,
+    geocode_granularity character varying(40),
+    google_place_id character varying(150),
     google_response_id character varying(100),
+    government_identifier character varying(150),
     has_unconfirmed_components boolean,
     images oid,
+    latitude numeric(10,8),
     listed_by character varying(30),
     listing_url character varying(1000),
     locality character varying(150),
+    longitude numeric(11,8),
     map_accuracy character varying(30),
+    municipal_assessment_identifier character varying(150),
     original_currency character varying(10),
     original_price numeric(15,2),
     place_types character varying(255),
     plus_code character varying(30),
     possible_next_action character varying(100),
+    postal_code character varying(20),
     posting_date character varying(50),
     price numeric(15,2),
     price_per_sqft numeric(10,2),
     property_subtype character varying(100),
+    property_type character varying(50),
     rera_id character varying(100),
     source character varying(50),
     sqm numeric(10,2),
+    state character varying(100) NOT NULL,
     super_area_sqft numeric(10,2),
     title character varying(500),
     total_floors integer,
     transaction character varying(30),
     update_date character varying(50),
-    verified boolean
+    updated_at timestamp(6) without time zone NOT NULL,
+    validation_granularity character varying(40),
+    verified boolean,
+    searched_by bigint
 );
 
 
@@ -700,14 +714,14 @@ CREATE TABLE public.user_profiles (
     profile_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     first_name character varying(50) NOT NULL,
-    last_name character varying(50) NOT NULL,
-    phone character varying(20),
-    updated_at timestamp(6) without time zone NOT NULL,
-    user_id bigint NOT NULL,
     job_title character varying(100),
+    last_name character varying(50) NOT NULL,
     organization character varying(150),
+    phone character varying(20),
     profile_picture character varying(500),
-    timezone character varying(50)
+    timezone character varying(50),
+    updated_at timestamp(6) without time zone NOT NULL,
+    user_id bigint NOT NULL
 );
 
 
@@ -1231,11 +1245,27 @@ ALTER TABLE ONLY public.property_history
 
 
 --
+-- Name: property_details fklw22xpeyw0sf11ovtdfa10t5c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_details
+    ADD CONSTRAINT fklw22xpeyw0sf11ovtdfa10t5c FOREIGN KEY (searched_by) REFERENCES public.users(user_id);
+
+
+--
 -- Name: due_diligence_reports fkm6wo19uvnwed5xlhm3eyaaaad; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.due_diligence_reports
     ADD CONSTRAINT fkm6wo19uvnwed5xlhm3eyaaaad FOREIGN KEY (risk_assessment_id) REFERENCES public.risk_assessment_details(risk_assessment_id);
+
+
+--
+-- Name: due_diligence_reports fkn7mltnnux08oa99lx2ofad94m; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.due_diligence_reports
+    ADD CONSTRAINT fkn7mltnnux08oa99lx2ofad94m FOREIGN KEY (aggregation_run_id) REFERENCES public.aggregation_runs(aggregation_run_id);
 
 
 --
