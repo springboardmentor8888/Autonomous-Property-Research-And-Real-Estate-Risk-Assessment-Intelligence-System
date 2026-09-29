@@ -16,7 +16,7 @@ const API_URL = "http://localhost:8080/api";
 
 export default function OwnershipPage() {
   const [property, setProperty] = useState(null);
-  const [ownership, setOwnership] = useState(null);
+  const [ownershipHistory, setOwnershipHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -26,9 +26,7 @@ export default function OwnershipPage() {
         setLoading(true);
         setError("");
 
-        // Load the selected property from session storage
-        const savedProperty =
-          sessionStorage.getItem("selectedProperty");
+        const savedProperty = sessionStorage.getItem("selectedProperty");
 
         if (!savedProperty) {
           throw new Error(
@@ -39,7 +37,6 @@ export default function OwnershipPage() {
         const selected = JSON.parse(savedProperty);
         setProperty(selected);
 
-        // Get the database ID
         const rawId =
           selected.propertyDbId ??
           selected.id ??
@@ -55,7 +52,6 @@ export default function OwnershipPage() {
           );
         }
 
-        // Get the JWT token, matching Property Search
         const token = localStorage.getItem("token");
 
         if (!token) {
@@ -64,7 +60,6 @@ export default function OwnershipPage() {
           );
         }
 
-        // Fetch property details from the backend
         const response = await fetch(
           `${API_URL}/properties/${rawId}`,
           {
@@ -100,12 +95,29 @@ export default function OwnershipPage() {
 
         const details = data?.data ?? data;
 
-        setOwnership(details?.ownership ?? null);
+        let history = [];
+
+        if (Array.isArray(details?.ownershipHistory)) {
+          history = details.ownershipHistory;
+        } else if (Array.isArray(details?.ownership)) {
+          history = details.ownership;
+        } else if (
+          details?.ownership &&
+          typeof details.ownership === "object"
+        ) {
+          history = [details.ownership];
+        }
+
+        history.sort((a, b) => {
+          const dateA = a?.acquiredDate || "";
+          const dateB = b?.acquiredDate || "";
+          return dateA.localeCompare(dateB);
+        });
+
+        setOwnershipHistory(history);
       } catch (err) {
         console.error("Ownership loading error:", err);
-        setError(
-          err.message || "Unable to load ownership records."
-        );
+        setError(err.message || "Unable to load ownership records.");
       } finally {
         setLoading(false);
       }
@@ -120,12 +132,48 @@ export default function OwnershipPage() {
     "Property Address";
 
   const mapUrl =
-    property?.latitude != null &&
-      property?.longitude != null
+    property?.latitude != null && property?.longitude != null
       ? `https://www.openstreetmap.org/?mlat=${property.latitude}&mlon=${property.longitude}#map=17/${property.latitude}/${property.longitude}`
-      : `https://www.openstreetmap.org/search?query=${encodeURIComponent(address)}`;
+      : `https://www.openstreetmap.org/search?query=${encodeURIComponent(
+        address
+      )}`;
 
-  // Loading screen
+  // Sort ownership records by acquisition date.
+  const sortedOwnershipHistory = [...ownershipHistory].sort((a, b) =>
+    (a?.acquiredDate || "").localeCompare(b?.acquiredDate || "")
+  );
+
+  // Identify the current owner.
+  const recordsWithoutTransferDate = sortedOwnershipHistory.filter(
+    (record) => record?.transferDate == null
+  );
+
+  const currentOwner =
+    recordsWithoutTransferDate.length > 1
+      ? recordsWithoutTransferDate[
+      recordsWithoutTransferDate.length - 1
+      ]
+      : recordsWithoutTransferDate[0] ||
+      sortedOwnershipHistory[sortedOwnershipHistory.length - 1];
+
+  // Use transfer dates when available.
+  // If all transfer dates are missing, use acquisition dates as a fallback.
+  const hasTransferDates = sortedOwnershipHistory.some(
+    (record) => record?.transferDate != null
+  );
+
+  const previousOwners = hasTransferDates
+    ? sortedOwnershipHistory.filter(
+      (record) =>
+        record?.transferDate != null && record !== currentOwner
+    )
+    : sortedOwnershipHistory.filter(
+      (record) => record !== currentOwner
+    );
+
+  const inferredPreviousOwners =
+    !hasTransferDates && previousOwners.length > 0;
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#0b0b0b] text-white">
@@ -170,8 +218,9 @@ export default function OwnershipPage() {
           </h1>
 
           <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
-            Review ownership information and available registry
-            records for the selected property.
+            Review current and previous ownership information
+            and available registry records for the selected
+            property.
           </p>
         </div>
       </section>
@@ -216,18 +265,15 @@ export default function OwnershipPage() {
               </h2>
 
               <div className="mt-12 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
-                <DetailCard
-                  label="City"
-                  value={property.city}
-                />
-                <DetailCard
-                  label="State"
-                  value={property.state}
-                />
+                <DetailCard label="City" value={property.city} />
+
+                <DetailCard label="State" value={property.state} />
+
                 <DetailCard
                   label="Postal Code"
-                  value={property.postalCode}
+                  value={property.postalCode ?? property.zipCode}
                 />
+
                 <DetailCard
                   label="Property ID"
                   value={
@@ -240,72 +286,217 @@ export default function OwnershipPage() {
             </div>
           </section>
 
-          {/* Ownership details */}
+          {/* Ownership records */}
           <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
             <div className="mx-auto max-w-[1400px]">
               <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
                 OWNERSHIP RECORDS
               </p>
 
-              {!ownership ? (
+              {ownershipHistory.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
                   <ShieldCheck
                     size={28}
                     className="text-white/40"
                   />
+
                   <h3 className="mt-5 text-2xl font-light text-white/80">
                     No ownership data available
                   </h3>
+
                   <p className="mt-4 text-sm leading-7 text-white/40">
-                    The backend did not return ownership information
-                    for this property.
+                    The backend did not return ownership
+                    information for this property.
                   </p>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
-                  <div className="flex items-center gap-3">
-                    <UserRound
-                      size={20}
-                      className="text-white/40"
-                    />
-                    <p className="text-xs tracking-[0.25em] text-white/35">
-                      CURRENT OWNER
-                    </p>
-                  </div>
-
-                  <h3 className="mt-5 text-3xl font-light text-white/80">
-                    {ownership.ownerName ??
-                      ownership.owner ??
-                      ownership.name ??
-                      "Not available"}
-                  </h3>
-
-                  <p className="mt-4 text-sm text-white/40">
-                    Ownership information returned by the backend.
-                  </p>
-
-                  <div className="mt-10 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
-                    {Object.entries(ownership)
-                      .filter(
-                        ([key, value]) =>
-                          value !== null &&
-                          value !== undefined &&
-                          typeof value !== "object" &&
-                          ![
-                            "ownerName",
-                            "owner",
-                            "name",
-                          ].includes(key)
-                      )
-                      .map(([key, value]) => (
-                        <DetailCard
-                          key={key}
-                          label={formatLabel(key)}
-                          value={value}
+                <>
+                  {/* Current owner */}
+                  <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-8 md:p-10">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <UserRound
+                          size={20}
+                          className="text-emerald-400"
                         />
-                      ))}
+
+                        <p className="text-xs tracking-[0.25em] text-emerald-400/70">
+                          CURRENT OWNER
+                        </p>
+                      </div>
+
+                      <span className="rounded-full border border-emerald-400/30 px-4 py-2 text-xs text-emerald-300">
+                        Current
+                      </span>
+                    </div>
+
+                    <h3 className="mt-5 break-words text-3xl font-light text-white/90 md:text-4xl">
+                      {currentOwner?.ownerName ||
+                        currentOwner?.owner ||
+                        currentOwner?.name ||
+                        "Not available"}
+                    </h3>
+
+                    <p className="mt-4 text-sm text-white/40">
+                      Current ownership information returned by
+                      the backend.
+                    </p>
+
+                    <div className="mt-10 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
+                      <DetailCard
+                        label="Acquired Date"
+                        value={currentOwner?.acquiredDate}
+                      />
+
+                      <DetailCard
+                        label="Transfer Date"
+                        value={
+                          currentOwner?.transferDate ??
+                          "Current owner"
+                        }
+                      />
+
+                      <DetailCard
+                        label="Record ID"
+                        value={currentOwner?.id}
+                      />
+                    </div>
                   </div>
-                </div>
+
+                  {/* Ownership timeline */}
+                  <div className="mt-16">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
+                          OWNERSHIP TIMELINE
+                        </p>
+
+                        <h2 className="mt-4 text-3xl font-light text-white/85 md:text-4xl">
+                          Previous owners
+                        </h2>
+                      </div>
+
+                      <span className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/50">
+                        {previousOwners.length}{" "}
+                        {previousOwners.length === 1
+                          ? "Previous owner"
+                          : "Previous owners"}
+                      </span>
+                    </div>
+
+                    {inferredPreviousOwners && (
+                      <p className="mt-6 text-sm leading-6 text-amber-200/70">
+                        Transfer dates were not provided. Previous owners are
+                        shown based on acquisition dates and should be verified
+                        with the backend records.
+                      </p>
+                    )}
+
+                    {previousOwners.length === 0 ? (
+                      <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-8">
+                        <p className="text-lg text-white/65">
+                          No previous ownership records found.
+                        </p>
+
+                        <p className="mt-3 text-sm leading-7 text-white/40">
+                          No earlier ownership records could be identified.
+                          The backend did not provide transfer dates.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-8 space-y-5">
+                        {previousOwners.map((owner, index) => (
+                          <div
+                            key={
+                              owner.id ??
+                              `${owner.ownerName}-${owner.acquiredDate}-${index}`
+                            }
+                            className="rounded-2xl border border-white/10 bg-white/[0.02] p-7 transition hover:border-white/20 md:p-9"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                                  <UserRound
+                                    size={18}
+                                    className="text-white/50"
+                                  />
+                                </div>
+
+                                <span className="text-xs tracking-[0.2em] text-white/35">
+                                  PREVIOUS OWNER {index + 1}
+                                </span>
+                              </div>
+
+                              <span className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/45">
+                                Ownership ended
+                              </span>
+                            </div>
+
+                            <h3 className="mt-6 break-words text-2xl font-light text-white/85 md:text-3xl">
+                              {owner.ownerName ||
+                                owner.owner ||
+                                owner.name ||
+                                "Not available"}
+                            </h3>
+
+                            <div className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
+                              <DetailCard
+                                label="Acquired Date"
+                                value={owner.acquiredDate}
+                              />
+
+                              <DetailCard
+                                label="Transfer Date"
+                                value={owner.transferDate}
+                              />
+
+                              <DetailCard
+                                label="Record ID"
+                                value={owner.id}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Record summary */}
+                  <div className="mt-16 rounded-2xl border border-white/10 bg-white/[0.02] p-7 md:p-9">
+                    <div className="flex items-center gap-3">
+                      <Clock3
+                        size={20}
+                        className="text-white/50"
+                      />
+
+                      <p className="text-xs tracking-[0.25em] text-white/35">
+                        RECORD SUMMARY
+                      </p>
+                    </div>
+
+                    <div className="mt-8 grid gap-6 sm:grid-cols-2">
+                      <div>
+                        <p className="text-sm text-white/35">
+                          Total ownership records
+                        </p>
+
+                        <p className="mt-3 text-4xl font-light text-white/85">
+                          {ownershipHistory.length}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-white/35">
+                          Previous owners
+                        </p>
+
+                        <p className="mt-3 text-4xl font-light text-white/85">
+                          {previousOwners.length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </section>
@@ -337,17 +528,25 @@ export default function OwnershipPage() {
           {/* Next stage */}
           <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
             <div className="mx-auto max-w-[1400px] rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
-              <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
-                NEXT RESEARCH STAGE
-              </p>
+              <div className="flex items-center gap-3">
+                <FileText
+                  size={18}
+                  className="text-white/40"
+                />
+
+                <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
+                  NEXT RESEARCH STAGE
+                </p>
+              </div>
 
               <h2 className="mt-5 text-3xl font-light text-white/80">
                 Tax History &amp; Property Records
               </h2>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-white/40">
-                Review historical property tax assessments, tax amounts,
-                payment status, and changes across previous tax years.
+                Review historical property tax assessments, tax
+                amounts, payment status, and changes across
+                previous tax years.
               </p>
 
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -375,7 +574,7 @@ export default function OwnershipPage() {
       <footer className="border-t border-white/10 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
         <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs text-white/25 md:flex-row">
           <span>PROP DUE</span>
-          <span>OWNERSHIP & LAND REGISTRY</span>
+          <span>OWNERSHIP &amp; LAND REGISTRY</span>
         </div>
       </footer>
     </main>
@@ -393,17 +592,10 @@ function DetailCard({ label, value }) {
       <p className="text-xs tracking-[0.2em] text-white/25">
         {label}
       </p>
+
       <p className="mt-4 break-words text-base font-medium text-white/80">
         {displayValue}
       </p>
     </div>
   );
-}
-
-function formatLabel(key) {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/[_-]/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .trim();
 }
