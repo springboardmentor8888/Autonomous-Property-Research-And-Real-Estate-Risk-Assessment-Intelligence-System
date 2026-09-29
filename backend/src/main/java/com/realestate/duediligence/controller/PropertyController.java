@@ -2,8 +2,10 @@ package com.realestate.duediligence.controller;
 
 import com.realestate.duediligence.dto.AddressValidationRequest;
 import com.realestate.duediligence.dto.AddressValidationResponse;
+import com.realestate.duediligence.dto.ComparablePropertyResponse;
 import com.realestate.duediligence.dto.CreatePropertyRequest;
 import com.realestate.duediligence.dto.PropertyDetailsResponse;
+import com.realestate.duediligence.dto.RiskAssessmentResponse;
 import com.realestate.duediligence.entity.Property;
 import com.realestate.duediligence.service.PropertyService;
 import org.springframework.http.HttpStatus;
@@ -23,6 +25,8 @@ public class PropertyController {
 		this.propertyService = propertyService;
 	}
 
+	// ---------- MILESTONE 1 ----------
+
 	@GetMapping("/search")
 	public ResponseEntity<List<Property>> search(@RequestParam String address) {
 		List<Property> results = propertyService.searchByAddress(address);
@@ -35,11 +39,17 @@ public class PropertyController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/admin-check")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	public ResponseEntity<String> adminOnlyCheck() {
+		return ResponseEntity.ok("You are an administrator - access granted.");
+	}
+
+	// ---------- MILESTONE 2 ----------
+
 	/**
-	 * Creates a new property from a raw address: validates it via
-	 * Geoapify, then saves it. This connects Address Validation to
-	 * the rest of the system — the resulting property immediately
-	 * becomes searchable and can have Milestone 2 details fetched.
+	 * Creates a new property from a raw address: validates it via Geoapify, then
+	 * saves it.
 	 */
 	@PostMapping
 	public ResponseEntity<Property> createProperty(@RequestBody CreatePropertyRequest request) {
@@ -47,15 +57,34 @@ public class PropertyController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(property);
 	}
 
+	/**
+	 * Returns the full due-diligence view of one property (all 7 modules).
+	 */
 	@GetMapping("/{id}")
 	public ResponseEntity<PropertyDetailsResponse> getPropertyDetails(@PathVariable Long id) {
 		PropertyDetailsResponse response = propertyService.getPropertyDetails(id);
 		return ResponseEntity.ok(response);
 	}
 
-	@GetMapping("/admin-check")
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
-	public ResponseEntity<String> adminOnlyCheck() {
-		return ResponseEntity.ok("You are an administrator — access granted.");
+	// ---------- MILESTONE 3 ----------
+
+	/**
+	 * Returns the calculated risk assessment for a property, based on its existing
+	 * tax, flood, zoning, permit, and environmental data.
+	 */
+	@GetMapping("/{id}/risk-assessment")
+	public ResponseEntity<RiskAssessmentResponse> getRiskAssessment(@PathVariable Long id) {
+		RiskAssessmentResponse response = propertyService.getRiskAssessment(id);
+		return ResponseEntity.ok(response);
+	}
+
+	/**
+	 * Returns simulated comparable (nearby) properties for price comparison and
+	 * market context.
+	 */
+	@GetMapping("/{id}/comparables")
+	public ResponseEntity<List<ComparablePropertyResponse>> getComparables(@PathVariable Long id) {
+		List<ComparablePropertyResponse> response = propertyService.getComparables(id);
+		return ResponseEntity.ok(response);
 	}
 }
