@@ -4,81 +4,18 @@ import { useEffect, useState } from "react";
 
 const BASE_URL = "http://localhost:8080/api";
 
-const DEMO_PROPERTY = {
-    formattedAddress: "1428 Magnolia Ridge Drive, Austin, TX 78704, USA",
-    originalAddress: "1428 Magnolia Ridge Drive, Austin, TX 78704, USA",
-    city: "Austin",
-    state: "Texas",
-    postalCode: "78704",
-    country: "USA",
-    latitude: 30.267153,
-    longitude: -97.743057,
-    propertyId: "DEMO-PROP-001",
-};
-
-const DEMO_PERMITS = [
-    {
-        permitNumber: "BP-2025-1234",
-        permitType: "Building",
-        description: "Residential renovation",
-        issueDate: "10-Feb-2025",
-        status: "Completed",
-    },
-    {
-        permitNumber: "EP-2024-0842",
-        permitType: "Electrical",
-        description: "Electrical system modification",
-        issueDate: "18-Nov-2024",
-        status: "Completed",
-    },
-    {
-        permitNumber: "PP-2024-0519",
-        permitType: "Plumbing",
-        description: "Plumbing alteration",
-        issueDate: "03-Aug-2024",
-        status: "Completed",
-    },
-];
-
-const DEMO_ENVIRONMENTAL_RECORDS = [
-    {
-        category: "Flood Risk",
-        value: "Moderate",
-        status: "Review",
-    },
-    {
-        category: "Contamination",
-        value: "No records found",
-        status: "Clear",
-    },
-    {
-        category: "Pollution Events",
-        value: "None found",
-        status: "Clear",
-    },
-    {
-        category: "Nearby Environmental Sites",
-        value: "2 sites identified",
-        status: "Review",
-    },
-];
-
 export default function PermitEnvironmentalPage() {
-    const [property, setProperty] = useState(DEMO_PROPERTY);
+    const [property, setProperty] = useState(null);
 
-    const [permitRecords, setPermitRecords] = useState(DEMO_PERMITS);
+    const [permitRecords, setPermitRecords] = useState([]);
 
-    const [environmentalRecords, setEnvironmentalRecords] = useState(
-        DEMO_ENVIRONMENTAL_RECORDS
-    );
+    const [environmentalRecords, setEnvironmentalRecords] = useState([]);
 
     const [permitLoading, setPermitLoading] = useState(false);
     const [environmentalLoading, setEnvironmentalLoading] = useState(false);
 
     const [permitError, setPermitError] = useState("");
     const [environmentalError, setEnvironmentalError] = useState("");
-
-    const [usingDemoData, setUsingDemoData] = useState(true);
 
     // Load the property selected from Property Search.
     useEffect(() => {
@@ -93,7 +30,6 @@ export default function PermitEnvironmentalPage() {
 
             if (parsedProperty) {
                 setProperty(parsedProperty);
-                setUsingDemoData(false);
             }
         } catch (error) {
             console.error("Unable to load selected property:", error);
@@ -102,15 +38,16 @@ export default function PermitEnvironmentalPage() {
 
     // Stable property ID prevents repeated requests when property data changes.
     const propertyId =
-        property?.propertyDbId ||
-        property?.id ||
-        (typeof property?.propertyId === "number"
+        property?.propertyDbId ??
+        property?.id ??
+        (property?.propertyId != null &&
+            /^\d+$/.test(String(property.propertyId))
             ? property.propertyId
             : null);
 
     // Fetch permit and environmental information from the unified API.
     useEffect(() => {
-        if (!propertyId || usingDemoData) return;
+        if (!propertyId) return;
 
         let cancelled = false;
 
@@ -151,115 +88,177 @@ export default function PermitEnvironmentalPage() {
 
                 if (cancelled) return;
 
-                // Update property details without changing the property ID.
+                // Update property details using backend data only.
+                // Missing backend fields are shown as N/A.
                 setProperty((previous) => ({
                     ...previous,
                     ...backendProperty,
+
                     formattedAddress:
                         backendProperty.formattedAddress ||
                         backendProperty.address ||
-                        previous.formattedAddress,
-                    city: backendProperty.city || previous.city,
-                    state: backendProperty.state || previous.state,
+                        "N/A",
+
+                    city: backendProperty.city || "N/A",
+
+                    state: backendProperty.state || "N/A",
+
                     postalCode:
                         backendProperty.postalCode ||
                         backendProperty.zipCode ||
-                        previous.postalCode,
-                    country: backendProperty.country || previous.country,
+                        "N/A",
+
+                    country: backendProperty.country || "N/A",
                 }));
 
-                // Map backend permit records.
-                const backendPermits = Array.isArray(backendProperty.permits)
+                // ---------------------------------------------------------
+                // PERMIT RECORDS
+                // ---------------------------------------------------------
+
+                const backendPermits = Array.isArray(
+                    backendProperty.permits
+                )
                     ? backendProperty.permits
                     : [];
 
                 if (backendPermits.length > 0) {
                     setPermitRecords(
-                        backendPermits.map((permit, index) => ({
+                        backendPermits.map((permit) => ({
                             permitNumber:
                                 permit.permitNumber ||
                                 permit.permitNo ||
                                 permit.id ||
-                                `Permit-${index + 1}`,
+                                "N/A",
+
                             permitType:
                                 permit.permitType ||
                                 permit.type ||
-                                "Permit",
+                                "N/A",
+
                             description:
                                 permit.description ||
                                 permit.details ||
-                                "No description available",
+                                "N/A",
+
                             issueDate: formatDate(
-                                permit.issueDate || permit.issuedDate
+                                permit.issueDate ||
+                                permit.issuedDate
                             ),
-                            status: permit.status || "Available",
+
+                            status:
+                                permit.status ||
+                                "N/A",
                         }))
                     );
                 } else {
-                    // Keep demo records when backend data is unavailable.
-                    setPermitRecords(DEMO_PERMITS);
+                    // No backend records = no fake/demo records.
+                    setPermitRecords([]);
                 }
 
-                // Map environmental information.
+                // ---------------------------------------------------------
+                // ENVIRONMENTAL RECORDS
+                // ---------------------------------------------------------
+
                 const backendEnvironmental =
                     backendProperty.environmental || {};
 
-                const backendFloodZone = backendProperty.floodZone || {};
+                const backendFloodZone =
+                    backendProperty.floodZone || {};
 
-                const floodRisk = backendFloodZone.riskLevel;
+                const floodRisk =
+                    backendFloodZone.riskLevel;
 
-                const hazardFound = backendEnvironmental.hazardFound;
+                const hazardFound =
+                    backendEnvironmental.hazardFound;
 
                 const environmentalAssessmentDate =
                     backendEnvironmental.assessmentDate;
 
+                const contaminationValue =
+                    hazardFound === true
+                        ? `${backendEnvironmental.hazardType ||
+                        "Environmental hazard detected"
+                        }${environmentalAssessmentDate
+                            ? ` (Assessment: ${formatDate(
+                                environmentalAssessmentDate
+                            )})`
+                            : ""
+                        }`
+                        : hazardFound === false
+                            ? `No hazard found${environmentalAssessmentDate
+                                ? ` (Assessment: ${formatDate(
+                                    environmentalAssessmentDate
+                                )})`
+                                : ""
+                            }`
+                            : "N/A";
+
                 setEnvironmentalRecords([
                     {
                         category: "Flood Risk",
-                        value: floodRisk || "Moderate",
+
+                        value:
+                            floodRisk || "N/A",
+
                         status: floodRisk
                             ? getRiskStatus(floodRisk)
-                            : "Review",
+                            : "N/A",
                     },
+
                     {
                         category: "Contamination",
-                        value:
-                            hazardFound === true
-                                ? `${backendEnvironmental.hazardType || "Environmental hazard detected"}${environmentalAssessmentDate
-                                    ? ` (Assessment: ${formatDate(environmentalAssessmentDate)})`
-                                    : ""
-                                }`
-                                : hazardFound === false
-                                    ? `No hazard found${environmentalAssessmentDate
-                                        ? ` (Assessment: ${formatDate(environmentalAssessmentDate)})`
-                                        : ""
-                                    }`
-                                    : "No records found",
+
+                        value: contaminationValue,
+
                         status:
                             hazardFound === true
                                 ? "Review"
                                 : hazardFound === false
                                     ? "Clear"
-                                    : "Clear",
+                                    : "N/A",
                     },
+
                     {
                         category: "Pollution Events",
-                        value: "None found",
-                        status: "Clear",
+
+                        /*
+                         * The current backend response shown in your
+                         * original file does not provide a pollution-events
+                         * field, so do NOT invent a value.
+                         */
+                        value: "N/A",
+
+                        status: "N/A",
                     },
+
                     {
-                        category: "Nearby Environmental Sites",
-                        value: "2 sites identified",
-                        status: "Review",
+                        category:
+                            "Nearby Environmental Sites",
+
+                        /*
+                         * The current backend response shown in your
+                         * original file does not provide nearby-site data,
+                         * so do NOT invent a value.
+                         */
+                        value: "N/A",
+
+                        status: "N/A",
                     },
                 ]);
             } catch (error) {
                 if (cancelled) return;
 
-                console.error("Property records error:", error);
+                console.error(
+                    "Property records error:",
+                    error
+                );
+
+                setPermitRecords([]);
+                setEnvironmentalRecords([]);
 
                 setPermitError(
-                    error.message || "Unable to retrieve permit records."
+                    error.message ||
+                    "Unable to retrieve permit records."
                 );
 
                 setEnvironmentalError(
@@ -279,7 +278,7 @@ export default function PermitEnvironmentalPage() {
         return () => {
             cancelled = true;
         };
-    }, [propertyId, usingDemoData]);
+    }, [propertyId]);
 
     return (
         <main className="min-h-screen bg-[#0b0b0b] text-white">
@@ -310,9 +309,11 @@ export default function PermitEnvironmentalPage() {
                     </h1>
 
                     <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
-                        Review available permit and environmental information
-                        and combine it with the findings collected during the
-                        earlier due-diligence stages.
+                        Review available permit and
+                        environmental information and
+                        combine it with the findings
+                        collected during the earlier
+                        due-diligence stages.
                     </p>
                 </div>
             </section>
@@ -325,12 +326,6 @@ export default function PermitEnvironmentalPage() {
                         <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
                             SELECTED PROPERTY
                         </p>
-
-                        {usingDemoData && (
-                            <span className="rounded-full border border-yellow-400/20 px-4 py-2 text-xs text-yellow-400/60">
-                                Demo Preview
-                            </span>
-                        )}
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-7 backdrop-blur-xl md:p-9">
@@ -341,41 +336,50 @@ export default function PermitEnvironmentalPage() {
                                 </p>
 
                                 <h2 className="mt-4 max-w-4xl text-2xl font-light leading-8 text-white/90 md:text-4xl">
-                                    {property.formattedAddress ||
-                                        property.address ||
-                                        "Address not available"}
+                                    {property?.formattedAddress ||
+                                        property?.address ||
+                                        "N/A"}
                                 </h2>
-
-                                {usingDemoData && (
-                                    <p className="mt-4 text-xs text-white/25">
-                                        Sample property used for platform
-                                        preview
-                                    </p>
-                                )}
                             </div>
 
-                            <div className="flex w-fit items-center gap-2 rounded-full border border-emerald-400/20 px-4 py-2">
-                                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                            <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2">
+                                <span
+                                    className={`h-2 w-2 rounded-full ${property
+                                            ? "bg-emerald-400"
+                                            : "bg-white/30"
+                                        }`}
+                                />
 
-                                <span className="text-xs text-emerald-400/70">
-                                    Property Selected
+                                <span className="text-xs text-white/50">
+                                    {property
+                                        ? "Property Selected"
+                                        : "No Property Selected"}
                                 </span>
                             </div>
                         </div>
 
                         <div className="mt-10 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
-                            <DetailCard label="City" value={property.city} />
+                            <DetailCard
+                                label="City"
+                                value={property?.city}
+                            />
 
-                            <DetailCard label="State" value={property.state} />
+                            <DetailCard
+                                label="State"
+                                value={property?.state}
+                            />
 
                             <DetailCard
                                 label="Postal Code"
-                                value={property.postalCode || property.zipCode}
+                                value={
+                                    property?.postalCode ||
+                                    property?.zipCode
+                                }
                             />
 
                             <DetailCard
                                 label="Country"
-                                value={property.country}
+                                value={property?.country}
                             />
                         </div>
                     </div>
@@ -400,49 +404,40 @@ export default function PermitEnvironmentalPage() {
                             </h2>
 
                             <p className="mt-4 max-w-2xl text-sm leading-7 text-white/40">
-                                Review building, electrical, plumbing,
-                                renovation, and construction permit activity
+                                Review building, electrical,
+                                plumbing, renovation, and
+                                construction permit activity
                                 associated with the property.
                             </p>
                         </div>
 
                         <div className="rounded-full border border-white/10 px-5 py-3 text-xs text-white/40">
-                            {usingDemoData
-                                ? "3 Sample Records"
-                                : permitLoading
-                                    ? "Retrieving..."
-                                    : `${permitRecords.length} Records`}
+                            {permitLoading
+                                ? "Retrieving..."
+                                : `${permitRecords.length} Records`}
                         </div>
                     </div>
-
-                    {usingDemoData && (
-                        <div className="mb-5 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
-                            <span className="h-2 w-2 rounded-full bg-yellow-400" />
-
-                            <p className="text-xs text-white/35">
-                                Sample permit records shown for demonstration.
-                                Actual records will be retrieved when a
-                                property is selected from Property Search.
-                            </p>
-                        </div>
-                    )}
 
                     {permitLoading && (
                         <LoadingBox text="Retrieving permit records..." />
                     )}
 
-                    {permitError && <ErrorBox message={permitError} />}
+                    {permitError && (
+                        <ErrorBox message={permitError} />
+                    )}
 
                     {!permitLoading &&
                         !permitError &&
                         permitRecords.length > 0 && (
-                            <PermitTable records={permitRecords} />
+                            <PermitTable
+                                records={permitRecords}
+                            />
                         )}
 
                     {!permitLoading &&
                         !permitError &&
                         permitRecords.length === 0 && (
-                            <EmptyBox text="No permit records were found for this property." />
+                            <EmptyBox text="N/A" />
                         )}
                 </div>
             </section>
@@ -465,58 +460,50 @@ export default function PermitEnvironmentalPage() {
                             </h2>
 
                             <p className="mt-4 max-w-2xl text-sm leading-7 text-white/40">
-                                Review flood information, contamination
-                                records, pollution events, nearby sites, and
-                                other available environmental findings.
+                                Review flood information,
+                                contamination records,
+                                pollution events, nearby
+                                sites, and other available
+                                environmental findings.
                             </p>
                         </div>
 
                         <div className="rounded-full border border-white/10 px-5 py-3 text-xs text-white/40">
-                            {usingDemoData
-                                ? "4 Sample Checks"
-                                : environmentalLoading
-                                    ? "Retrieving..."
-                                    : `${environmentalRecords.length} Checks`}
+                            {environmentalLoading
+                                ? "Retrieving..."
+                                : `${environmentalRecords.length} Checks`}
                         </div>
                     </div>
-
-                    {usingDemoData && (
-                        <div className="mb-5 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
-                            <span className="h-2 w-2 rounded-full bg-yellow-400" />
-
-                            <p className="text-xs text-white/35">
-                                Sample environmental information shown for
-                                demonstration. Actual results will be retrieved
-                                for the selected property.
-                            </p>
-                        </div>
-                    )}
 
                     {environmentalLoading && (
                         <LoadingBox text="Retrieving environmental records..." />
                     )}
 
                     {environmentalError && (
-                        <ErrorBox message={environmentalError} />
+                        <ErrorBox
+                            message={environmentalError}
+                        />
                     )}
 
                     {!environmentalLoading &&
                         !environmentalError &&
                         environmentalRecords.length > 0 && (
                             <div className="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2">
-                                {environmentalRecords.map((record, index) => (
-                                    <EnvironmentalCard
-                                        key={index}
-                                        record={record}
-                                    />
-                                ))}
+                                {environmentalRecords.map(
+                                    (record, index) => (
+                                        <EnvironmentalCard
+                                            key={index}
+                                            record={record}
+                                        />
+                                    )
+                                )}
                             </div>
                         )}
 
                     {!environmentalLoading &&
                         !environmentalError &&
                         environmentalRecords.length === 0 && (
-                            <EmptyBox text="No environmental records were found for this property." />
+                            <EmptyBox text="N/A" />
                         )}
                 </div>
             </section>
@@ -535,9 +522,11 @@ export default function PermitEnvironmentalPage() {
                         </h2>
 
                         <p className="mt-5 max-w-3xl text-sm leading-7 text-white/40">
-                            Review the information collected across each
-                            property due-diligence stage before deciding
-                            whether you want to proceed with the property.
+                            Review the information
+                            collected across each property
+                            due-diligence stage before
+                            deciding whether you want to
+                            proceed with the property.
                         </p>
                     </div>
 
@@ -587,13 +576,11 @@ export default function PermitEnvironmentalPage() {
                             title="Permit Records"
                             description="Building and construction permit information."
                             status={
-                                usingDemoData
-                                    ? "Records Available"
-                                    : permitLoading
-                                        ? "Loading"
-                                        : permitRecords.length > 0
-                                            ? "Records Available"
-                                            : "No Records"
+                                permitLoading
+                                    ? "Loading"
+                                    : permitRecords.length > 0
+                                        ? "Records Available"
+                                        : "No Records"
                             }
                             href="#permit-records"
                         />
@@ -603,13 +590,11 @@ export default function PermitEnvironmentalPage() {
                             title="Environmental Records"
                             description="Environmental findings and nearby site information."
                             status={
-                                usingDemoData
-                                    ? "Records Available"
-                                    : environmentalLoading
-                                        ? "Loading"
-                                        : environmentalRecords.length > 0
-                                            ? "Records Available"
-                                            : "No Records"
+                                environmentalLoading
+                                    ? "Loading"
+                                    : environmentalRecords.length > 0
+                                        ? "Records Available"
+                                        : "No Records"
                             }
                             href="#environmental-records"
                         />
@@ -633,10 +618,13 @@ export default function PermitEnvironmentalPage() {
                                 </h2>
 
                                 <p className="mt-5 max-w-2xl text-sm leading-7 text-white/40">
-                                    The platform presents the information
-                                    collected during the due-diligence process.
-                                    Review the available findings and decide
-                                    how you want to proceed with the property.
+                                    The platform presents
+                                    the information collected
+                                    during the due-diligence
+                                    process. Review the
+                                    available findings and
+                                    decide how you want to
+                                    proceed with the property.
                                 </p>
                             </div>
 
@@ -646,11 +634,15 @@ export default function PermitEnvironmentalPage() {
                                 </p>
 
                                 <p className="mt-4 text-2xl font-light text-white/80">
-                                    Ready for Review
+                                    {property
+                                        ? "Ready for Review"
+                                        : "N/A"}
                                 </p>
 
                                 <p className="mt-2 text-xs text-white/30">
-                                    Information available
+                                    {property
+                                        ? "Information available"
+                                        : "No property selected"}
                                 </p>
                             </div>
                         </div>
@@ -662,7 +654,9 @@ export default function PermitEnvironmentalPage() {
                             >
                                 Review Due Diligence Report
 
-                                <span className="text-xl">→</span>
+                                <span className="text-xl">
+                                    →
+                                </span>
                             </a>
 
                             <a
@@ -671,7 +665,9 @@ export default function PermitEnvironmentalPage() {
                             >
                                 Previous Stage
 
-                                <span className="text-xl">←</span>
+                                <span className="text-xl">
+                                    ←
+                                </span>
                             </a>
                         </div>
                     </div>
@@ -684,7 +680,9 @@ export default function PermitEnvironmentalPage() {
                 <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs text-white/25 md:flex-row">
                     <span>PROP DUE</span>
 
-                    <span>PROPERTY DUE DILIGENCE PLATFORM</span>
+                    <span>
+                        PROPERTY DUE DILIGENCE PLATFORM
+                    </span>
                 </div>
             </footer>
         </main>
@@ -696,11 +694,13 @@ export default function PermitEnvironmentalPage() {
 ========================================================= */
 
 function formatDate(value) {
-    if (!value) return "Not available";
+    if (!value) return "N/A";
 
     const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) return value;
+    if (Number.isNaN(date.getTime())) {
+        return value || "N/A";
+    }
 
     return date.toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -718,11 +718,21 @@ function getRiskStatus(riskLevel) {
 
     if (risk === "low") return "Low";
 
-    if (risk === "medium" || risk === "moderate") return "Review";
+    if (
+        risk === "medium" ||
+        risk === "moderate"
+    ) {
+        return "Review";
+    }
 
-    if (risk === "high" || risk === "very high") return "Review";
+    if (
+        risk === "high" ||
+        risk === "very high"
+    ) {
+        return "Review";
+    }
 
-    return "Available";
+    return "N/A";
 }
 
 /* =========================================================
@@ -737,7 +747,7 @@ function DetailCard({ label, value }) {
             </p>
 
             <p className="mt-4 break-words text-base font-medium text-white/80">
-                {value || "Not available"}
+                {value || "N/A"}
             </p>
         </div>
     );
@@ -752,15 +762,20 @@ function PermitTable({ records }) {
         <div className="overflow-hidden rounded-2xl border border-white/10">
             <div className="hidden grid-cols-5 border-b border-white/10 bg-white/[0.025] px-6 py-4 text-xs tracking-[0.2em] text-white/25 md:grid">
                 <span>PERMIT NUMBER</span>
+
                 <span>TYPE</span>
+
                 <span>DESCRIPTION</span>
+
                 <span>ISSUE DATE</span>
+
                 <span>STATUS</span>
             </div>
 
             {records.map((record, index) => (
                 <PermitRow
-                    key={`${record.permitNumber || "permit"}-${index}`}
+                    key={`${record.permitNumber || "permit"
+                        }-${index}`}
                     record={record}
                 />
             ))}
@@ -778,21 +793,26 @@ function PermitRow({ record }) {
         record?.permitNo ||
         record?.number ||
         record?.id ||
-        "Not available";
+        "N/A";
 
-    const permitType = record?.permitType || record?.type || "Permit";
+    const permitType =
+        record?.permitType ||
+        record?.type ||
+        "N/A";
 
     const description =
         record?.description ||
         record?.details ||
-        "No description available";
+        "N/A";
 
     const issueDate =
         record?.issueDate ||
         record?.date ||
-        "Not available";
+        "N/A";
 
-    const status = record?.status || "Available";
+    const status =
+        record?.status ||
+        "N/A";
 
     return (
         <div className="grid gap-5 border-b border-white/10 px-6 py-7 last:border-b-0 md:grid-cols-5 md:items-center">
@@ -864,9 +884,11 @@ function EnvironmentalCard({ record }) {
         record?.value ||
         record?.description ||
         record?.details ||
-        "Not available";
+        "N/A";
 
-    const status = record?.status || "Available";
+    const status =
+        record?.status ||
+        "N/A";
 
     const review =
         status.toLowerCase() === "review" ||
@@ -902,7 +924,13 @@ function EnvironmentalCard({ record }) {
    SUMMARY CARD
 ========================================================= */
 
-function SummaryCard({ number, title, description, status, href }) {
+function SummaryCard({
+    number,
+    title,
+    description,
+    status,
+    href,
+}) {
     return (
         <a
             href={href}
@@ -932,7 +960,10 @@ function SummaryCard({ number, title, description, status, href }) {
 
             <div className="mt-7 flex items-center justify-end text-sm text-white/20 transition group-hover:text-white/70">
                 Review
-                <span className="ml-2 text-lg">→</span>
+
+                <span className="ml-2 text-lg">
+                    →
+                </span>
             </div>
         </a>
     );
@@ -948,7 +979,9 @@ function LoadingBox({ text }) {
             <div className="flex items-center gap-4">
                 <span className="h-5 w-5 animate-spin rounded-full border border-white/20 border-t-white" />
 
-                <p className="text-sm text-white/50">{text}</p>
+                <p className="text-sm text-white/50">
+                    {text}
+                </p>
             </div>
         </div>
     );
@@ -981,7 +1014,9 @@ function ErrorBox({ message }) {
 function EmptyBox({ text }) {
     return (
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8">
-            <p className="text-sm text-white/40">{text}</p>
+            <p className="text-sm text-white/40">
+                {text}
+            </p>
         </div>
     );
 }
