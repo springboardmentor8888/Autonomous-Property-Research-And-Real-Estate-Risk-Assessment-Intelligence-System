@@ -432,7 +432,7 @@ export type PropertyDetailsResponse = {
   brokerage?: number;
   furnishing?: string;
   facing?: string;
-  floor?: number;
+  floor?: string;
   totalFloors?: number;
   age?: string;
   availability?: string;
