@@ -747,6 +747,63 @@ export const adminApi = {
       method: 'DELETE',
     });
   },
+
+  // Paged API audit trail, newest first; optional success filter
+  async getApiLogs(page = 0, size = 20, success?: boolean) {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
+
+    if (success !== undefined) {
+      params.set('success', String(success));
+    }
+
+    return fetchWithAuth<LogPage<ApiLogEntry>>(
+      `/admin/logs/api?${params.toString()}`
+    );
+  },
+
+  // Paged user activity trail, newest first
+  async getActivityLogs(page = 0, size = 20) {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
+
+    return fetchWithAuth<LogPage<ActivityLogEntry>>(
+      `/admin/logs/activity?${params.toString()}`
+    );
+  },
+};
+
+export type ApiLogEntry = {
+  id: number;
+  serviceName: string;
+  endpoint: string;
+  requestTime: string;
+  responseTime?: string;
+  statusCode?: number;
+  success?: boolean;
+  latencyMs?: number;
+  errorMessage?: string;
+};
+
+export type ActivityLogEntry = {
+  id: number;
+  userId: number;
+  action: string;
+  entityType?: string;
+  entityId?: number;
+  createdAt: string;
+};
+
+export type LogPage<T> = {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 };
 
 export const profileApi = {
