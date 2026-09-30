@@ -8,7 +8,11 @@
 const API_BASE = '/api';
 
 // Use session.ts for token management
-import { getAccessToken as getMemoryToken, setMemoryToken, clearSession } from '@/lib/session';
+import {
+  getAccessToken as getMemoryToken,
+  setMemoryToken,
+  clearSession,
+} from '@/lib/session';
 
 async function fetchWithAuth<T>(
   path: string,
@@ -16,48 +20,58 @@ async function fetchWithAuth<T>(
   retryCount = 0
 ): Promise<T> {
   const token = getMemoryToken();
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
 
   // Don't attach auth header for public auth endpoints
-  const isPublicAuthPath = path.startsWith('/auth/login') || path.startsWith('/auth/register');
-  
+  const isPublicAuthPath =
+    path.startsWith('/auth/login') ||
+    path.startsWith('/auth/register');
+
   if (token && !isPublicAuthPath) {
-    (headers as Record<string, string>)['Authorization'] = 'Bearer ' + token;
+    (headers as Record<string, string>)['Authorization'] =
+      'Bearer ' + token;
   }
 
   // Include credentials to send HttpOnly cookies
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers,
-    credentials: 'include', // Critical for HttpOnly cookies
+    credentials: 'include',
   });
 
   // Handle 401 - try to refresh token once
   if (res.status === 401 && !isPublicAuthPath && retryCount === 0) {
     const refreshed = await tryRefreshToken();
+
     if (refreshed) {
       // Retry original request with new token
       return fetchWithAuth<T>(path, options, 1);
     }
-    
+
     // Refresh failed - redirect to login
     if (typeof window !== 'undefined') {
       const isAdminPath = window.location.pathname.startsWith('/admin');
       window.location.href = isAdminPath ? '/admin/login' : '/login';
     }
+
     throw new Error('Session expired. Please log in again.');
   }
 
   if (res.status === 403) {
-    throw new Error('Access denied. You do not have permission to perform this action.');
+    throw new Error(
+      'Access denied. You do not have permission to perform this action.'
+    );
   }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `Request failed: ${res.status}`);
+    throw new Error(
+      errorData.message || `Request failed: ${res.status}`
+    );
   }
 
   // 204 No Content — nothing to parse (e.g. absent risk assessment).
@@ -72,11 +86,12 @@ async function tryRefreshToken(): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      credentials: 'include', // Send HttpOnly refresh token cookie
+      credentials: 'include',
     });
 
     if (res.ok) {
       const data = await res.json();
+
       if (data.accessToken) {
         setMemoryToken(data.accessToken);
         return true;
@@ -85,6 +100,7 @@ async function tryRefreshToken(): Promise<boolean> {
   } catch {
     // Ignore errors
   }
+
   return false;
 }
 
@@ -122,13 +138,13 @@ export const authApi = {
     };
   },
 
-  async register(data: { 
-    email: string; 
-    password: string; 
-    firstName: string; 
-    lastName: string; 
-    role: string; 
-    phone?: string 
+  async register(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    phone?: string;
   }) {
     const res = await fetchWithAuth<AuthPayload>(
       '/auth/register',
@@ -155,6 +171,7 @@ export const authApi = {
       '/auth/logout',
       { method: 'POST' }
     );
+
     clearSession();
   },
 };
@@ -185,18 +202,25 @@ export const propertyApi = {
 
   /** Latest generated report; undefined when none exists yet. */
   async getReport(id: number | string) {
-    return fetchWithAuth<ReportResponse | undefined>(`/properties/${id}/report`);
+    return fetchWithAuth<ReportResponse | undefined>(
+      `/properties/${id}/report`
+    );
   },
 
   /** Downloads the latest report as a PDF blob (SRS: downloadable report). */
   async downloadReportPdf(id: number | string): Promise<Blob> {
     const token = getMemoryToken();
+
     const res = await fetch(`${API_BASE}/properties/${id}/report/pdf`, {
-      headers: token ? { Authorization: 'Bearer ' + token } : {},
+      headers: token
+        ? { Authorization: 'Bearer ' + token }
+        : {},
     });
+
     if (!res.ok) {
       throw new Error(`Report download failed (${res.status})`);
     }
+
     return res.blob();
   },
 
@@ -212,49 +236,70 @@ export const propertyApi = {
 
   /** Latest risk assessment; undefined when none has been produced yet. */
   async getRiskAssessment(id: number | string) {
-    return fetchWithAuth<RiskAssessment | undefined>(`/properties/${id}/risk-assessment`);
+    return fetchWithAuth<RiskAssessment | undefined>(
+      `/properties/${id}/risk-assessment`
+    );
   },
 
   /** Stage 1: runs the aggregation pipeline + risk scoring. */
   async runRiskAssessment(id: number | string) {
-    return fetchWithAuth<RiskAssessment>(`/properties/${id}/risk-assessment`, {
-      method: 'POST',
-    });
+    return fetchWithAuth<RiskAssessment>(
+      `/properties/${id}/risk-assessment`,
+      {
+        method: 'POST',
+      }
+    );
   },
 
   /** Stage 2: analyzes stored comparables + market trends. */
   async runMarketAnalysis(id: number | string) {
-    return fetchWithAuth<MarketAnalysis>(`/properties/${id}/market-analysis`, {
-      method: 'POST',
-    });
+    return fetchWithAuth<MarketAnalysis>(
+      `/properties/${id}/market-analysis`,
+      {
+        method: 'POST',
+      }
+    );
   },
 
   /** Runs the stored-data aggregation pipeline (diligence inventory). */
   async runAggregation(id: number | string) {
-    return fetchWithAuth<AggregationResponse>(`/properties/${id}/aggregate`, {
-      method: 'POST',
-    });
+    return fetchWithAuth<AggregationResponse>(
+      `/properties/${id}/aggregate`,
+      {
+        method: 'POST',
+      }
+    );
   },
 
   /** Past aggregation runs for a property, newest first. */
   async getAggregationRuns(id: number | string) {
-    return fetchWithAuth<AggregationRunSummary[]>(`/properties/${id}/aggregations`);
+    return fetchWithAuth<AggregationRunSummary[]>(
+      `/properties/${id}/aggregations`
+    );
   },
 
   async getMonitoring(id: number | string) {
-    return fetchWithAuth<MonitoringStatus>(`/properties/${id}/monitoring`);
+    return fetchWithAuth<MonitoringStatus>(
+      `/properties/${id}/monitoring`
+    );
   },
 
   async enableMonitoring(id: number | string) {
-    return fetchWithAuth<MonitoringStatus>(`/properties/${id}/monitoring`, {
-      method: 'POST',
-    });
+    return fetchWithAuth<MonitoringStatus>(
+      `/properties/${id}/monitoring`,
+      {
+        method: 'POST',
+      }
+    );
   },
 
   async disableMonitoring(id: number | string) {
-    return fetchWithAuth<MonitoringStatus>(`/properties/${id}/monitoring`, {
-      method: 'DELETE',
-    });
+    return fetchWithAuth<MonitoringStatus>(
+      `/properties/${id}/monitoring`,
+      {
+        method: 'DELETE',
+      }
+    );
   },
 };
 
@@ -387,7 +432,7 @@ export type PropertyDetailsResponse = {
   brokerage?: number;
   furnishing?: string;
   facing?: string;
-  floor?: string;
+  floor?: number;
   totalFloors?: number;
   age?: string;
   availability?: string;
@@ -477,7 +522,12 @@ export type MarketAnalysis = {
     averagePricePerSqft?: number;
   };
   positioning?: {
-    verdict: 'BELOW_MARKET' | 'ABOVE_MARKET' | 'ALIGNED' | 'UNKNOWN' | 'NO_COMPARABLES';
+    verdict:
+      | 'BELOW_MARKET'
+      | 'ABOVE_MARKET'
+      | 'ALIGNED'
+      | 'UNKNOWN'
+      | 'NO_COMPARABLES';
     propertyPrice?: number;
     marketAveragePrice?: number;
     deltaPercent?: number;
@@ -584,7 +634,13 @@ export type ReportResponse = {
   reportId: number;
   propertyId: number;
   propertyAddress?: string;
-  riskTier?: 'LOW' | 'MODERATE' | 'ELEVATED' | 'HIGH' | 'UNKNOWN' | 'INSUFFICIENT_DATA';
+  riskTier?:
+    | 'LOW'
+    | 'MODERATE'
+    | 'ELEVATED'
+    | 'HIGH'
+    | 'UNKNOWN'
+    | 'INSUFFICIENT_DATA';
   /** The stored-data aggregation run that fed this report. */
   aggregationRunId?: number;
   aggregationStatus?: string;
@@ -626,10 +682,21 @@ export type ReportDataCoverage = {
 };
 
 export const adminApi = {
+  // Get Admin Dashboard statistics
+  async getDashboard() {
+    return fetchWithAuth<{
+      totalUsers: number;
+      totalProperties: number;
+      totalAdmins: number;
+    }>('/admin/dashboard');
+  },
+
+  // Get all users
   async getUsers() {
     return fetchWithAuth<any[]>('/admin/users');
   },
 
+  // Delete a user
   async deleteUser(id: number) {
     return fetchWithAuth<void>(`/admin/users/${id}`, {
       method: 'DELETE',
