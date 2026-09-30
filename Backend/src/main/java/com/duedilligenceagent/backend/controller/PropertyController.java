@@ -10,6 +10,7 @@ import com.duedilligenceagent.backend.dto.MarketAnalysisResponse;
 import com.duedilligenceagent.backend.dto.MonitoringStatusResponse;
 import com.duedilligenceagent.backend.dto.ReportResponse;
 import com.duedilligenceagent.backend.dto.RiskAssessmentResponse;
+import com.duedilligenceagent.backend.service.ReportExcelService;
 import com.duedilligenceagent.backend.service.ReportPdfService;
 import com.duedilligenceagent.backend.service.RiskAssessmentService;
 import com.duedilligenceagent.backend.service.RiskAssessmentStageService;
@@ -57,6 +58,7 @@ public class PropertyController {
     private final DiligenceService diligenceService;
     private final ReportService reportService;
     private final ReportPdfService reportPdfService;
+    private final ReportExcelService reportExcelService;
     private final RiskAssessmentStageService riskAssessmentStageService;
     private final MarketAnalysisService marketAnalysisService;
     private final AggregationRunRepository aggregationRunRepository;
@@ -70,6 +72,7 @@ public class PropertyController {
                               DiligenceService diligenceService,
                               ReportService reportService,
                               ReportPdfService reportPdfService,
+                              ReportExcelService reportExcelService,
                               RiskAssessmentStageService riskAssessmentStageService,
                               MarketAnalysisService marketAnalysisService,
                               AggregationRunRepository aggregationRunRepository,
@@ -82,6 +85,7 @@ public class PropertyController {
         this.diligenceService = diligenceService;
         this.reportService = reportService;
         this.reportPdfService = reportPdfService;
+        this.reportExcelService = reportExcelService;
         this.riskAssessmentStageService = riskAssessmentStageService;
         this.marketAnalysisService = marketAnalysisService;
         this.aggregationRunRepository = aggregationRunRepository;
@@ -258,6 +262,27 @@ public class PropertyController {
                 .header("Content-Disposition",
                         "attachment; filename=\"due-diligence-report-" + id + ".pdf\"")
                 .body(pdf);
+    }
+
+    /**
+     * Downloads the latest generated report as an Excel workbook (SRS:
+     * reports must be exportable). 404 when no report exists yet.
+     */
+    @GetMapping("/{id}/report/excel")
+    public ResponseEntity<byte[]> downloadReportExcel(
+            @PathVariable Long id) {
+
+        ReportResponse report = reportService.latest(id);
+        if (report == null) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] workbook = reportExcelService.generate(report);
+        return ResponseEntity.ok()
+                .header("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                .header("Content-Disposition",
+                        "attachment; filename=\"due-diligence-report-" + id + ".xlsx\"")
+                .body(workbook);
     }
 
     /** Monitoring state of a property for the current user. */

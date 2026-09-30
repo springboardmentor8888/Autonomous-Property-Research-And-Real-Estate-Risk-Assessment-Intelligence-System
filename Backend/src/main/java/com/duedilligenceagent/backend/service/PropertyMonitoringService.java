@@ -6,6 +6,7 @@ import com.duedilligenceagent.backend.exception.ResourceNotFoundException;
 import com.duedilligenceagent.backend.repositories.PropertyMonitoringRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.Optional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PropertyMonitoringService {
 
     /** How often monitored properties are re-checked, in hours. */
@@ -27,6 +29,7 @@ public class PropertyMonitoringService {
 
     private final PropertyMonitoringRepository monitoringRepository;
     private final PropertyRepository propertyRepository;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public MonitoringStatusResponse getStatus(Long userId, Long propertyId) {
@@ -45,11 +48,26 @@ public class PropertyMonitoringService {
                         .userId(userId)
                         .propertyId(propertyId)
                         .build());
+        boolean reEnabled = monitoring.getMonitoringId() != null;
         monitoring.setEnabled(true);
         if (monitoring.getNextCheckAt() == null) {
             monitoring.setNextCheckAt(LocalDateTime.now().plusHours(CHECK_INTERVAL_HOURS));
         }
-        return toResponse(userId, propertyId, Optional.of(monitoringRepository.save(monitoring)));
+        PropertyMonitoring saved = monitoringRepository.save(monitoring);
+
+        // SRS 1.11: notify the user that monitoring is active (in-app + email).
+        try {
+            String propertyAddress = propertyRepository.findById(propertyId)
+                    .map(p -> p.getAddress()).orElse("property #" + propertyId);
+            notificationService.notify(userId, NotificationService.TYPE_MONITORING_UPDATE,
+                    (reEnabled ? "Record-change monitoring was re-enabled for " : "Record-change monitoring is now active for ")
+                            + propertyAddress + ". You will be notified when its records change.",
+                    propertyId, null);
+        } catch (Exception ex) {
+            log.warn("Monitoring notification failed for property id={}: {}", propertyId, ex.getMessage());
+        }
+
+        return toResponse(userId, propertyId, Optional.of(saved));
     }
 
     @Transactional

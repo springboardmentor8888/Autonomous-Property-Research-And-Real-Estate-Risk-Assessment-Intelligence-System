@@ -252,6 +252,7 @@ function PropertyDetailsContent() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [aggregationBusy, setAggregationBusy] = useState(false);
   const [aggregationError, setAggregationError] = useState<string | null>(null);
@@ -386,6 +387,27 @@ function PropertyDetailsContent() {
       setDownloadError(err instanceof Error ? err.message : 'Failed to download the report.');
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function downloadExcel() {
+    if (!details || downloadingExcel) return;
+    setDownloadingExcel(true);
+    setDownloadError(null);
+    try {
+      const blob = await propertyApi.downloadReportExcel(details.propertyId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `due-diligence-report-${details.propertyId}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Failed to export the report.');
+    } finally {
+      setDownloadingExcel(false);
     }
   }
 
@@ -915,6 +937,11 @@ function PropertyDetailsContent() {
                   {report && (
                     <button onClick={downloadPdf} disabled={downloading} className="btn-secondary">
                       {downloading ? 'Preparing…' : '⬇ Download PDF'}
+                    </button>
+                  )}
+                  {report && (
+                    <button onClick={downloadExcel} disabled={downloadingExcel} className="btn-secondary">
+                      {downloadingExcel ? 'Preparing…' : '⬇ Download Excel'}
                     </button>
                   )}
                   <button

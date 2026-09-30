@@ -48,6 +48,7 @@ public class ReportService {
     private final DiligenceService diligenceService;
     private final AggregationRunRepository aggregationRunRepository;
     private final MarketAnalysisService marketAnalysisService;
+    private final NotificationService notificationService;
 
     /**
      * Stage 3: report generation from the stage outputs. Uses the latest
@@ -84,6 +85,19 @@ public class ReportService {
 
         log.info("Generated due-diligence report id={} for property id={} by user id={} (risk assessment id={})",
                 report.getReportId(), propertyId, generatedByUserId, assessment.getRiskAssessmentId());
+
+        // SRS 1.11: notify the user that their report is ready (in-app + email).
+        try {
+            notificationService.notify(generatedByUserId, NotificationService.TYPE_REPORT_READY,
+                    "Your due-diligence report for " + property.getAddress()
+                            + " is ready. Overall risk: "
+                            + (assessment.getOverallScore() == null ? "insufficient data"
+                                    : assessment.getOverallScore().stripTrailingZeros().toPlainString() + "/100"),
+                    propertyId, report.getReportId());
+        } catch (Exception ex) {
+            log.warn("Report-ready notification failed for report id={}: {}",
+                    report.getReportId(), ex.getMessage());
+        }
 
         return toResponse(report, property, assessment, diligence, marketAnalysis);
     }

@@ -55,25 +55,43 @@ export default function Reports() {
   }, [authReady]);
 
   const [pdfBusyId, setPdfBusyId] = useState<number | null>(null);
+  const [excelBusyId, setExcelBusyId] = useState<number | null>(null);
 
-  async function downloadPdf(propertyId: number) {
+  async function download(
+    propertyId: number,
+    kind: 'pdf' | 'excel',
+    setBusy: (id: number | null) => void,
+  ) {
+    const blob = kind === 'pdf'
+      ? await propertyApi.downloadReportPdf(propertyId)
+      : await propertyApi.downloadReportExcel(propertyId);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `due-diligence-report-${propertyId}.${kind === 'pdf' ? 'pdf' : 'xlsx'}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setBusy(null);
+  }
+
+  function downloadPdf(propertyId: number) {
     if (pdfBusyId !== null) return;
     setPdfBusyId(propertyId);
-    try {
-      const blob = await propertyApi.downloadReportPdf(propertyId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `due-diligence-report-${propertyId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
+    download(propertyId, 'pdf', setPdfBusyId).catch(() => {
       // Non-blocking: the full download flow lives on the property page.
-    } finally {
       setPdfBusyId(null);
-    }
+    });
+  }
+
+  function downloadExcel(propertyId: number) {
+    if (excelBusyId !== null) return;
+    setExcelBusyId(propertyId);
+    download(propertyId, 'excel', setExcelBusyId).catch(() => {
+      // Non-blocking: the full download flow lives on the property page.
+      setExcelBusyId(null);
+    });
   }
 
   if (!authReady) return null;
@@ -168,6 +186,13 @@ export default function Reports() {
                       className="btn-secondary mt-2 px-3 py-1 text-xs"
                     >
                       {pdfBusyId === report.propertyId ? 'Preparing…' : '⬇ PDF'}
+                    </button>
+                    <button
+                      onClick={() => downloadExcel(report.propertyId)}
+                      disabled={excelBusyId === report.propertyId}
+                      className="btn-secondary mt-2 ml-1 px-3 py-1 text-xs"
+                    >
+                      {excelBusyId === report.propertyId ? 'Preparing…' : '⬇ Excel'}
                     </button>
                   </div>
                 </div>

@@ -146,6 +146,13 @@
             <version>5.4.1</version>
         </dependency>
 
+        <!-- Email notifications (SRS: notify users) — auto-configures only
+             when spring.mail.host is set, otherwise gracefully skipped -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
