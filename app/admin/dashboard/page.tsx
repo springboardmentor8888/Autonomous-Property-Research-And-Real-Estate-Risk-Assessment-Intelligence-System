@@ -4,16 +4,13 @@ import { useEffect, useState } from 'react';
 import { getAuthEmail } from '@/lib/session';
 import { useAuthGuard } from '@/lib/useAuth';
 import { adminApi } from '@/lib/api';
-import type { ApiLogEntry, ActivityLogEntry, LogPage } from '@/lib/api';
+import type {
+  ApiLogEntry,
+  ActivityLogEntry,
+  LogPage,
+  UserAdminEntry,
+} from '@/lib/api';
 import { toastError } from '@/lib/useToast';
-
-interface User {
-  userId: number;
-  email: string;
-  roleName: string;
-  isActive: boolean;
-  createdAt: string;
-}
 
 interface DashboardStats {
   totalUsers: number;
@@ -26,7 +23,7 @@ type ApiLogFilter = 'all' | 'success' | 'error';
 
 export default function AdminDashboard() {
   const [email, setEmail] = useState<string | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserAdminEntry[]>([]);
   const [dashboardStats, setDashboardStats] =
     useState<DashboardStats | null>(null);
 

@@ -839,9 +839,9 @@ export const adminApi = {
     }>('/admin/dashboard');
   },
 
-  // Get all users
+  // Get all users (UserAdminResponse records from the backend)
   async getUsers() {
-    return fetchWithAuth<any[]>('/admin/users');
+    return fetchWithAuth<UserAdminEntry[]>('/admin/users');
   },
 
   // Delete a user
@@ -878,6 +878,14 @@ export const adminApi = {
       `/admin/logs/activity?${params.toString()}`
     );
   },
+};
+
+export type UserAdminEntry = {
+  userId: number;
+  email: string;
+  roleName: string;
+  isActive: boolean;
+  createdAt: string;
 };
 
 export type ApiLogEntry = {
