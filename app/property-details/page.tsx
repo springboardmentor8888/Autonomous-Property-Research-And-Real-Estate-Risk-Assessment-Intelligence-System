@@ -1,10 +1,11 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useAuthGuard } from '@/lib/useAuth';
 import {
   propertyApi,
+  documentApi,
   type AggregationResponse,
   type DiligenceData,
   type MarketAnalysis,
@@ -12,6 +13,7 @@ import {
   type PropertyDetailsResponse,
   type ReportResponse,
   type RiskAssessment,
+  type SupportingDocResponse,
 } from '@/lib/api';
 
 function formatDateTime(value?: string) {
@@ -261,6 +263,12 @@ function PropertyDetailsContent() {
   const [marketBusy, setMarketBusy] = useState(false);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [monitorBusy, setMonitorBusy] = useState(false);
+  const [docs, setDocs] = useState<SupportingDocResponse[]>([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [deletingDocId, setDeletingDocId] = useState<number | null>(null);
+  const [docError, setDocError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const authReady = useAuthGuard({ loginPath: '/' });
 
@@ -275,6 +283,15 @@ function PropertyDetailsContent() {
       .then((data) => setDetails(data))
       .catch(() => setDetails(null))
       .finally(() => setDone(true));
+  }, [propertyId, authReady]);
+
+  useEffect(() => {
+    if (!authReady || !propertyId) return;
+    setDocsLoading(true);
+    documentApi.listForProperty(propertyId)
+      .then((data) => setDocs(data))
+      .catch(() => setDocs([]))
+      .finally(() => setDocsLoading(false));
   }, [propertyId, authReady]);
 
   useEffect(() => {
@@ -408,6 +425,59 @@ function PropertyDetailsContent() {
       setDownloadError(err instanceof Error ? err.message : 'Failed to export the report.');
     } finally {
       setDownloadingExcel(false);
+    }
+  }
+
+  /** Uploads a selected document against the property's latest report. */
+  async function handleDocUpload(file: File) {
+    if (!details) return;
+    setUploadingDoc(true);
+    setDocError(null);
+    try {
+      const doc = await documentApi.upload(
+        details.propertyId,
+        file,
+        report?.reportId
+      );
+      setDocs((prev) => [doc, ...prev]);
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : 'Failed to upload the document.');
+    } finally {
+      setUploadingDoc(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleDocDownload(doc: SupportingDocResponse) {
+    setDocError(null);
+    try {
+      const blob = await documentApi.download(doc.documentId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : 'Failed to download the document.');
+    }
+  }
+
+  async function handleDocDelete(docId: number) {
+    if (!confirm('Delete this document? This action cannot be undone.')) {
+      return;
+    }
+    setDeletingDocId(docId);
+    setDocError(null);
+    try {
+      await documentApi.delete(docId);
+      setDocs((prev) => prev.filter((d) => d.documentId !== docId));
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : 'Failed to delete the document.');
+    } finally {
+      setDeletingDocId(null);
     }
   }
 
@@ -1122,6 +1192,91 @@ function PropertyDetailsContent() {
           ) : null}
         </section>
       )}
+
+      {/* Supporting documents — upload, download and delete evidence files */}
+        {details && (
+          <section className="card mt-6 p-8">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Supporting Documents
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Upload evidence files against this property's due-diligence
+                  report{report ? ` (#${report.reportId})` : ''}.
+                </p>
+              </div>
+
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleDocUpload(file);
+                  }}
+                />
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingDoc}
+                  className="btn-primary"
+                >
+                  {uploadingDoc ? 'Uploading…' : '⬆ Upload Document'}
+                </button>
+              </div>
+            </div>
+
+            {docError && (
+              <p className="mt-3 text-xs font-medium text-rose-600">{docError}</p>
+            )}
+
+            {docs.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">
+                {docsLoading ? 'Loading…' : 'No documents uploaded yet.'}
+              </p>
+            ) : (
+              <div className="mt-4 divide-y divide-slate-100">
+                {docs.map((doc) => (
+                  <div
+                    key={doc.documentId}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">
+                        {doc.fileName}
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {doc.fileType ?? 'file'} · uploaded{' '}
+                        {formatDateTime(doc.uploadedAt)} · report #{doc.reportId}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleDocDownload(doc)}
+                        className="btn-secondary"
+                      >
+                        ⬇ Download
+                      </button>
+
+                      <button
+                        onClick={() => handleDocDelete(doc.documentId)}
+                        disabled={deletingDocId === doc.documentId}
+                        className="btn-ghost text-red-600 hover:bg-red-50"
+                      >
+                        {deletingDocId === doc.documentId ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <button onClick={() => router.push('/property-search')} className="btn-secondary">

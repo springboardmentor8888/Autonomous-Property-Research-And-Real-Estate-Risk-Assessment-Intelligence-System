@@ -82,6 +82,53 @@ async function fetchWithAuth<T>(
   return res.json();
 }
 
+/** Multipart upload with auth header (fetchWithAuth sets a JSON Content-Type
+ * that would break the FormData boundary, so uploads need their own fetch). */
+async function fetchWithAuthForm<T>(
+  path: string,
+  form: FormData,
+  retryCount = 0
+): Promise<T> {
+  const token = getMemoryToken();
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: 'Bearer ' + token } : {},
+    body: form,
+    credentials: 'include',
+  });
+
+  if (res.status === 401 && retryCount === 0) {
+    const refreshed = await tryRefreshToken();
+
+    if (refreshed) {
+      return fetchWithAuthForm<T>(path, form, 1);
+    }
+
+    if (typeof window !== 'undefined') {
+      const isAdminPath = window.location.pathname.startsWith('/admin');
+      window.location.href = isAdminPath ? '/admin/login' : '/login';
+    }
+
+    throw new Error('Session expired. Please log in again.');
+  }
+
+  if (res.status === 403) {
+    throw new Error(
+      'Access denied. You do not have permission to perform this action.'
+    );
+  }
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.message || `Request failed: ${res.status}`
+    );
+  }
+
+  return res.json();
+}
+
 async function tryRefreshToken(): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
@@ -722,6 +769,62 @@ export const notificationApi = {
   async markAllRead() {
     return fetchWithAuth<{ markedRead: number }>('/notifications/read-all', {
       method: 'POST',
+    });
+  },
+};
+
+export type SupportingDocResponse = {
+  documentId: number;
+  reportId: number;
+  propertyId: number;
+  uploadedBy: number;
+  fileName: string;
+  fileType?: string;
+  uploadedAt: string;
+};
+
+export const documentApi = {
+  /** A property's uploaded documents, newest first. */
+  async listForProperty(propertyId: number | string) {
+    return fetchWithAuth<SupportingDocResponse[]>(
+      `/properties/${propertyId}/documents`
+    );
+  },
+
+  /** Uploads a document against a property (latest report by default). */
+  async upload(propertyId: number | string, file: File, reportId?: number) {
+    const form = new FormData();
+    form.append('file', file);
+
+    if (reportId !== undefined) {
+      form.append('reportId', String(reportId));
+    }
+
+    return fetchWithAuthForm<SupportingDocResponse>(
+      `/properties/${propertyId}/documents`,
+      form
+    );
+  },
+
+  /** Downloads a stored document as a blob (server paths are never exposed). */
+  async download(id: number): Promise<Blob> {
+    const token = getMemoryToken();
+
+    const res = await fetch(`${API_BASE}/documents/${id}/download`, {
+      headers: token ? { Authorization: 'Bearer ' + token } : {},
+    });
+
+    if (!res.ok) {
+      throw new Error(`Document download failed (${res.status})`);
+    }
+
+    return res.blob();
+  },
+
+  /** Deletes a document (uploader only). */
+  async delete(id: number) {
+    return fetchWithAuth<void>(`/documents/${id}`, {
+      method: 'DELETE',
     });
   },
 };
