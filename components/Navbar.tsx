@@ -167,6 +167,7 @@ export default function Navbar() {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/property-search', label: 'Search Property' },
     { href: '/history', label: 'History' },
+    { href: '/saved', label: 'Saved' },
     { href: '/reports', label: 'Reports' },
   ];
 

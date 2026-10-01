@@ -948,3 +948,31 @@ export type UpdateProfileRequest = {
   profilePicture?: string;
   timezone?: string;
 };
+
+export type SavedPropertyResponse = {
+  savedPropertyId: number;
+  propertyId: number;
+  createdAt: string;
+};
+
+export const savedPropertiesApi = {
+  /** The current user's saved properties, newest first. */
+  async list() {
+    return fetchWithAuth<SavedPropertyResponse[]>('/saved-properties');
+  },
+
+  /** Saves a property for the current user (idempotent per pair). */
+  async save(propertyId: number | string) {
+    return fetchWithAuth<SavedPropertyResponse>('/saved-properties', {
+      method: 'POST',
+      body: JSON.stringify({ propertyId }),
+    });
+  },
+
+  /** Removes one saved property (silent no-op if absent). */
+  async remove(propertyId: number | string) {
+    return fetchWithAuth<void>(`/saved-properties/${propertyId}`, {
+      method: 'DELETE',
+    });
+  },
+};

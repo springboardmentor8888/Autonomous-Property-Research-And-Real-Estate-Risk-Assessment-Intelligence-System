@@ -3,27 +3,18 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuthGuard } from '@/lib/useAuth';
-import { propertyApi, savedPropertiesApi, type PropertyDetailsResponse } from '@/lib/api';
+import {
+  propertyApi,
+  savedPropertiesApi,
+  type PropertyDetailsResponse,
+} from '@/lib/api';
 
-function formatDateTime(value?: string) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatPrice(price?: number) {
+function formatPrice(price?: number | null) {
   if (price === null || price === undefined) return null;
   return '₹' + price.toLocaleString('en-IN');
 }
 
-export default function History() {
+export default function Saved() {
   const router = useRouter();
   const authReady = useAuthGuard({ loginPath: '/' });
 
@@ -35,54 +26,49 @@ export default function History() {
   useEffect(() => {
     if (!authReady) return;
     setLoading(true);
-    propertyApi
-      .getSearchHistory()
-      .then((data) => {
-        setProperties(data ?? []);
+    savedPropertiesApi
+      .list()
+      .then(async (data) => {
+        const ids = (data ?? []).map((s) => s.propertyId);
+        setSavedIds(new Set(ids));
+        // Hydrate the saved ids into full property cards; a property that
+        // no longer resolves (deleted dataset row) is skipped, not fatal.
+        const hydrated = await Promise.all(
+          ids.map((id) =>
+            propertyApi.getById(id).catch(() => null),
+          ),
+        );
+        setProperties(hydrated.filter((p): p is PropertyDetailsResponse => p !== null));
         setError(null);
       })
-      .catch((err) => setError(err.message || 'Failed to load search history.'))
+      .catch((err) => setError(err.message || 'Failed to load saved properties.'))
       .finally(() => setLoading(false));
   }, [authReady]);
 
-  // Saved state for the per-card hearts: fetched once on mount.
-  useEffect(() => {
-    if (!authReady) return;
-    savedPropertiesApi
-      .list()
-      .then((data) => {
-        setSavedIds(new Set((data ?? []).map((s) => s.propertyId)));
-      })
-      .catch(() => {
-        // Non-blocking: hearts stay unsaved if the list can't load.
-      });
-  }, [authReady]);
-
-  const toggleSaved = (propertyId: number) => {
-    const isSaved = savedIds.has(propertyId);
+  const unsave = (propertyId: number) => {
+    const removed = properties.find((p) => p.propertyId === propertyId);
     setSavedIds((current) => {
       const next = new Set(current);
-      if (isSaved) {
-        next.delete(propertyId);
-      } else {
-        next.add(propertyId);
-      }
+      next.delete(propertyId);
       return next;
     });
-    const call = isSaved
-      ? savedPropertiesApi.remove(propertyId)
-      : savedPropertiesApi.save(propertyId);
-    call.catch(() => {
-      // Revert on failure so the heart reflects the server state.
+    setProperties((current) =>
+      current.filter((p) => p.propertyId !== propertyId),
+    );
+    savedPropertiesApi.remove(propertyId).catch(() => {
+      // Revert on failure so the card reflects the server state.
       setSavedIds((current) => {
         const next = new Set(current);
-        if (isSaved) {
-          next.add(propertyId);
-        } else {
-          next.delete(propertyId);
-        }
+        next.add(propertyId);
         return next;
       });
+      if (removed) {
+        setProperties((current) =>
+          current.some((p) => p.propertyId === propertyId)
+            ? current
+            : [...current, removed],
+        );
+      }
     });
   };
 
@@ -100,19 +86,19 @@ export default function History() {
               Dashboard
             </button>
             <span className="mx-2 text-slate-300">/</span>
-            <span className="text-slate-700">Property History</span>
+            <span className="text-slate-700">Saved Properties</span>
           </nav>
-          <h1 className="page-title mt-2">Property History</h1>
+          <h1 className="page-title mt-2">Saved Properties</h1>
           <p className="page-subtitle">
-            Properties you have searched, newest first. Open one to generate a
-            diligence report or monitor it for record changes.
+            Properties you have saved, newest first. Open one to generate a
+            diligence report or remove it from your list.
           </p>
         </div>
       </header>
 
       {loading ? (
         <section className="card p-8">
-          <p className="text-sm text-slate-500">Loading your searched properties…</p>
+          <p className="text-sm text-slate-500">Loading your saved properties…</p>
         </section>
       ) : error ? (
         <section className="card p-8">
@@ -135,15 +121,16 @@ export default function History() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
               />
             </svg>
           </div>
           <h2 className="mt-4 text-base font-semibold text-slate-900">
-            No history yet
+            Nothing saved yet
           </h2>
           <p className="mt-1 max-w-sm text-sm text-slate-500">
-            Search for a property and your results will be tracked here for future reference.
+            Tap the heart on any property card in your search results or history
+            to keep it here for quick reference.
           </p>
           <button
             onClick={() => router.push('/property-search')}
@@ -185,53 +172,27 @@ export default function History() {
                             {property.validationGranularity}
                           </span>
                         )}
-                        {property.addressComplete !== undefined && (
-                          <span
-                            className={
-                              'rounded-full px-2.5 py-1 text-xs font-medium ' +
-                              (property.addressComplete
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-amber-50 text-amber-700')
-                            }
-                          >
-                            {property.addressComplete ? 'Address complete' : 'Incomplete address'}
-                          </span>
-                        )}
-                        {property.verified !== undefined && property.verified && (
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                            Verified listing
-                          </span>
-                        )}
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
                       <span
                         role="button"
                         tabIndex={0}
-                        aria-label={
-                          savedIds.has(property.propertyId)
-                            ? 'Remove from saved'
-                            : 'Save property'
-                        }
+                        aria-label="Remove from saved"
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleSaved(property.propertyId);
+                          unsave(property.propertyId);
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             e.stopPropagation();
-                            toggleSaved(property.propertyId);
+                            unsave(property.propertyId);
                           }
                         }}
-                        className={
-                          'inline-block cursor-pointer text-xl leading-none transition ' +
-                          (savedIds.has(property.propertyId)
-                            ? 'text-rose-500 hover:text-rose-600'
-                            : 'text-slate-300 hover:text-rose-400')
-                        }
+                        className="inline-block cursor-pointer text-xl leading-none text-rose-500 transition hover:text-rose-600"
                       >
-                        {savedIds.has(property.propertyId) ? '♥' : '♡'}
+                        ♥
                       </span>
                       {price && (
                         <p className="text-sm font-semibold text-slate-900">{price}</p>
@@ -241,9 +202,6 @@ export default function History() {
                           ₹{property.pricePerSqft.toLocaleString('en-IN')}/sqft
                         </p>
                       )}
-                      <p className="mt-2 text-xs text-slate-400">
-                        Searched {formatDateTime(property.searchedAt)}
-                      </p>
                     </div>
                   </div>
                 </button>
