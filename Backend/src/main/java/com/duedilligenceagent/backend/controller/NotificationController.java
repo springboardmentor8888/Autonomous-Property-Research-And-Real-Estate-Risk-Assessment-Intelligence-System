@@ -1,5 +1,6 @@
 package com.duedilligenceagent.backend.controller;
 
+import com.duedilligenceagent.backend.dto.NotificationResponse;
 import com.duedilligenceagent.backend.entities.Notification;
 import com.duedilligenceagent.backend.service.NotificationService;
 import org.springframework.http.ResponseEntity;
@@ -36,12 +37,15 @@ public class NotificationController {
 
     /** The current user's notifications, newest first. */
     @GetMapping
-    public ResponseEntity<List<Notification>> list(
+    public ResponseEntity<List<NotificationResponse>> list(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        return ResponseEntity.ok(
-                notificationService.listForUser(userIdOf(userDetails))
-        );
+        List<NotificationResponse> response = notificationService
+                .listForUser(userIdOf(userDetails))
+                .stream()
+                .map(this::toResponse)
+                .toList();
+        return ResponseEntity.ok(response);
     }
 
     /** Unread count for the bell-icon badge. */
@@ -56,12 +60,12 @@ public class NotificationController {
 
     /** Marks one notification read for the current user. */
     @PostMapping("/{id}/read")
-    public ResponseEntity<Notification> markRead(
+    public ResponseEntity<NotificationResponse> markRead(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-                notificationService.markRead(id, userIdOf(userDetails))
+                toResponse(notificationService.markRead(id, userIdOf(userDetails)))
         );
     }
 
@@ -81,5 +85,18 @@ public class NotificationController {
                 .orElseThrow(() -> new IllegalStateException(
                         "Authenticated user not found: " + userDetails.getUsername()));
         return user.getUserId();
+    }
+
+    private NotificationResponse toResponse(Notification notification) {
+        return new NotificationResponse(
+                notification.getNotificationId(),
+                notification.getNotificationType(),
+                notification.getMessage(),
+                notification.getPropertyId(),
+                notification.getReportId(),
+                notification.getStatus(),
+                notification.getSentAt() != null ? notification.getSentAt().toString() : null,
+                notification.getCreatedAt().toString()
+        );
     }
 }
