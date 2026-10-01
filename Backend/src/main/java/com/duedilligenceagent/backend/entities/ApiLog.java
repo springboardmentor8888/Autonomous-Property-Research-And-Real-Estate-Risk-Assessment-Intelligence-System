@@ -45,6 +45,8 @@ public class ApiLog {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
-        this.requestTime = LocalDateTime.now();
+        // requestTime is set by ApiLoggingFilter BEFORE the request runs;
+        // overwriting it here (at persist time, after responseTime) would
+        // record responseTime < requestTime and negative latencies.
     }
 }
