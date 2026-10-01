@@ -9,6 +9,7 @@ import type {
   ActivityLogEntry,
   LogPage,
   UserAdminEntry,
+  AdminAnalytics,
 } from '@/lib/api';
 import { toastError } from '@/lib/useToast';
 
@@ -16,6 +17,7 @@ interface DashboardStats {
   totalUsers: number;
   totalProperties: number;
   totalAdmins: number;
+  analytics?: AdminAnalytics;
 }
 
 type AdminTab = 'users' | 'api-logs' | 'activity-logs';
@@ -321,6 +323,185 @@ export default function AdminDashboard() {
 
         </div>
       </section>
+
+      {/* Risk & Usage Analytics (SRS 1.16) */}
+      {dashboardStats?.analytics && (
+        <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {(() => {
+            const a = dashboardStats.analytics;
+            const risk = a.riskDistribution;
+            const riskBars: Array<{ label: string; count: number; color: string }> = [
+              { label: 'Low', count: risk.low, color: 'bg-emerald-500' },
+              { label: 'Moderate', count: risk.moderate, color: 'bg-amber-500' },
+              { label: 'Elevated', count: risk.elevated, color: 'bg-orange-500' },
+              { label: 'High', count: risk.high, color: 'bg-red-500' },
+            ];
+            const maxRisk = Math.max(1, ...riskBars.map((b) => b.count));
+            const api = a.apiStats;
+            const maxServiceCalls = Math.max(1, ...api.byService.map((s) => s.calls));
+
+            return (
+              <>
+                {/* Risk distribution */}
+                <div className="card p-6">
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Risk Distribution
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Latest assessment per property
+                  </p>
+
+                  <div className="mt-4 space-y-3">
+                    {riskBars.map((bar) => (
+                      <div key={bar.label}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-slate-700">{bar.label}</span>
+                          <span className="text-slate-500">{bar.count}</span>
+                        </div>
+                        <div className="mt-1 h-2 w-full rounded-full bg-slate-100">
+                          <div
+                            className={`h-2 rounded-full ${bar.color}`}
+                            style={{ width: `${(bar.count / maxRisk) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="mt-4 text-sm text-slate-500">
+                    {risk.insufficientData} propert
+                    {risk.insufficientData === 1 ? 'y' : 'ies'} not yet assessed
+                  </p>
+                </div>
+
+                {/* Search trends */}
+                <div className="card p-6">
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Search Trends
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {a.searchesLast7Days} search
+                    {a.searchesLast7Days === 1 ? '' : 'es'} in the last 7 days
+                  </p>
+
+                  <p className="mt-4 text-sm font-medium text-slate-700">
+                    Most searched properties
+                  </p>
+                  {a.topSearchedAddresses.length === 0 ? (
+                    <p className="mt-2 text-sm text-slate-500">No searches recorded yet</p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {a.topSearchedAddresses.map((item, index) => (
+                        <li
+                          key={`${item.address}-${index}`}
+                          className="flex items-center justify-between gap-4 text-sm"
+                        >
+                          <span className="truncate text-slate-700">
+                            {item.address}
+                            <span className="text-slate-400"> · {item.city}</span>
+                          </span>
+                          <span className="pill shrink-0 bg-blue-50 text-blue-700">
+                            {item.searchCount}×
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* API health */}
+                <div className="card p-6">
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    API Health (7 days)
+                  </h2>
+                  <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Total calls</p>
+                      <p className="mt-1 text-2xl font-bold text-slate-900">{api.totalCalls}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Success</p>
+                      <p className="mt-1 text-2xl font-bold text-emerald-600">{api.successCalls}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Failed</p>
+                      <p className="mt-1 text-2xl font-bold text-red-600">{api.failedCalls}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Avg latency</p>
+                      <p className="mt-1 text-2xl font-bold text-slate-900">
+                        {api.avgLatencyMs != null ? `${api.avgLatencyMs}ms` : '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {api.byService.length > 0 && (
+                    <div className="mt-4 space-y-3">
+                      {api.byService.map((service) => (
+                        <div key={service.serviceName}>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium text-slate-700">
+                              {service.serviceName}
+                            </span>
+                            <span className="text-slate-500">
+                              {service.successCalls}/{service.calls}
+                              {service.avgLatencyMs != null ? ` · ${service.avgLatencyMs}ms` : ''}
+                            </span>
+                          </div>
+                          <div className="mt-1 h-2 w-full rounded-full bg-slate-100">
+                            <div
+                              className="h-2 rounded-full bg-blue-500"
+                              style={{ width: `${(service.calls / maxServiceCalls) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Monitoring + recent activity */}
+                <div className="card p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      Monitoring & Activity
+                    </h2>
+                    <span className="pill bg-emerald-50 text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {a.activeMonitors} active monitor{a.activeMonitors === 1 ? '' : 's'}
+                    </span>
+                  </div>
+
+                  <p className="mt-4 text-sm font-medium text-slate-700">Recent activity</p>
+                  {a.recentActivity.length === 0 ? (
+                    <p className="mt-2 text-sm text-slate-500">No activity recorded yet</p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {a.recentActivity.map((entry) => (
+                        <li key={entry.id} className="flex items-center justify-between gap-4 text-sm">
+                          <span className="truncate text-slate-700">
+                            <span className="font-medium">{entry.action}</span>
+                            {entry.entityType && entry.entityId
+                              ? ` · ${entry.entityType} #${entry.entityId}`
+                              : ''}
+                            <span className="text-slate-400"> · user #{entry.userId}</span>
+                          </span>
+                          <span className="shrink-0 text-xs text-slate-400">
+                            {new Date(entry.createdAt).toLocaleString('en-IN', {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            })}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </section>
+      )}
 
       {/* Log viewer tabs */}
       <section className="mt-8">

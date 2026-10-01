@@ -11,4 +11,7 @@ public interface PropertyMonitoringRepository extends JpaRepository<PropertyMoni
     Optional<PropertyMonitoring> findByUserIdAndPropertyId(Long userId, Long propertyId);
 
     List<PropertyMonitoring> findByUserIdAndEnabledTrue(Long userId);
+
+    /** Active monitors across all users — the admin analytics metric. */
+    long countByEnabledTrue();
 }

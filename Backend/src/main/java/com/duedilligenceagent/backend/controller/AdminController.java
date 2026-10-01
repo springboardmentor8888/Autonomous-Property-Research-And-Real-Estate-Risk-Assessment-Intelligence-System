@@ -22,6 +22,7 @@ import com.duedilligenceagent.backend.repositories.ApiLogRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import com.duedilligenceagent.backend.repositories.RoleRepository;
 import com.duedilligenceagent.backend.repositories.UserRepository;
+import com.duedilligenceagent.backend.service.AdminAnalyticsService;
 
 import java.time.Duration;
 import java.util.List;
@@ -40,19 +41,22 @@ public class AdminController {
     private final PropertyRepository propertyRepository;
     private final ApiLogRepository apiLogRepository;
     private final ActivityLogRepository activityLogRepository;
+    private final AdminAnalyticsService adminAnalyticsService;
 
     public AdminController(
             UserRepository userRepository,
             RoleRepository roleRepository,
             PropertyRepository propertyRepository,
             ApiLogRepository apiLogRepository,
-            ActivityLogRepository activityLogRepository) {
+            ActivityLogRepository activityLogRepository,
+            AdminAnalyticsService adminAnalyticsService) {
 
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.propertyRepository = propertyRepository;
         this.apiLogRepository = apiLogRepository;
         this.activityLogRepository = activityLogRepository;
+        this.adminAnalyticsService = adminAnalyticsService;
     }
 
     @GetMapping("/dashboard")
@@ -72,7 +76,8 @@ public class AdminController {
         DashboardResponse response = new DashboardResponse(
                 totalUsers,
                 totalProperties,
-                totalAdmins
+                totalAdmins,
+                adminAnalyticsService.build()
         );
 
         return ResponseEntity.ok(response);

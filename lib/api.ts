@@ -830,12 +830,13 @@ export const documentApi = {
 };
 
 export const adminApi = {
-  // Get Admin Dashboard statistics
+  // Get Admin Dashboard statistics + analytics block (SRS 1.16)
   async getDashboard() {
     return fetchWithAuth<{
       totalUsers: number;
       totalProperties: number;
       totalAdmins: number;
+      analytics?: AdminAnalytics;
     }>('/admin/dashboard');
   },
 
@@ -915,6 +916,53 @@ export type LogPage<T> = {
   size: number;
   totalElements: number;
   totalPages: number;
+};
+
+export type RiskDistribution = {
+  low: number;
+  moderate: number;
+  elevated: number;
+  high: number;
+  insufficientData: number;
+};
+
+export type TopSearchedAddress = {
+  address: string;
+  city: string;
+  searchCount: number;
+};
+
+export type ServiceStat = {
+  serviceName: string;
+  calls: number;
+  successCalls: number;
+  avgLatencyMs: number | null;
+};
+
+export type ApiStats = {
+  totalCalls: number;
+  successCalls: number;
+  failedCalls: number;
+  avgLatencyMs: number | null;
+  byService: ServiceStat[];
+};
+
+export type RecentActivityEntry = {
+  id: number;
+  userId: number;
+  action: string;
+  entityType?: string;
+  entityId?: number;
+  createdAt: string;
+};
+
+export type AdminAnalytics = {
+  riskDistribution: RiskDistribution;
+  searchesLast7Days: number;
+  topSearchedAddresses: TopSearchedAddress[];
+  apiStats: ApiStats;
+  activeMonitors: number;
+  recentActivity: RecentActivityEntry[];
 };
 
 export const profileApi = {

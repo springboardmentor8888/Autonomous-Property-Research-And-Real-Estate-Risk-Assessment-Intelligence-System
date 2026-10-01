@@ -24,4 +24,7 @@ public interface ApiLogRepository extends JpaRepository<ApiLog, Long> {
     List<Object[]> statsByService(@Param("since") LocalDateTime since);
 
     long countByRequestTimeAfter(LocalDateTime since);
+
+    /** Logged calls within a window — the admin analytics API stats. */
+    List<ApiLog> findByRequestTimeAfter(LocalDateTime since);
 }
