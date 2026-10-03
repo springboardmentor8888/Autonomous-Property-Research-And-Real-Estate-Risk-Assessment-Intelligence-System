@@ -174,18 +174,15 @@ function RiskGauge({ score, tier }: { score?: number; tier?: string }) {
 function RiskDomainCard({
   label,
   value,
-  icon,
 }: {
   label: string;
   value?: number;
-  icon: string;
 }) {
   const hasScore = value !== null && value !== undefined;
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-          <span aria-hidden>{icon}</span>
+        <span className="text-xs font-semibold text-slate-700">
           {label}
         </span>
         {hasScore ? (
@@ -216,6 +213,122 @@ function RiskDomainCard({
           {value! >= 55 ? 'High risk' : value! >= 20 ? 'Elevated risk' : 'Low risk'}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Connected workflow stepper: numbered circles joined by lines, labels
+ * underneath. Completed stages fill emerald with a check, the next stage
+ * fills slate, locked stages stay outlined. Clicking a step scrolls to it.
+ */
+function WorkflowStepper({
+  steps,
+  onStepClick,
+}: {
+  steps: Array<{ label: string; hint: string; state: 'done' | 'active' | 'locked' }>;
+  onStepClick?: (index: number) => void;
+}) {
+  return (
+    <ol className="mt-6 flex">
+      {steps.map((step, i) => (
+        <li key={step.label} className="flex-1 last:flex-none">
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={() => onStepClick?.(i)}
+              aria-label={`${step.label} — ${step.state}`}
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 text-xs font-bold transition ${
+                step.state === 'done'
+                  ? 'border-emerald-500 bg-emerald-500 text-white'
+                  : step.state === 'active'
+                    ? 'border-slate-900 bg-slate-900 text-white'
+                    : 'border-slate-200 bg-white text-slate-400'
+              }`}
+            >
+              {step.state === 'done' ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-4 w-4"
+                  aria-hidden
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              ) : (
+                i + 1
+              )}
+            </button>
+            {i < steps.length - 1 && (
+              <span
+                className={`h-0.5 flex-1 ${step.state === 'done' ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                aria-hidden
+              />
+            )}
+          </div>
+          <p
+            className={`mt-2 text-xs font-semibold ${
+              step.state === 'locked' ? 'text-slate-400' : 'text-slate-700'
+            }`}
+          >
+            {step.label}
+          </p>
+          <p className="text-[11px] text-slate-400">{step.hint}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * Per-period market trend bars: price/sqft as vertical bars with value
+ * labels, period labels and a demand pulse indicator underneath.
+ */
+function MarketTrendChart({
+  trends,
+}: {
+  trends: Array<{
+    period?: string | null;
+    avgPricePerSqft?: number | null;
+    demandPulse?: number | null;
+  }>;
+}) {
+  const points = trends.filter((t) => t.avgPricePerSqft != null);
+  if (points.length === 0) return null;
+  const max = Math.max(...points.map((t) => t.avgPricePerSqft!));
+  return (
+    <div className="mt-2 flex items-end gap-4 overflow-x-auto pb-1">
+      {points.map((t, i) => (
+        <div key={i} className="flex w-16 shrink-0 flex-col items-center gap-1.5">
+          <span className="whitespace-nowrap text-[11px] font-semibold text-slate-700">
+            ₹{t.avgPricePerSqft!.toLocaleString('en-IN')}
+          </span>
+          <div className="flex h-28 w-full items-end rounded-t-md bg-slate-100">
+            <div
+              className="w-full rounded-t-md bg-slate-900 transition-all"
+              style={{ height: `${(t.avgPricePerSqft! / max) * 100}%` }}
+              aria-hidden
+            />
+          </div>
+          <span className="whitespace-nowrap text-[10px] font-medium text-slate-500">
+            {t.period ?? '—'}
+          </span>
+          {t.demandPulse != null && (
+            <span
+              className={`whitespace-nowrap text-[10px] font-semibold ${
+                t.demandPulse >= 0.5 ? 'text-emerald-600' : 'text-rose-600'
+              }`}
+            >
+              demand {t.demandPulse}
+            </span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -712,78 +825,72 @@ function PropertyDetailsContent() {
       )}
 
       {details && (
-        <section className="card mt-6 p-8">
+        <section className="card mt-6 p-6">
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Due Diligence Workflow</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Run the stages in order — each stage unlocks the next. The aggregation pipeline
-              inventories the stored records, the risk assessment scores them, the market
-              analysis positions the property against its comparables, and the report
-              assembles everything into a downloadable document.
+              Run the stages in order — each stage unlocks the next. Research inventories
+              the stored records and scores them, the market analysis positions the
+              property against its comparables, and the report assembles everything
+              into a downloadable document.
             </p>
           </div>
 
-          {/* Stepper */}
-          <ol className="mt-5 flex flex-wrap items-center gap-2 text-xs font-medium">
-            <li className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
-              aggregationStage ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                              : 'border-slate-300 bg-white text-slate-700'}`}>
-              <span className={aggregationStage ? 'text-emerald-600' : 'text-slate-400'}>
-                {aggregationStage ? '✓' : '①'}
-              </span>
-              Aggregation Pipeline
-            </li>
-            <span className="text-slate-300">→</span>
-            <li className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
-              riskStage ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : aggregationStage ? 'border-slate-300 bg-white text-slate-700'
-                                   : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-              <span className={riskStage ? 'text-emerald-600' : 'text-slate-400'}>{riskStage ? '✓' : '②'}</span>
-              Risk Assessment
-            </li>
-            <span className="text-slate-300">→</span>
-            <li className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
-              (marketStage || report) ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : riskStage ? 'border-slate-300 bg-white text-slate-700'
-                             : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-              <span className={(marketStage || report) ? 'text-emerald-600' : 'text-slate-400'}>
-                {(marketStage || report) ? '✓' : '③'}
-              </span>
-              Market & Comparables
-            </li>
-            <span className="text-slate-300">→</span>
-            <li className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
-              report ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : (marketStage || riskStage) ? 'border-slate-300 bg-white text-slate-700'
-                             : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-              <span className={report ? 'text-emerald-600' : 'text-slate-400'}>{report ? '✓' : '④'}</span>
-              Report
-            </li>
-          </ol>
+          <WorkflowStepper
+            steps={[
+              {
+                label: 'Research',
+                hint: 'Inventory + scoring',
+                state: aggregationStage ? 'done' : 'active',
+              },
+              {
+                label: 'Risk Assessment',
+                hint: 'Domain scores',
+                state: riskStage ? 'done' : aggregationStage ? 'active' : 'locked',
+              },
+              {
+                label: 'Market & Comparables',
+                hint: 'Positioning',
+                state: (marketStage || report) ? 'done' : riskStage ? 'active' : 'locked',
+              },
+              {
+                label: 'Report',
+                hint: 'Download',
+                state: report ? 'done' : (marketStage || riskStage) ? 'active' : 'locked',
+              },
+            ]}
+            onStepClick={(i) => {
+              const ids = ['stage-research', 'stage-risk', 'stage-market', 'stage-report'];
+              document
+                .getElementById(ids[i])
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          />
+        </section>
+      )}
 
-          {/* Card A: Aggregation Pipeline — always visible, first stage */}
-          <div className="mt-6 rounded-xl border border-slate-200 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  Aggregation Pipeline
-                </h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Inventories the property's stored diligence records — which sections are
-                  available and which are still missing.
-                </p>
-              </div>
-              <button onClick={runAggregationPipeline} disabled={aggregationBusy} className="btn-primary">
-                {aggregationBusy ? 'Running…' : aggregationStage ? 'Re-run Pipeline' : 'Run Aggregation Pipeline'}
-              </button>
+      {/* Stage 1: Research — own top-level card */}
+      {details && (
+        <section id="stage-research" className="card mt-6 p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Research</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Inventories the property's stored diligence records — which sections are
+                available and which are still missing.
+              </p>
             </div>
+            <button onClick={runAggregationPipeline} disabled={aggregationBusy} className="btn-primary">
+              {aggregationBusy ? 'Running…' : aggregationStage ? 'Re-run Research' : 'Run Research'}
+            </button>
+          </div>
             {aggregationError && (
               <p className="mt-3 text-xs font-medium text-rose-600">{aggregationError}</p>
             )}
             {aggregationStage && (
               <div className="mt-4 space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-500">
+                  <span className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-500">
                     Run #{aggregationStage.aggregationRunId}
                     <span className={aggregationStage.status === 'COMPLETED' ? ' text-emerald-600' : ' text-amber-600'}>
                       {' '}· {aggregationStage.status.replaceAll('_', ' ')}
@@ -800,7 +907,7 @@ function PropertyDetailsContent() {
                     {aggregationStage.observations.map((o, i) => (
                       <span
                         key={i}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                        className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${
                           o.status === 'AVAILABLE'
                             ? 'bg-emerald-50 text-emerald-700'
                             : 'bg-slate-100 text-slate-500'}`}
@@ -812,13 +919,54 @@ function PropertyDetailsContent() {
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400">
-                    Section details are shown when the pipeline is run. Re-run to refresh them.
+                    Section details are shown when the research run completes. Re-run to refresh them.
                   </p>
+                )}
+
+                {/* Risk scoring parameters — visible once the scoring has run */}
+                {riskStage && (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Risk Scoring Parameters
+                      </p>
+                      <span
+                        className={`whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                          riskStage.overallScore != null
+                            ? scoreChipClass(riskStage.overallScore)
+                            : 'border-slate-200 bg-white text-slate-400'
+                        }`}
+                      >
+                        Overall {riskStage.overallScore != null ? `${riskStage.overallScore.toFixed(0)}/100` : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {([
+                        ['Property Tax', riskStage.taxRisk],
+                        ['Flood Zone', riskStage.floodRisk],
+                        ['Building Permits', riskStage.permitCompliance],
+                        ['Zoning', riskStage.zoningCompliance],
+                        ['Legal / Environmental', riskStage.legalRisk],
+                        ['Ownership Verification', riskStage.ownershipVerification],
+                      ] as Array<[string, number | null | undefined]>).map(([label, score]) => (
+                        <span
+                          key={label}
+                          className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                            score != null
+                              ? scoreChipClass(score)
+                              : 'border-slate-200 bg-white text-slate-400'
+                          }`}
+                        >
+                          {label}: {score != null ? score.toFixed(0) : 'no records'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Risk assessment button — enabled only after the pipeline execution */}
+            {/* Risk assessment action — enabled only after the research execution */}
             <div className="mt-5 border-t border-slate-100 pt-4">
               <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -830,7 +978,7 @@ function PropertyDetailsContent() {
                 </button>
                 {!aggregationStage && (
                   <span className="text-xs text-slate-400">
-                    Run the aggregation pipeline first to enable the risk assessment.
+                    Run Research first to enable the risk assessment.
                   </span>
                 )}
               </div>
@@ -838,209 +986,180 @@ function PropertyDetailsContent() {
                 <p className="mt-3 text-xs font-medium text-rose-600">{riskError}</p>
               )}
             </div>
+        </section>
+      )}
+
+      {/* Stage 2: Risk Assessment — own top-level card */}
+      {riskStage && (
+        <section id="stage-risk" className="card mt-6 p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-slate-900">Risk Assessment</h2>
+            <span className="text-xs text-slate-400">
+              Assessed {formatDateTime(riskStage.assessedAt)}
+            </span>
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-6">
+            <RiskGauge score={riskStage.overallScore ?? undefined} tier={riskStage.riskTier} />
+          </div>
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <RiskDomainCard label="Property Tax" value={riskStage.taxRisk ?? undefined} />
+            <RiskDomainCard label="Flood Zone" value={riskStage.floodRisk ?? undefined} />
+            <RiskDomainCard label="Building Permits" value={riskStage.permitCompliance ?? undefined} />
+            <RiskDomainCard label="Zoning" value={riskStage.zoningCompliance ?? undefined} />
+            <RiskDomainCard label="Legal / Environmental" value={riskStage.legalRisk ?? undefined} />
+            <RiskDomainCard label="Ownership Verification" value={riskStage.ownershipVerification ?? undefined} />
+          </div>
+        </section>
+      )}
 
-          {/* Card B: Risk Assessment results — appears after the risk stage runs */}
-          {riskStage && (
-            <div className="mt-4 rounded-xl border border-slate-200 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  Risk Assessment
-                </h3>
-                <span className="text-xs text-slate-400">
-                  Assessed {formatDateTime(riskStage.assessedAt)}
-                </span>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-6">
-                <RiskGauge score={riskStage.overallScore ?? undefined} tier={riskStage.riskTier} />
-              </div>
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <RiskDomainCard label="Property Tax" icon="🧾" value={riskStage.taxRisk ?? undefined} />
-                <RiskDomainCard label="Flood Zone" icon="🌊" value={riskStage.floodRisk ?? undefined} />
-                <RiskDomainCard label="Building Permits" icon="🏗️" value={riskStage.permitCompliance ?? undefined} />
-                <RiskDomainCard label="Zoning" icon="🗺️" value={riskStage.zoningCompliance ?? undefined} />
-                <RiskDomainCard label="Legal / Environmental" icon="⚖️" value={riskStage.legalRisk ?? undefined} />
-                <RiskDomainCard label="Ownership Verification" icon="🔑" value={riskStage.ownershipVerification ?? undefined} />
-              </div>
+      {/* Stage 3: Market & Comparables — own top-level card */}
+      {(marketStage || report) && (
+        <section id="stage-market" className="card mt-6 p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Market & Comparables</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Positions the property against nearby listings and market trends.
+              </p>
+            </div>
+            <button onClick={runMarketAnalysis} disabled={marketBusy} className="btn-primary">
+              {marketBusy ? 'Analyzing…' : marketStage ? 'Re-run Analysis' : 'Analyze Market'}
+            </button>
+          </div>
+          {marketError && (
+            <p className="mt-3 text-xs font-medium text-rose-600">{marketError}</p>
+          )}
 
-              {/* Market & comparables button — inside the risk assessment card */}
-              <div className="mt-5 border-t border-slate-100 pt-4">
-                <button onClick={runMarketAnalysis} disabled={marketBusy} className="btn-primary">
-                  {marketBusy ? 'Analyzing…' : marketStage ? 'Re-run Market Analysis' : 'Analyze Market & Comparables'}
-                </button>
-                {marketError && (
-                  <p className="mt-3 text-xs font-medium text-rose-600">{marketError}</p>
-                )}
-              </div>
+          {marketStage?.summary && (
+            <p className="mt-4 text-sm leading-relaxed text-slate-700">{marketStage.summary}</p>
+          )}
+
+          {marketStage && (
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {marketStage.positioning && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Market Position</p>
+                  <p className={`mt-1 text-sm font-semibold ${
+                    marketStage.positioning.verdict === 'BELOW_MARKET' ? 'text-emerald-600'
+                    : marketStage.positioning.verdict === 'ABOVE_MARKET' ? 'text-rose-600'
+                    : 'text-slate-700'}`}>
+                    {marketStage.positioning.verdict === 'BELOW_MARKET' && marketStage.positioning.deltaPercent !== undefined
+                      ? `${Math.abs(marketStage.positioning.deltaPercent)}% below market`
+                      : marketStage.positioning.verdict === 'ABOVE_MARKET' && marketStage.positioning.deltaPercent !== undefined
+                        ? `${marketStage.positioning.deltaPercent}% above market`
+                        : marketStage.positioning.verdict.replaceAll('_', ' ')}
+                  </p>
+                  {marketStage.positioning.note && (
+                    <p className="mt-1 text-[11px] text-slate-400">{marketStage.positioning.note}</p>
+                  )}
+                </div>
+              )}
+              {marketStage.comparables && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Comparables</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-700">
+                    {marketStage.comparables.count} listings
+                  </p>
+                  {marketStage.comparables.averagePrice !== undefined && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      avg ₹{marketStage.comparables.averagePrice.toLocaleString('en-IN')}
+                    </p>
+                  )}
+                  {marketStage.comparables.averagePricePerSqft !== undefined && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      avg ₹{marketStage.comparables.averagePricePerSqft.toLocaleString('en-IN')}/sqft
+                    </p>
+                  )}
+                </div>
+              )}
+              {marketStage.trend && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Market Trend</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-700">
+                    {marketStage.trend.locality ?? 'City'} · {marketStage.trend.period}
+                  </p>
+                  {marketStage.trend.avgPricePerSqft !== undefined && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      ₹{marketStage.trend.avgPricePerSqft.toLocaleString('en-IN')}/sqft
+                      {marketStage.trend.supplyCount !== undefined && ` · ${marketStage.trend.supplyCount} listings`}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Card C: Market Trends & Comparable Listings — appears after the market stage runs */}
-          {(marketStage || report) && (
-            <div className="mt-4 rounded-xl border border-slate-200 p-5">
-              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                Market Trends & Comparable Listings
-              </h3>
-
-              {marketStage?.summary && (
-                <p className="mt-2 text-sm leading-relaxed text-slate-700">{marketStage.summary}</p>
-              )}
-
-              {marketStage && (
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {marketStage.positioning && (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Market Position</p>
-                      <p className={`mt-1 text-sm font-semibold ${
-                        marketStage.positioning.verdict === 'BELOW_MARKET' ? 'text-emerald-600'
-                        : marketStage.positioning.verdict === 'ABOVE_MARKET' ? 'text-rose-600'
-                        : 'text-slate-700'}`}>
-                        {marketStage.positioning.verdict === 'BELOW_MARKET' && marketStage.positioning.deltaPercent !== undefined
-                          ? `${Math.abs(marketStage.positioning.deltaPercent)}% below market`
-                          : marketStage.positioning.verdict === 'ABOVE_MARKET' && marketStage.positioning.deltaPercent !== undefined
-                            ? `${marketStage.positioning.deltaPercent}% above market`
-                            : marketStage.positioning.verdict.replaceAll('_', ' ')}
-                      </p>
-                      {marketStage.positioning.note && (
-                        <p className="mt-1 text-[11px] text-slate-400">{marketStage.positioning.note}</p>
-                      )}
-                    </div>
-                  )}
-                  {marketStage.comparables && (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Comparables</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-700">
-                        {marketStage.comparables.count} listings
-                      </p>
-                      {marketStage.comparables.averagePrice !== undefined && (
-                        <p className="mt-1 text-[11px] text-slate-500">
-                          avg ₹{marketStage.comparables.averagePrice.toLocaleString('en-IN')}
-                        </p>
-                      )}
-                      {marketStage.comparables.averagePricePerSqft !== undefined && (
-                        <p className="text-[11px] text-slate-500">
-                          avg ₹{marketStage.comparables.averagePricePerSqft.toLocaleString('en-IN')}/sqft
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {marketStage.trend && (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Market Trend</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-700">
-                        {marketStage.trend.locality ?? 'City'} · {marketStage.trend.period}
-                      </p>
-                      {marketStage.trend.avgPricePerSqft !== undefined && (
-                        <p className="mt-1 text-[11px] text-slate-500">
-                          ₹{marketStage.trend.avgPricePerSqft.toLocaleString('en-IN')}/sqft
-                          {marketStage.trend.supplyCount !== undefined && ` · ${marketStage.trend.supplyCount} listings`}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {diligence?.comparables && diligence.comparables.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-xs font-semibold text-slate-600">Comparable Properties</h4>
-                  <div className="mt-2 overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-slate-500">
-                          <th className="py-2 pr-4 font-medium">Locality</th>
-                          <th className="py-2 pr-4 font-medium">Type</th>
-                          <th className="py-2 pr-4 font-medium">BHK</th>
-                          <th className="py-2 pr-4 font-medium">Area (sqft)</th>
-                          <th className="py-2 pr-4 font-medium">Price</th>
-                          <th className="py-2 pr-4 font-medium">₹/sqft</th>
-                          <th className="py-2 font-medium">Verified</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {diligence.comparables.map((c, i) => (
-                          <tr key={i} className="border-b border-slate-100 text-slate-700">
-                            <td className="py-2 pr-4">{c.locality ?? '—'}</td>
-                            <td className="py-2 pr-4">{c.propertyType ?? '—'}</td>
-                            <td className="py-2 pr-4">{c.bhk ?? '—'}</td>
-                            <td className="py-2 pr-4">{c.areaSqft ?? '—'}</td>
-                            <td className="py-2 pr-4">{formatPrice(c.price)}</td>
-                            <td className="py-2 pr-4">{c.pricePerSqft ?? '—'}</td>
-                            <td className="py-2">{c.verified ? 'Yes' : 'No'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {diligence?.marketTrends && diligence.marketTrends.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-xs font-semibold text-slate-600">Market Trends</h4>
-                  <div className="mt-2 space-y-2">
-                    {diligence.marketTrends.map((t, i) => (
-                      <div
-                        key={i}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-4 py-2.5 text-xs"
-                      >
-                        <span className="font-medium text-slate-700">
-                          {t.locality ?? 'City'} · {t.period}
-                        </span>
-                        <span className="text-slate-600">
-                          Avg {t.avgPricePerSqft ? `₹${t.avgPricePerSqft.toLocaleString('en-IN')}/sqft` : '—'}
-                          {t.supplyCount !== undefined && ` · ${t.supplyCount} listings`}
-                          {t.demandPulse !== undefined && ` · demand ${t.demandPulse}`}
-                        </span>
-                      </div>
+          {diligence?.comparables && diligence.comparables.length > 0 && (
+            <div className="mt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Comparable Properties</h3>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500">
+                      <th className="py-2 pr-4 font-semibold">Locality</th>
+                      <th className="py-2 pr-4 font-semibold">Type</th>
+                      <th className="py-2 pr-4 font-semibold">BHK</th>
+                      <th className="py-2 pr-4 font-semibold">Area (sqft)</th>
+                      <th className="py-2 pr-4 font-semibold">Price</th>
+                      <th className="py-2 pr-4 font-semibold">₹/sqft</th>
+                      <th className="py-2 font-semibold">Verified</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {diligence.comparables.map((c, i) => (
+                      <tr key={i} className="border-b border-slate-100 text-slate-700">
+                        <td className="py-2 pr-4">{c.locality ?? '—'}</td>
+                        <td className="py-2 pr-4">{c.propertyType ?? '—'}</td>
+                        <td className="py-2 pr-4">{c.bhk ?? '—'}</td>
+                        <td className="py-2 pr-4">{c.areaSqft ?? '—'}</td>
+                        <td className="py-2 pr-4">{formatPrice(c.price)}</td>
+                        <td className="py-2 pr-4">{c.pricePerSqft ?? '—'}</td>
+                        <td className="py-2">{c.verified ? 'Yes' : 'No'}</td>
+                      </tr>
                     ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Report generation + property monitoring — based on all the analysis above */}
-              <div className="mt-5 border-t border-slate-100 pt-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={generateReport} disabled={generating} className="btn-primary">
-                    {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Report'}
-                  </button>
-                  {report && (
-                    <button onClick={downloadPdf} disabled={downloading} className="btn-secondary">
-                      {downloading ? 'Preparing…' : '⬇ Download PDF'}
-                    </button>
-                  )}
-                  {report && (
-                    <button onClick={downloadExcel} disabled={downloadingExcel} className="btn-secondary">
-                      {downloadingExcel ? 'Preparing…' : '⬇ Download Excel'}
-                    </button>
-                  )}
-                  <button
-                    onClick={toggleMonitoring}
-                    disabled={!monitoring || monitorBusy}
-                    className={monitoring?.enabled ? 'btn-secondary' : 'btn-secondary'}
-                  >
-                    {monitorBusy
-                      ? 'Updating…'
-                      : monitoring?.enabled
-                        ? 'Stop Monitoring'
-                        : 'Monitor Property'}
-                  </button>
-                </div>
-                {monitoring?.enabled ? (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Monitoring active since {formatDateTime(monitoring.monitoredSince)} · last checked{' '}
-                    {formatDateTime(monitoring.lastCheckedAt)} · next check{' '}
-                    {formatDateTime(monitoring.nextCheckAt)}
-                  </p>
-                ) : (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Enable monitoring to track changes in this property's records.
-                  </p>
-                )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
+          {diligence?.marketTrends && diligence.marketTrends.length > 0 && (
+            <div className="mt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Price Trend by Period
+              </h3>
+              <MarketTrendChart trends={diligence.marketTrends} />
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Stage 4: Report — own top-level card */}
+      {details && (
+        <section id="stage-report" className="card mt-6 p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Report</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Assembles the research, risk and market analysis into a downloadable document.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={generateReport} disabled={generating} className="btn-primary">
+                {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Report'}
+              </button>
+              {report && (
+                <button onClick={downloadPdf} disabled={downloading} className="btn-secondary">
+                  {downloading ? 'Preparing…' : 'Download PDF'}
+                </button>
+              )}
+              {report && (
+                <button onClick={downloadExcel} disabled={downloadingExcel} className="btn-secondary">
+                  {downloadingExcel ? 'Preparing…' : 'Download Excel'}
+                </button>
+              )}
+            </div>
+          </div>
           {generateError && (
             <p className="mt-3 text-xs font-medium text-rose-600">{generateError}</p>
           )}
@@ -1060,7 +1179,7 @@ function PropertyDetailsContent() {
                     </p>
                     {report.aggregationRunId && (
                       <p className="mt-1 inline-block rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-500">
-                        Pipeline run #{report.aggregationRunId}
+                        Research run #{report.aggregationRunId}
                         {report.aggregationStatus && (
                           <span className={report.aggregationStatus === 'COMPLETED' ? ' text-emerald-600' : ' text-amber-600'}>
                             {' '}· {report.aggregationStatus.replaceAll('_', ' ')}
@@ -1108,17 +1227,17 @@ function PropertyDetailsContent() {
                     0–100 scale — higher means riskier. Green below 20 · Amber 20–54 · Red 55 and above
                   </p>
                   <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <RiskDomainCard label="Property Tax" icon="🧾"
+                    <RiskDomainCard label="Property Tax"
                       value={report.risk.taxRisk ?? undefined} />
-                    <RiskDomainCard label="Flood Zone" icon="🌊"
+                    <RiskDomainCard label="Flood Zone"
                       value={report.risk.floodRisk ?? undefined} />
-                    <RiskDomainCard label="Building Permits" icon="🏗️"
+                    <RiskDomainCard label="Building Permits"
                       value={report.risk.permitCompliance ?? undefined} />
-                    <RiskDomainCard label="Zoning" icon="🗺️"
+                    <RiskDomainCard label="Zoning"
                       value={report.risk.zoningCompliance ?? undefined} />
-                    <RiskDomainCard label="Legal / Environmental" icon="⚖️"
+                    <RiskDomainCard label="Legal / Environmental"
                       value={report.risk.legalRisk ?? undefined} />
-                    <RiskDomainCard label="Ownership Verification" icon="🔑"
+                    <RiskDomainCard label="Ownership Verification"
                       value={report.risk.ownershipVerification ?? undefined} />
                   </div>
                 </div>
@@ -1132,32 +1251,32 @@ function PropertyDetailsContent() {
                   </h3>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {report.records.taxStatus && (
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.taxStatus)}`}>
+                      <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.taxStatus)}`}>
                         Tax: {report.records.taxStatus.replaceAll('_', ' ')}
                       </span>
                     )}
                     {report.records.permitStatus && (
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.permitStatus)}`}>
+                      <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.permitStatus)}`}>
                         Permit: {report.records.permitStatus}
                       </span>
                     )}
                     {report.records.zoningStatus && (
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.zoningStatus)}`}>
+                      <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.zoningStatus)}`}>
                         Zoning: {report.records.zoningStatus.replaceAll('_', ' ')}
                       </span>
                     )}
                     {report.records.floodRiskLevel && (
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.floodRiskLevel)}`}>
+                      <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.floodRiskLevel)}`}>
                         Flood: {report.records.floodRiskLevel}
                       </span>
                     )}
                     {report.records.environmentalStatus && (
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.environmentalStatus)}`}>
+                      <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.environmentalStatus)}`}>
                         Environmental: {report.records.environmentalStatus}
                       </span>
                     )}
                     {report.records.ownershipType && (
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.ownershipType)}`}>
+                      <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(report.records.ownershipType)}`}>
                         Ownership: {report.records.ownershipType.replaceAll('_', ' ')}
                       </span>
                     )}
@@ -1183,16 +1302,43 @@ function PropertyDetailsContent() {
                   </p>
                   {report.coverage.missingSections && report.coverage.missingSections.length > 0 && (
                     <p className="mt-2 text-xs text-amber-700">
-                      ⚠ Not yet sourced: {report.coverage.missingSections.join(', ')}
+                      Not yet sourced: {report.coverage.missingSections.join(', ')}
                     </p>
                   )}
                 </div>
               )}
             </div>
           ) : null}
+
+          {/* Property monitoring — its own block inside the Report card footer */}
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={toggleMonitoring}
+                disabled={!monitoring || monitorBusy}
+                className="btn-secondary"
+              >
+                {monitorBusy
+                  ? 'Updating…'
+                  : monitoring?.enabled
+                    ? 'Stop Monitoring'
+                    : 'Monitor Property'}
+              </button>
+            </div>
+            {monitoring?.enabled ? (
+              <p className="mt-2 text-xs text-slate-500">
+                Monitoring active since {formatDateTime(monitoring.monitoredSince)} · last checked{' '}
+                {formatDateTime(monitoring.lastCheckedAt)} · next check{' '}
+                {formatDateTime(monitoring.nextCheckAt)}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">
+                Enable monitoring to track changes in this property's records.
+              </p>
+            )}
+          </div>
         </section>
       )}
-
       {/* Supporting documents — upload, download and delete evidence files */}
         {details && (
           <section className="card mt-6 p-8">
@@ -1224,7 +1370,7 @@ function PropertyDetailsContent() {
                   disabled={uploadingDoc}
                   className="btn-primary"
                 >
-                  {uploadingDoc ? 'Uploading…' : '⬆ Upload Document'}
+                  {uploadingDoc ? 'Uploading…' : 'Upload Document'}
                 </button>
               </div>
             </div>
@@ -1260,7 +1406,7 @@ function PropertyDetailsContent() {
                         onClick={() => handleDocDownload(doc)}
                         className="btn-secondary"
                       >
-                        ⬇ Download
+                        Download
                       </button>
 
                       <button
