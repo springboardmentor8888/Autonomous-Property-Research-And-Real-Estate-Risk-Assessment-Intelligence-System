@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -54,34 +53,30 @@ export default function DashboardPage() {
     {
       label: 'Assessed Properties',
       value: '12,482',
-      change: 'Total properties assessed',
+      description: 'Total properties assessed',
       icon: '⌂',
-      color: 'text-blue-400',
-      bg: 'bg-blue-500/10',
+      accent: 'blue',
     },
     {
       label: 'Risk Audit Reports',
       value: '4,910',
-      change: 'Reports generated',
+      description: 'Reports generated',
       icon: '▤',
-      color: 'text-cyan-400',
-      bg: 'bg-cyan-500/10',
+      accent: 'cyan',
     },
     {
       label: 'Legal Title Audits',
       value: '1,240',
-      change: 'Title audits completed',
+      description: 'Title audits completed',
       icon: '◈',
-      color: 'text-purple-400',
-      bg: 'bg-purple-500/10',
+      accent: 'purple',
     },
     {
       label: 'Active Alerts',
       value: '3',
-      change: 'Alerts requiring review',
+      description: 'Alerts requiring review',
       icon: '!',
-      color: 'text-amber-400',
-      bg: 'bg-amber-500/10',
+      accent: 'amber',
     },
   ]
 
@@ -89,138 +84,219 @@ export default function DashboardPage() {
     {
       title: 'Search Property',
       description:
-        'Find a property by address and start a due diligence assessment.',
+        'Find a property by address and start a complete due diligence assessment.',
       icon: '⌕',
       buttonText: 'Search Property',
       action: () => router.push('/property-search'),
-      accent: 'from-blue-500/20 to-cyan-500/5',
-      iconColor: 'text-blue-400',
+      accent:
+        'from-blue-500/[0.14] via-blue-500/[0.04] to-transparent',
+      iconColor: 'text-blue-300',
+      borderColor: 'hover:border-blue-400/30',
     },
     {
       title: 'Risk Assessment',
       description:
-        'Review property risks, zoning information, and other assessment details.',
+        'Review ownership, zoning, flood risk, tax history, permits and environmental information.',
       icon: '◈',
       buttonText: 'Start Assessment',
       action: () => router.push('/property-search'),
-      accent: 'from-purple-500/20 to-indigo-500/5',
-      iconColor: 'text-purple-400',
+      accent:
+        'from-cyan-500/[0.12] via-blue-500/[0.04] to-transparent',
+      iconColor: 'text-cyan-300',
+      borderColor: 'hover:border-cyan-400/30',
     },
   ]
 
+  const accentStyles = {
+    blue: {
+      icon: 'border-blue-400/20 bg-blue-400/[0.08] text-blue-300',
+      value: 'text-blue-300',
+      glow: 'bg-blue-500/[0.06]',
+    },
+    cyan: {
+      icon: 'border-cyan-400/20 bg-cyan-400/[0.08] text-cyan-300',
+      value: 'text-cyan-300',
+      glow: 'bg-cyan-500/[0.06]',
+    },
+    purple: {
+      icon: 'border-purple-400/20 bg-purple-400/[0.08] text-purple-300',
+      value: 'text-purple-300',
+      glow: 'bg-purple-500/[0.06]',
+    },
+    amber: {
+      icon: 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300',
+      value: 'text-amber-300',
+      glow: 'bg-amber-500/[0.06]',
+    },
+  }
+
   return (
     <main className="min-h-screen bg-[#080c16] px-4 pb-16 pt-28 text-white sm:px-6">
-      <div className="mx-auto max-w-7xl">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-1/4 top-0 h-96 w-96 rounded-full bg-blue-500/[0.035] blur-3xl" />
+        <div className="absolute right-0 top-1/3 h-96 w-96 rounded-full bg-cyan-500/[0.025] blur-3xl" />
+      </div>
 
-        {/* Dashboard Header */}
-        <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">
-              PropDue Intelligence Platform
-            </p>
+      <div className="relative mx-auto max-w-7xl">
 
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Dashboard
-            </h1>
+        {/* =========================================================
+            HEADER
+        ========================================================== */}
+        <header className="mb-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="h-px w-8 bg-blue-400/60" />
 
-            <p className="mt-2 text-sm text-slate-400">
-              Monitor your property research and due diligence activities.
-            </p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-300">
+                  PropDue Intelligence Platform
+                </p>
+              </div>
+
+              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Dashboard
+              </h1>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                Monitor property research, due diligence activity and
+                real-estate risk intelligence from one workspace.
+              </p>
+            </div>
+
+            <button
+              onClick={() => router.push('/property-search')}
+              className="group inline-flex items-center justify-center gap-3 rounded-xl border border-blue-400/20 bg-blue-500/[0.10] px-5 py-3 text-sm font-semibold text-blue-200 shadow-lg shadow-blue-950/20 transition-all duration-200 hover:border-blue-300/40 hover:bg-blue-500/[0.18] hover:text-white"
+            >
+              <span className="text-lg leading-none text-blue-300">
+                +
+              </span>
+
+              Search Property
+
+              <span className="transition-transform duration-200 group-hover:translate-x-1">
+                →
+              </span>
+            </button>
           </div>
-
-          <button
-            onClick={() => router.push('/property-search')}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
-          >
-            <span className="text-lg">+</span>
-            Search Property
-            <span aria-hidden="true">→</span>
-          </button>
         </header>
 
-        {/* Welcome Card */}
-        <section className="relative mb-8 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#101d3a] via-[#0d1428] to-[#0b1020] p-6 sm:p-8">
-          <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+        {/* =========================================================
+            WELCOME CARD
+        ========================================================== */}
+        <section className="relative mb-8 overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#111d37] via-[#0d1528] to-[#0a101e] p-6 shadow-2xl shadow-black/20 sm:p-7">
+          <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-blue-500/[0.08] blur-3xl" />
+
+          <div className="pointer-events-none absolute bottom-0 right-1/3 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
 
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10 text-xl font-bold text-blue-300">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-blue-400/25 bg-blue-400/[0.08] text-xl font-bold text-blue-200 shadow-inner">
                 {userInitials}
               </div>
 
               <div>
-                <p className="mb-1 text-sm text-slate-400">
-                  Welcome back,
+                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Welcome back
                 </p>
 
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold tracking-tight text-white">
                   {userName}
                 </h2>
 
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-1.5 text-sm text-slate-400">
                   Your property intelligence workspace is ready.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-medium text-emerald-300 sm:self-center">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <div className="flex w-fit items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/[0.07] px-4 py-2 text-xs font-medium text-emerald-300">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              </span>
+
               Account Active
             </div>
           </div>
         </section>
 
-        {/* Metrics Grid */}
+        {/* =========================================================
+            OVERVIEW
+        ========================================================== */}
         <section className="mb-10">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              Overview
-            </h2>
+          <div className="mb-5 flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-400/80">
+                Intelligence Overview
+              </p>
 
-            <span className="text-xs text-slate-500">
-              Platform statistics
+              <h2 className="mt-1 text-lg font-semibold text-white">
+                Platform Activity
+              </h2>
+            </div>
+
+            <span className="hidden text-xs text-slate-600 sm:block">
+              Current platform statistics
             </span>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {metrics.map((metric) => (
-              <div
-                key={metric.label}
-                className="group rounded-2xl border border-white/10 bg-[#0d1424] p-5 transition hover:border-white/20 hover:bg-[#111a2e]"
-              >
-                <div className="mb-5 flex items-center justify-between">
-                  <p className="text-sm text-slate-400">
-                    {metric.label}
-                  </p>
+            {metrics.map((metric) => {
+              const style = accentStyles[metric.accent]
 
+              return (
+                <div
+                  key={metric.label}
+                  className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c1322] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-[#0e1728]"
+                >
                   <div
-                    className={`flex h-11 w-11 items-center justify-center rounded-xl text-xl font-bold ${metric.bg} ${metric.color}`}
-                  >
-                    {metric.icon}
+                    className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full blur-3xl ${style.glow}`}
+                  />
+
+                  <div className="relative">
+                    <div className="mb-5 flex items-start justify-between gap-4">
+                      <p className="max-w-[150px] text-xs font-medium uppercase tracking-wider text-slate-500">
+                        {metric.label}
+                      </p>
+
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-lg font-bold ${style.icon}`}
+                      >
+                        {metric.icon}
+                      </div>
+                    </div>
+
+                    <p
+                      className={`text-3xl font-bold tracking-tight ${style.value}`}
+                    >
+                      {metric.value}
+                    </p>
+
+                    <p className="mt-2 text-xs text-slate-500">
+                      {metric.description}
+                    </p>
                   </div>
                 </div>
-
-                <p className={`text-3xl font-bold tracking-tight ${metric.color}`}>
-                  {metric.value}
-                </p>
-
-                <p className="mt-2 text-xs text-slate-500">
-                  {metric.change}
-                </p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </section>
 
-        {/* Quick Actions */}
+        {/* =========================================================
+            QUICK ACTIONS
+        ========================================================== */}
         <section className="mb-10">
           <div className="mb-5">
-            <h2 className="text-lg font-semibold">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-400/80">
+              Workspace
+            </p>
+
+            <h2 className="mt-1 text-lg font-semibold text-white">
               Quick Actions
             </h2>
 
             <p className="mt-1 text-sm text-slate-400">
-              Choose an action to continue your property research.
+              Start a property investigation or continue your risk assessment.
             </p>
           </div>
 
@@ -228,175 +304,103 @@ export default function DashboardPage() {
             {quickActions.map((item) => (
               <div
                 key={item.title}
-                className={`rounded-2xl border border-white/10 bg-gradient-to-br ${item.accent} p-6 transition hover:border-white/20`}
+                className={`group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br ${item.accent} p-6 transition-all duration-200 hover:-translate-y-0.5 ${item.borderColor}`}
               >
-                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-[#0b1020]/70 text-2xl">
-                  <span className={item.iconColor}>
-                    {item.icon}
-                  </span>
+                <div className="pointer-events-none absolute -bottom-20 -right-20 h-48 w-48 rounded-full bg-blue-500/[0.035] blur-3xl" />
+
+                <div className="relative">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.09] bg-[#090f1d]/70 text-2xl shadow-inner">
+                      <span className={item.iconColor}>
+                        {item.icon}
+                      </span>
+                    </div>
+
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                      Action
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl font-semibold tracking-tight text-white">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-3 min-h-[52px] max-w-xl text-sm leading-6 text-slate-400">
+                    {item.description}
+                  </p>
+
+                  <button
+                    onClick={item.action}
+                    className="group/button mt-6 inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-200 transition-all duration-200 hover:border-blue-400/20 hover:bg-blue-500/[0.10] hover:text-white"
+                  >
+                    {item.buttonText}
+
+                    <span className="transition-transform duration-200 group-hover/button:translate-x-1">
+                      →
+                    </span>
+                  </button>
                 </div>
-
-                <h3 className="text-lg font-semibold">
-                  {item.title}
-                </h3>
-
-                <p className="mt-3 min-h-12 text-sm leading-6 text-slate-400">
-                  {item.description}
-                </p>
-
-                <button
-                  onClick={item.action}
-                  className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-                >
-                  {item.buttonText}
-                  <span aria-hidden="true">→</span>
-                </button>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Property Search CTA */}
-        <section className="rounded-2xl border border-blue-400/20 bg-[#0d1629] p-6 sm:p-8">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-blue-400">
-                Get Started
-              </p>
+        {/* =========================================================
+            DUE DILIGENCE CTA
+        ========================================================== */}
+        <section className="relative overflow-hidden rounded-2xl border border-blue-400/[0.16] bg-gradient-to-r from-[#0d1a32] via-[#0d1629] to-[#0b1221] p-6 shadow-xl shadow-blue-950/10 sm:p-8">
+          <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-blue-500/[0.07] blur-3xl" />
 
-              <h2 className="text-xl font-bold sm:text-2xl">
+          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-cyan-500/[0.035] blur-3xl" />
+
+          <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-3 flex items-center gap-3">
+                <span className="h-px w-6 bg-blue-400/60" />
+
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-300">
+                  Property Due Diligence
+                </p>
+              </div>
+
+              <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                 Ready to assess a property?
               </h2>
 
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
-                Search for a property to begin reviewing its ownership,
-                zoning, flood risk, tax history, and other due diligence details.
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                Search for a property and review its ownership, zoning,
+                flood risk, tax history, permits, environmental information
+                and other due diligence details.
               </p>
             </div>
 
             <button
               onClick={() => router.push('/property-search')}
-              className="shrink-0 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+              className="group inline-flex shrink-0 items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 transition-all duration-200 hover:bg-blue-500 hover:shadow-blue-500/10"
             >
-              Click Here to Search Property →
+              Search Property
+
+              <span className="transition-transform duration-200 group-hover:translate-x-1">
+                →
+              </span>
             </button>
           </div>
         </section>
 
+        {/* =========================================================
+            FOOTER STATUS
+        ========================================================== */}
+        <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-white/[0.06] pt-5 text-[11px] text-slate-600 sm:flex-row">
+          <span>
+            PropDue Property Intelligence Platform
+          </span>
+
+          <span className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            System Ready
+          </span>
+        </div>
       </div>
     </main>
   )
 }
-
-
-
-// 'use client'
-
-// import { useEffect, useState } from 'react'
-// import { useRouter } from 'next/navigation'
-// import AddressValidator from '@/app/components/AddressValidator'
-
-// function getInitials(name) {
-//   if (!name) return 'U'
-
-//   return name
-//     .trim()
-//     .split(' ')
-//     .filter(Boolean)
-//     .slice(0, 2)
-//     .map((word) => word.charAt(0).toUpperCase())
-//     .join('')
-// }
-
-// export default function DashboardPage() {
-//   const router = useRouter()
-
-//   const [token, setToken] = useState(null)
-//   const [user, setUser] = useState(null)
-
-//   useEffect(() => {
-//     const storedToken = localStorage.getItem('token')
-//     const storedUser = localStorage.getItem('user')
-
-//     if (!storedToken) {
-//       router.replace('/login')
-//       return
-//     }
-
-//     setToken(storedToken)
-
-//     if (storedUser) {
-//       try {
-//         setUser(JSON.parse(storedUser))
-//       } catch (error) {
-//         console.error('Failed to parse user data:', error)
-//         localStorage.removeItem('user')
-//       }
-//     }
-//   }, [router])
-
-//   if (!token) {
-//     return null
-//   }
-
-//   const userName = user?.fullName || 'User'
-//   const userInitials = getInitials(userName)
-
-//   const metrics = [
-//     { label: 'Assessed Properties', value: '12,482', change: '+14% this month', color: 'text-[#4f9cf9]', icon: '🏠' },
-//     { label: 'Risk Audit Reports',  value: '4,910',  change: '99.8% Accuracy',  color: 'text-[#00E5FF]', icon: '📄' },
-//     { label: 'Legal Title Audits',  value: '1,240',  change: '0 Title Defect Escapes', color: 'text-[#E040FB]', icon: '🛡' },
-//     { label: 'Active Alerts',       value: '3',      change: 'Encumbrance Flagged', color: 'text-[#F59E0B]', icon: '⚠' },
-//   ]
-
-
-//   return (
-
-//       <main className="min-h-screen bg-[#0a0e16] pt-[88px] px-4 pb-16"> <div className="max-w-5xl mx-auto">
-
-//         {/* Dashboard Header */}
-//         <div className="mb-8">
-//           <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#4f9cf9] mb-1">Infosys RiskIntelligence Node</p>
-//           <h1 className="text-2xl font-semibold text-white">Autonomous Risk Assessment Console</h1>
-//           <p className="text-white/40 text-sm mt-1">System Active • Connected to State Public Registry API Nodes</p>
-//         </div>
-
-//         {/* Welcome Card */}
-//         {user && (
-//           <section className="mb-8 bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl px-6 py-5">
-//             <div className="flex items-center gap-4">
-//               <div className="w-14 h-14 rounded-full bg-[#4f9cf9]/10 border border-[#4f9cf9]/40 flex items-center justify-center flex-shrink-0">
-//                 <span className="text-[#7eb6ff] font-semibold text-lg">{userInitials}</span>
-//               </div>
-//               <div>
-//                 <p className="text-sm text-white/40 mb-1">Welcome back</p>
-//                 <h2 className="text-xl font-semibold text-white">{userName}</h2>
-//                 <p className="text-sm text-white/40 mt-1">Your property risk intelligence workspace is ready.</p>
-//               </div>
-//             </div>
-//           </section>
-//         )}
-
-//         {/* Metrics Grid */}
-//         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-//           {metrics.map((metric) => (
-//             <div key={metric.label} className="bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-xl p-5">
-//               <div className="flex items-center justify-between mb-3">
-//                 <span className="text-xs text-white/40 uppercase tracking-wider">{metric.label}</span>
-//                 <span className="text-lg">{metric.icon}</span>
-//               </div>
-//               <span className={`text-2xl font-bold ${metric.color}`}>{metric.value}</span>
-//               <p className="text-xs text-white/30 mt-1">{metric.change}</p>
-//             </div>
-//           ))}
-//         </div>
-
-//         {/* Address Validator */}
-//         <section className="bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-//           <AddressValidator />
-//         </section>
-
-//       </div>
-//     </main> 
-//   )
-// }

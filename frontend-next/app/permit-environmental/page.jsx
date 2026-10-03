@@ -8,7 +8,6 @@ export default function PermitEnvironmentalPage() {
     const [property, setProperty] = useState(null);
 
     const [permitRecords, setPermitRecords] = useState([]);
-
     const [environmentalRecords, setEnvironmentalRecords] = useState([]);
 
     const [permitLoading, setPermitLoading] = useState(false);
@@ -17,11 +16,15 @@ export default function PermitEnvironmentalPage() {
     const [permitError, setPermitError] = useState("");
     const [environmentalError, setEnvironmentalError] = useState("");
 
-    // Load the property selected from Property Search.
+    /* =========================================================
+       LOAD SELECTED PROPERTY
+    ========================================================= */
+
     useEffect(() => {
         if (typeof window === "undefined") return;
 
-        const savedProperty = sessionStorage.getItem("selectedProperty");
+        const savedProperty =
+            sessionStorage.getItem("selectedProperty");
 
         if (!savedProperty) return;
 
@@ -32,11 +35,17 @@ export default function PermitEnvironmentalPage() {
                 setProperty(parsedProperty);
             }
         } catch (error) {
-            console.error("Unable to load selected property:", error);
+            console.error(
+                "Unable to load selected property:",
+                error
+            );
         }
     }, []);
 
-    // Stable property ID prevents repeated requests when property data changes.
+    /* =========================================================
+       PROPERTY ID
+    ========================================================= */
+
     const propertyId =
         property?.propertyDbId ??
         property?.id ??
@@ -45,7 +54,10 @@ export default function PermitEnvironmentalPage() {
             ? property.propertyId
             : null);
 
-    // Fetch permit and environmental information from the unified API.
+    /* =========================================================
+       LOAD BACKEND DATA
+    ========================================================= */
+
     useEffect(() => {
         if (!propertyId) return;
 
@@ -54,11 +66,13 @@ export default function PermitEnvironmentalPage() {
         async function loadPropertyRecords() {
             setPermitLoading(true);
             setEnvironmentalLoading(true);
+
             setPermitError("");
             setEnvironmentalError("");
 
             try {
-                const token = localStorage.getItem("token");
+                const token =
+                    localStorage.getItem("token");
 
                 const response = await fetch(
                     `${BASE_URL}/properties/${propertyId}`,
@@ -67,14 +81,18 @@ export default function PermitEnvironmentalPage() {
                         headers: {
                             ...(token
                                 ? {
-                                    Authorization: `Bearer ${token}`,
+                                    Authorization:
+                                        `Bearer ${token}`,
                                 }
                                 : {}),
                         },
                     }
                 );
 
-                const data = await response.json().catch(() => null);
+                const data =
+                    await response.json().catch(
+                        () => null
+                    );
 
                 if (!response.ok) {
                     throw new Error(
@@ -84,12 +102,18 @@ export default function PermitEnvironmentalPage() {
                     );
                 }
 
-                const backendProperty = data?.data || data;
+                const backendProperty =
+                    data?.data || data;
 
                 if (cancelled) return;
 
-                // Update property details using backend data only.
-                // Missing backend fields are shown as N/A.
+                /* =====================================================
+                   PROPERTY INFORMATION
+
+                   Only save actual backend values.
+                   Never replace missing values with N/A.
+                ===================================================== */
+
                 setProperty((previous) => ({
                     ...previous,
                     ...backendProperty,
@@ -97,154 +121,217 @@ export default function PermitEnvironmentalPage() {
                     formattedAddress:
                         backendProperty.formattedAddress ||
                         backendProperty.address ||
-                        "N/A",
+                        previous?.formattedAddress ||
+                        previous?.address ||
+                        "",
 
-                    city: backendProperty.city || "N/A",
+                    city:
+                        backendProperty.city ||
+                        previous?.city ||
+                        "",
 
-                    state: backendProperty.state || "N/A",
+                    state:
+                        backendProperty.state ||
+                        previous?.state ||
+                        "",
 
                     postalCode:
                         backendProperty.postalCode ||
                         backendProperty.zipCode ||
-                        "N/A",
+                        previous?.postalCode ||
+                        "",
 
-                    country: backendProperty.country || "N/A",
+                    country:
+                        backendProperty.country ||
+                        previous?.country ||
+                        "",
                 }));
 
-                // ---------------------------------------------------------
-                // PERMIT RECORDS
-                // ---------------------------------------------------------
+                /* =====================================================
+                   PERMIT RECORDS
+                ===================================================== */
 
-                const backendPermits = Array.isArray(
-                    backendProperty.permits
-                )
-                    ? backendProperty.permits
-                    : [];
+                const backendPermits =
+                    Array.isArray(
+                        backendProperty.permits
+                    )
+                        ? backendProperty.permits
+                        : [];
 
-                if (backendPermits.length > 0) {
-                    setPermitRecords(
-                        backendPermits.map((permit) => ({
+                const cleanedPermits =
+                    backendPermits
+                        .map((permit) => ({
                             permitNumber:
-                                permit.permitNumber ||
-                                permit.permitNo ||
-                                permit.id ||
-                                "N/A",
+                                firstValid(
+                                    permit?.permitNumber,
+                                    permit?.permitNo,
+                                    permit?.number,
+                                    permit?.id
+                                ),
 
                             permitType:
-                                permit.permitType ||
-                                permit.type ||
-                                "N/A",
+                                firstValid(
+                                    permit?.permitType,
+                                    permit?.type
+                                ),
 
                             description:
-                                permit.description ||
-                                permit.details ||
-                                "N/A",
+                                firstValid(
+                                    permit?.description,
+                                    permit?.details
+                                ),
 
-                            issueDate: formatDate(
-                                permit.issueDate ||
-                                permit.issuedDate
-                            ),
+                            issueDate:
+                                formatDate(
+                                    firstValid(
+                                        permit?.issueDate,
+                                        permit?.issuedDate,
+                                        permit?.date
+                                    )
+                                ),
 
                             status:
-                                permit.status ||
-                                "N/A",
+                                firstValid(
+                                    permit?.status
+                                ),
                         }))
-                    );
-                } else {
-                    // No backend records = no fake/demo records.
-                    setPermitRecords([]);
-                }
+                        .map(removeEmptyFields)
+                        .filter(
+                            (permit) =>
+                                Object.keys(permit).length >
+                                0
+                        );
 
-                // ---------------------------------------------------------
-                // ENVIRONMENTAL RECORDS
-                // ---------------------------------------------------------
+                setPermitRecords(cleanedPermits);
+
+                /* =====================================================
+                   ENVIRONMENTAL RECORDS
+                ===================================================== */
 
                 const backendEnvironmental =
-                    backendProperty.environmental || {};
+                    backendProperty.environmental ||
+                    {};
 
                 const backendFloodZone =
-                    backendProperty.floodZone || {};
+                    backendProperty.floodZone ||
+                    {};
+
+                const records = [];
+
+                /* -------------------------
+                   FLOOD RISK
+                ------------------------- */
 
                 const floodRisk =
                     backendFloodZone.riskLevel;
 
+                if (hasValue(floodRisk)) {
+                    records.push({
+                        category: "Flood Risk",
+                        value: String(floodRisk),
+                        status:
+                            getRiskStatus(floodRisk),
+                    });
+                }
+
+                /* -------------------------
+                   CONTAMINATION
+                ------------------------- */
+
                 const hazardFound =
                     backendEnvironmental.hazardFound;
 
-                const environmentalAssessmentDate =
+                const hazardType =
+                    backendEnvironmental.hazardType;
+
+                const assessmentDate =
                     backendEnvironmental.assessmentDate;
 
-                const contaminationValue =
-                    hazardFound === true
-                        ? `${backendEnvironmental.hazardType ||
-                        "Environmental hazard detected"
-                        }${environmentalAssessmentDate
-                            ? ` (Assessment: ${formatDate(
-                                environmentalAssessmentDate
-                            )})`
-                            : ""
-                        }`
-                        : hazardFound === false
-                            ? `No hazard found${environmentalAssessmentDate
-                                ? ` (Assessment: ${formatDate(
-                                    environmentalAssessmentDate
-                                )})`
-                                : ""
-                            }`
-                            : "N/A";
+                if (
+                    hazardFound === true ||
+                    hazardFound === false
+                ) {
+                    let contaminationValue = "";
 
-                setEnvironmentalRecords([
-                    {
-                        category: "Flood Risk",
+                    if (hazardFound === true) {
+                        contaminationValue =
+                            firstValid(
+                                hazardType,
+                                "Environmental hazard detected"
+                            );
+                    } else {
+                        contaminationValue =
+                            "No hazard found";
+                    }
 
-                        value:
-                            floodRisk || "N/A",
+                    if (hasValue(assessmentDate)) {
+                        contaminationValue +=
+                            ` (Assessment: ${formatDate(
+                                assessmentDate
+                            )})`;
+                    }
 
-                        status: floodRisk
-                            ? getRiskStatus(floodRisk)
-                            : "N/A",
-                    },
-
-                    {
+                    records.push({
                         category: "Contamination",
-
                         value: contaminationValue,
-
                         status:
                             hazardFound === true
                                 ? "Review"
-                                : hazardFound === false
-                                    ? "Clear"
-                                    : "N/A",
-                    },
+                                : "Clear",
+                    });
+                }
 
-                    {
-                        category: "Pollution Events",
+                /* -------------------------
+                   POLLUTION EVENTS
 
-                        /*
-                         * The current backend response shown in your
-                         * original file does not provide a pollution-events
-                         * field, so do NOT invent a value.
-                         */
-                        value: "N/A",
+                   Only display if backend
+                   actually provides them.
+                ------------------------- */
 
-                        status: "N/A",
-                    },
+                const pollutionEvents =
+                    backendEnvironmental.pollutionEvents;
 
-                    {
+                if (
+                    Array.isArray(pollutionEvents) &&
+                    pollutionEvents.length > 0
+                ) {
+                    records.push({
+                        category:
+                            "Pollution Events",
+                        value: `${pollutionEvents.length} event${pollutionEvents.length === 1
+                                ? ""
+                                : "s"
+                            }`,
+                        status: "Review",
+                    });
+                }
+
+                /* -------------------------
+                   NEARBY ENVIRONMENTAL SITES
+
+                   Only display if backend
+                   actually provides them.
+                ------------------------- */
+
+                const nearbySites =
+                    backendEnvironmental.nearbySites;
+
+                if (
+                    Array.isArray(nearbySites) &&
+                    nearbySites.length > 0
+                ) {
+                    records.push({
                         category:
                             "Nearby Environmental Sites",
+                        value: `${nearbySites.length} site${nearbySites.length === 1
+                                ? ""
+                                : "s"
+                            }`,
+                        status: "Review",
+                    });
+                }
 
-                        /*
-                         * The current backend response shown in your
-                         * original file does not provide nearby-site data,
-                         * so do NOT invent a value.
-                         */
-                        value: "N/A",
-
-                        status: "N/A",
-                    },
-                ]);
+                setEnvironmentalRecords(records);
             } catch (error) {
                 if (cancelled) return;
 
@@ -280,8 +367,13 @@ export default function PermitEnvironmentalPage() {
         };
     }, [propertyId]);
 
+    /* =========================================================
+       RENDER
+    ========================================================= */
+
     return (
         <main className="min-h-screen bg-[#0b0b0b] text-white">
+
             {/* BACKGROUND */}
 
             <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
@@ -296,6 +388,7 @@ export default function PermitEnvironmentalPage() {
 
             <section className="border-b border-white/10 px-6 pb-20 pt-32 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
+
                     <p className="mb-7 text-xs font-semibold tracking-[0.35em] text-white/35">
                         PERMIT & ENVIRONMENTAL RECORDS
                     </p>
@@ -315,76 +408,129 @@ export default function PermitEnvironmentalPage() {
                         collected during the earlier
                         due-diligence stages.
                     </p>
+
                 </div>
             </section>
 
             {/* SELECTED PROPERTY */}
 
-            <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
-                <div className="mx-auto max-w-[1400px]">
-                    <div className="mb-6 flex items-center justify-between">
-                        <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
-                            SELECTED PROPERTY
-                        </p>
-                    </div>
+            {property && (
+                <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
+                    <div className="mx-auto max-w-[1400px]">
 
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-7 backdrop-blur-xl md:p-9">
-                        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-                            <div>
-                                <p className="text-xs tracking-[0.25em] text-white/25">
-                                    PROPERTY ADDRESS
-                                </p>
-
-                                <h2 className="mt-4 max-w-4xl text-2xl font-light leading-8 text-white/90 md:text-4xl">
-                                    {property?.formattedAddress ||
-                                        property?.address ||
-                                        "N/A"}
-                                </h2>
-                            </div>
-
-                            <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2">
-                                <span
-                                    className={`h-2 w-2 rounded-full ${property
-                                            ? "bg-emerald-400"
-                                            : "bg-white/30"
-                                        }`}
-                                />
-
-                                <span className="text-xs text-white/50">
-                                    {property
-                                        ? "Property Selected"
-                                        : "No Property Selected"}
-                                </span>
-                            </div>
+                        <div className="mb-6 flex items-center justify-between">
+                            <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
+                                SELECTED PROPERTY
+                            </p>
                         </div>
 
-                        <div className="mt-10 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
-                            <DetailCard
-                                label="City"
-                                value={property?.city}
-                            />
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-7 backdrop-blur-xl md:p-9">
 
-                            <DetailCard
-                                label="State"
-                                value={property?.state}
-                            />
+                            <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
 
-                            <DetailCard
-                                label="Postal Code"
-                                value={
-                                    property?.postalCode ||
-                                    property?.zipCode
-                                }
-                            />
+                                <div>
+                                    <p className="text-xs tracking-[0.25em] text-white/25">
+                                        PROPERTY ADDRESS
+                                    </p>
 
-                            <DetailCard
-                                label="Country"
-                                value={property?.country}
-                            />
+                                    {hasValue(
+                                        property?.formattedAddress ||
+                                        property?.address
+                                    ) && (
+                                            <h2 className="mt-4 max-w-4xl text-2xl font-light leading-8 text-white/90 md:text-4xl">
+                                                {
+                                                    property?.formattedAddress ||
+                                                    property?.address
+                                                }
+                                            </h2>
+                                        )}
+                                </div>
+
+                                <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2">
+
+                                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+
+                                    <span className="text-xs text-white/50">
+                                        Property Selected
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                            {/* ONLY SHOW REAL DATA */}
+
+                            {[
+                                {
+                                    label: "City",
+                                    value: property?.city,
+                                },
+                                {
+                                    label: "State",
+                                    value: property?.state,
+                                },
+                                {
+                                    label: "Postal Code",
+                                    value:
+                                        property?.postalCode ||
+                                        property?.zipCode,
+                                },
+                                {
+                                    label: "Country",
+                                    value: property?.country,
+                                },
+                            ].some((item) =>
+                                hasValue(item.value)
+                            ) && (
+                                    <div className="mt-10 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+
+                                        {[
+                                            {
+                                                label: "City",
+                                                value:
+                                                    property?.city,
+                                            },
+                                            {
+                                                label: "State",
+                                                value:
+                                                    property?.state,
+                                            },
+                                            {
+                                                label: "Postal Code",
+                                                value:
+                                                    property?.postalCode ||
+                                                    property?.zipCode,
+                                            },
+                                            {
+                                                label: "Country",
+                                                value:
+                                                    property?.country,
+                                            },
+                                        ]
+                                            .filter((item) =>
+                                                hasValue(
+                                                    item.value
+                                                )
+                                            )
+                                            .map((item) => (
+                                                <DetailCard
+                                                    key={item.label}
+                                                    label={
+                                                        item.label
+                                                    }
+                                                    value={
+                                                        item.value
+                                                    }
+                                                />
+                                            ))}
+
+                                    </div>
+                                )}
+
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* PERMIT RECORDS */}
 
@@ -393,8 +539,11 @@ export default function PermitEnvironmentalPage() {
                 className="px-6 pb-24 sm:px-10 md:px-16 lg:px-24"
             >
                 <div className="mx-auto max-w-[1400px]">
+
                     <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+
                         <div>
+
                             <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
                                 01 / PERMIT RECORDS
                             </p>
@@ -409,6 +558,7 @@ export default function PermitEnvironmentalPage() {
                                 construction permit activity
                                 associated with the property.
                             </p>
+
                         </div>
 
                         <div className="rounded-full border border-white/10 px-5 py-3 text-xs text-white/40">
@@ -416,14 +566,19 @@ export default function PermitEnvironmentalPage() {
                                 ? "Retrieving..."
                                 : `${permitRecords.length} Records`}
                         </div>
+
                     </div>
 
                     {permitLoading && (
-                        <LoadingBox text="Retrieving permit records..." />
+                        <LoadingBox
+                            text="Retrieving permit records..."
+                        />
                     )}
 
                     {permitError && (
-                        <ErrorBox message={permitError} />
+                        <ErrorBox
+                            message={permitError}
+                        />
                     )}
 
                     {!permitLoading &&
@@ -437,8 +592,11 @@ export default function PermitEnvironmentalPage() {
                     {!permitLoading &&
                         !permitError &&
                         permitRecords.length === 0 && (
-                            <EmptyBox text="N/A" />
+                            <EmptyBox
+                                text="No permit records were returned by the backend."
+                            />
                         )}
+
                 </div>
             </section>
 
@@ -449,8 +607,11 @@ export default function PermitEnvironmentalPage() {
                 className="px-6 pb-24 sm:px-10 md:px-16 lg:px-24"
             >
                 <div className="mx-auto max-w-[1400px]">
+
                     <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+
                         <div>
+
                             <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
                                 02 / ENVIRONMENTAL RECORDS
                             </p>
@@ -466,6 +627,7 @@ export default function PermitEnvironmentalPage() {
                                 sites, and other available
                                 environmental findings.
                             </p>
+
                         </div>
 
                         <div className="rounded-full border border-white/10 px-5 py-3 text-xs text-white/40">
@@ -473,10 +635,13 @@ export default function PermitEnvironmentalPage() {
                                 ? "Retrieving..."
                                 : `${environmentalRecords.length} Checks`}
                         </div>
+
                     </div>
 
                     {environmentalLoading && (
-                        <LoadingBox text="Retrieving environmental records..." />
+                        <LoadingBox
+                            text="Retrieving environmental records..."
+                        />
                     )}
 
                     {environmentalError && (
@@ -489,6 +654,7 @@ export default function PermitEnvironmentalPage() {
                         !environmentalError &&
                         environmentalRecords.length > 0 && (
                             <div className="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2">
+
                                 {environmentalRecords.map(
                                     (record, index) => (
                                         <EnvironmentalCard
@@ -497,14 +663,18 @@ export default function PermitEnvironmentalPage() {
                                         />
                                     )
                                 )}
+
                             </div>
                         )}
 
                     {!environmentalLoading &&
                         !environmentalError &&
                         environmentalRecords.length === 0 && (
-                            <EmptyBox text="N/A" />
+                            <EmptyBox
+                                text="No environmental records were returned by the backend."
+                            />
                         )}
+
                 </div>
             </section>
 
@@ -512,7 +682,9 @@ export default function PermitEnvironmentalPage() {
 
             <section className="px-6 pb-24 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
+
                     <div className="mb-8">
+
                         <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
                             DUE DILIGENCE SUMMARY
                         </p>
@@ -528,9 +700,11 @@ export default function PermitEnvironmentalPage() {
                             deciding whether you want to
                             proceed with the property.
                         </p>
+
                     </div>
 
                     <div className="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 md:grid-cols-2">
+
                         <SummaryCard
                             number="01"
                             title="Property Search"
@@ -598,6 +772,7 @@ export default function PermitEnvironmentalPage() {
                             }
                             href="#environmental-records"
                         />
+
                     </div>
                 </div>
             </section>
@@ -606,13 +781,17 @@ export default function PermitEnvironmentalPage() {
 
             <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
+
                     <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 md:p-12 lg:p-14">
+
                         <p className="text-xs font-semibold tracking-[0.35em] text-white/30">
                             FINAL REVIEW
                         </p>
 
                         <div className="mt-6 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+
                             <div>
+
                                 <h2 className="text-4xl font-light tracking-tight md:text-5xl">
                                     Make your decision.
                                 </h2>
@@ -626,28 +805,31 @@ export default function PermitEnvironmentalPage() {
                                     decide how you want to
                                     proceed with the property.
                                 </p>
+
                             </div>
 
-                            <div className="rounded-2xl border border-white/10 bg-black/20 px-8 py-7 text-center">
-                                <p className="text-xs tracking-[0.25em] text-white/25">
-                                    PROPERTY STATUS
-                                </p>
+                            {property && (
+                                <div className="rounded-2xl border border-white/10 bg-black/20 px-8 py-7 text-center">
 
-                                <p className="mt-4 text-2xl font-light text-white/80">
-                                    {property
-                                        ? "Ready for Review"
-                                        : "N/A"}
-                                </p>
+                                    <p className="text-xs tracking-[0.25em] text-white/25">
+                                        PROPERTY STATUS
+                                    </p>
 
-                                <p className="mt-2 text-xs text-white/30">
-                                    {property
-                                        ? "Information available"
-                                        : "No property selected"}
-                                </p>
-                            </div>
+                                    <p className="mt-4 text-2xl font-light text-white/80">
+                                        Ready for Review
+                                    </p>
+
+                                    <p className="mt-2 text-xs text-white/30">
+                                        Information available
+                                    </p>
+
+                                </div>
+                            )}
+
                         </div>
 
                         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+
                             <a
                                 href="/due-diligence-report"
                                 className="inline-flex items-center justify-center gap-4 rounded-full border border-white/20 px-9 py-5 text-sm font-medium transition duration-300 hover:bg-white hover:text-black"
@@ -669,7 +851,9 @@ export default function PermitEnvironmentalPage() {
                                     ←
                                 </span>
                             </a>
+
                         </div>
+
                     </div>
                 </div>
             </section>
@@ -677,16 +861,75 @@ export default function PermitEnvironmentalPage() {
             {/* FOOTER */}
 
             <footer className="border-t border-white/10 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
+
                 <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs text-white/25 md:flex-row">
-                    <span>PROP DUE</span>
+
+                    <span>
+                        PROP DUE
+                    </span>
 
                     <span>
                         PROPERTY DUE DILIGENCE PLATFORM
                     </span>
+
                 </div>
+
             </footer>
+
         </main>
     );
+}
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function hasValue(value) {
+    if (value === null || value === undefined) {
+        return false;
+    }
+
+    const text = String(value).trim();
+
+    if (!text) return false;
+
+    const invalidValues = [
+        "n/a",
+        "na",
+        "not available",
+        "not provided",
+        "null",
+        "undefined",
+        "-"
+    ];
+
+    return !invalidValues.includes(
+        text.toLowerCase()
+    );
+}
+
+function firstValid(...values) {
+    for (const value of values) {
+        if (hasValue(value)) {
+            return value;
+        }
+    }
+
+    return null;
+}
+
+function removeEmptyFields(record) {
+    const cleaned = {};
+
+    Object.entries(record).forEach(
+        ([key, value]) => {
+            if (hasValue(value)) {
+                cleaned[key] = value;
+            }
+        }
+    );
+
+    return cleaned;
 }
 
 /* =========================================================
@@ -694,19 +937,24 @@ export default function PermitEnvironmentalPage() {
 ========================================================= */
 
 function formatDate(value) {
-    if (!value) return "N/A";
+    if (!hasValue(value)) {
+        return null;
+    }
 
     const date = new Date(value);
 
     if (Number.isNaN(date.getTime())) {
-        return value || "N/A";
+        return String(value);
     }
 
-    return date.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-    });
+    return date.toLocaleDateString(
+        "en-GB",
+        {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+        }
+    );
 }
 
 /* =========================================================
@@ -714,9 +962,12 @@ function formatDate(value) {
 ========================================================= */
 
 function getRiskStatus(riskLevel) {
-    const risk = String(riskLevel).toLowerCase();
+    const risk =
+        String(riskLevel).toLowerCase();
 
-    if (risk === "low") return "Low";
+    if (risk === "low") {
+        return "Low";
+    }
 
     if (
         risk === "medium" ||
@@ -732,23 +983,32 @@ function getRiskStatus(riskLevel) {
         return "Review";
     }
 
-    return "N/A";
+    return "Review";
 }
 
 /* =========================================================
    DETAIL CARD
 ========================================================= */
 
-function DetailCard({ label, value }) {
+function DetailCard({
+    label,
+    value,
+}) {
+    if (!hasValue(value)) {
+        return null;
+    }
+
     return (
         <div className="bg-[#101010] p-6">
+
             <p className="text-xs tracking-[0.2em] text-white/25">
                 {label}
             </p>
 
             <p className="mt-4 break-words text-base font-medium text-white/80">
-                {value || "N/A"}
+                {value}
             </p>
+
         </div>
     );
 }
@@ -757,28 +1017,76 @@ function DetailCard({ label, value }) {
    PERMIT TABLE
 ========================================================= */
 
-function PermitTable({ records }) {
+function PermitTable({
+    records,
+}) {
+    const columns = [
+        {
+            key: "permitNumber",
+            label: "PERMIT NUMBER",
+        },
+        {
+            key: "permitType",
+            label: "TYPE",
+        },
+        {
+            key: "description",
+            label: "DESCRIPTION",
+        },
+        {
+            key: "issueDate",
+            label: "ISSUE DATE",
+        },
+        {
+            key: "status",
+            label: "STATUS",
+        },
+    ];
+
+    const availableColumns =
+        columns.filter((column) =>
+            records.some((record) =>
+                hasValue(
+                    record?.[column.key]
+                )
+            )
+        );
+
+    if (availableColumns.length === 0) {
+        return null;
+    }
+
     return (
         <div className="overflow-hidden rounded-2xl border border-white/10">
-            <div className="hidden grid-cols-5 border-b border-white/10 bg-white/[0.025] px-6 py-4 text-xs tracking-[0.2em] text-white/25 md:grid">
-                <span>PERMIT NUMBER</span>
 
-                <span>TYPE</span>
-
-                <span>DESCRIPTION</span>
-
-                <span>ISSUE DATE</span>
-
-                <span>STATUS</span>
+            <div
+                className="hidden border-b border-white/10 bg-white/[0.025] px-6 py-4 text-xs tracking-[0.2em] text-white/25 md:grid"
+                style={{
+                    gridTemplateColumns:
+                        `repeat(${availableColumns.length}, minmax(0, 1fr))`,
+                }}
+            >
+                {availableColumns.map(
+                    (column) => (
+                        <span key={column.key}>
+                            {column.label}
+                        </span>
+                    )
+                )}
             </div>
 
-            {records.map((record, index) => (
-                <PermitRow
-                    key={`${record.permitNumber || "permit"
-                        }-${index}`}
-                    record={record}
-                />
-            ))}
+            {records.map(
+                (record, index) => (
+                    <PermitRow
+                        key={`${record.permitNumber || "permit"}-${index}`}
+                        record={record}
+                        columns={
+                            availableColumns
+                        }
+                    />
+                )
+            )}
+
         </div>
     );
 }
@@ -787,84 +1095,64 @@ function PermitTable({ records }) {
    PERMIT ROW
 ========================================================= */
 
-function PermitRow({ record }) {
-    const permitNumber =
-        record?.permitNumber ||
-        record?.permitNo ||
-        record?.number ||
-        record?.id ||
-        "N/A";
-
-    const permitType =
-        record?.permitType ||
-        record?.type ||
-        "N/A";
-
-    const description =
-        record?.description ||
-        record?.details ||
-        "N/A";
-
-    const issueDate =
-        record?.issueDate ||
-        record?.date ||
-        "N/A";
-
-    const status =
-        record?.status ||
-        "N/A";
-
+function PermitRow({
+    record,
+    columns,
+}) {
     return (
-        <div className="grid gap-5 border-b border-white/10 px-6 py-7 last:border-b-0 md:grid-cols-5 md:items-center">
-            <div>
-                <p className="text-xs tracking-[0.15em] text-white/25 md:hidden">
-                    PERMIT NUMBER
-                </p>
+        <div
+            className="grid gap-5 border-b border-white/10 px-6 py-7 last:border-b-0 md:items-center"
+            style={{
+                gridTemplateColumns:
+                    `repeat(${columns.length}, minmax(0, 1fr))`,
+            }}
+        >
+            {columns.map(
+                (column) => {
+                    const value =
+                        record?.[
+                        column.key
+                        ];
 
-                <p className="mt-2 text-sm font-medium text-white/80 md:mt-0">
-                    {permitNumber}
-                </p>
-            </div>
+                    if (!hasValue(value)) {
+                        return (
+                            <div
+                                key={
+                                    column.key
+                                }
+                                className="hidden md:block"
+                            />
+                        );
+                    }
 
-            <div>
-                <p className="text-xs tracking-[0.15em] text-white/25 md:hidden">
-                    TYPE
-                </p>
+                    return (
+                        <div
+                            key={
+                                column.key
+                            }
+                        >
 
-                <p className="mt-2 text-sm text-white/60 md:mt-0">
-                    {permitType}
-                </p>
-            </div>
+                            <p className="text-xs tracking-[0.15em] text-white/25 md:hidden">
+                                {
+                                    column.label
+                                }
+                            </p>
 
-            <div>
-                <p className="text-xs tracking-[0.15em] text-white/25 md:hidden">
-                    DESCRIPTION
-                </p>
+                            {column.key ===
+                                "status" ? (
+                                <span className="mt-2 inline-flex rounded-full border border-emerald-400/20 px-3 py-1 text-xs text-emerald-400/70 md:mt-0">
+                                    {value}
+                                </span>
+                            ) : (
+                                <p className="mt-2 text-sm text-white/60 md:mt-0">
+                                    {value}
+                                </p>
+                            )}
 
-                <p className="mt-2 text-sm text-white/50 md:mt-0">
-                    {description}
-                </p>
-            </div>
-
-            <div>
-                <p className="text-xs tracking-[0.15em] text-white/25 md:hidden">
-                    ISSUE DATE
-                </p>
-
-                <p className="mt-2 text-sm text-white/50 md:mt-0">
-                    {issueDate}
-                </p>
-            </div>
-
-            <div>
-                <p className="text-xs tracking-[0.15em] text-white/25 md:hidden">
-                    STATUS
-                </p>
-
-                <span className="mt-2 inline-flex rounded-full border border-emerald-400/20 px-3 py-1 text-xs text-emerald-400/70 md:mt-0">
-                    {status}
-                </span>
-            </div>
+                        </div>
+                    );
+                }
+            )}
         </div>
     );
 }
@@ -873,31 +1161,51 @@ function PermitRow({ record }) {
    ENVIRONMENTAL CARD
 ========================================================= */
 
-function EnvironmentalCard({ record }) {
+function EnvironmentalCard({
+    record,
+}) {
+    if (!record) {
+        return null;
+    }
+
     const category =
-        record?.category ||
-        record?.type ||
-        record?.name ||
-        "Environmental Check";
+        firstValid(
+            record?.category,
+            record?.type,
+            record?.name
+        );
 
     const value =
-        record?.value ||
-        record?.description ||
-        record?.details ||
-        "N/A";
+        firstValid(
+            record?.value,
+            record?.description,
+            record?.details
+        );
 
     const status =
-        record?.status ||
-        "N/A";
+        firstValid(
+            record?.status
+        );
+
+    if (
+        !hasValue(category) ||
+        !hasValue(value)
+    ) {
+        return null;
+    }
 
     const review =
-        status.toLowerCase() === "review" ||
-        status.toLowerCase() === "moderate";
+        String(status || "")
+            .toLowerCase() ===
+        "review";
 
     return (
         <div className="bg-[#101010] p-7 md:p-9">
+
             <div className="flex items-start justify-between gap-5">
+
                 <div>
+
                     <p className="text-xs tracking-[0.2em] text-white/25">
                         {category}
                     </p>
@@ -905,17 +1213,22 @@ function EnvironmentalCard({ record }) {
                     <p className="mt-5 text-xl font-light text-white/80">
                         {value}
                     </p>
+
                 </div>
 
-                <span
-                    className={`shrink-0 rounded-full border px-3 py-1 text-xs ${review
-                            ? "border-yellow-400/20 text-yellow-400/70"
-                            : "border-emerald-400/20 text-emerald-400/70"
-                        }`}
-                >
-                    {status}
-                </span>
+                {hasValue(status) && (
+                    <span
+                        className={`shrink-0 rounded-full border px-3 py-1 text-xs ${review
+                                ? "border-yellow-400/20 text-yellow-400/70"
+                                : "border-emerald-400/20 text-emerald-400/70"
+                            }`}
+                    >
+                        {status}
+                    </span>
+                )}
+
             </div>
+
         </div>
     );
 }
@@ -936,13 +1249,17 @@ function SummaryCard({
             href={href}
             className="group bg-[#101010] p-7 transition duration-300 hover:bg-white/[0.04] md:p-9"
         >
+
             <div className="flex items-start justify-between gap-6">
+
                 <div className="flex gap-6">
+
                     <span className="text-xs tracking-[0.2em] text-white/20">
                         {number}
                     </span>
 
                     <div>
+
                         <h3 className="text-xl font-light text-white/80 transition group-hover:text-white">
                             {title}
                         </h3>
@@ -950,21 +1267,27 @@ function SummaryCard({
                         <p className="mt-3 max-w-md text-sm leading-6 text-white/35">
                             {description}
                         </p>
+
                     </div>
+
                 </div>
 
                 <span className="shrink-0 rounded-full border border-white/10 px-3 py-1 text-xs text-white/40">
                     {status}
                 </span>
+
             </div>
 
             <div className="mt-7 flex items-center justify-end text-sm text-white/20 transition group-hover:text-white/70">
+
                 Review
 
                 <span className="ml-2 text-lg">
                     →
                 </span>
+
             </div>
+
         </a>
     );
 }
@@ -973,16 +1296,22 @@ function SummaryCard({
    LOADING BOX
 ========================================================= */
 
-function LoadingBox({ text }) {
+function LoadingBox({
+    text,
+}) {
     return (
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8">
+
             <div className="flex items-center gap-4">
+
                 <span className="h-5 w-5 animate-spin rounded-full border border-white/20 border-t-white" />
 
                 <p className="text-sm text-white/50">
                     {text}
                 </p>
+
             </div>
+
         </div>
     );
 }
@@ -991,10 +1320,14 @@ function LoadingBox({ text }) {
    ERROR BOX
 ========================================================= */
 
-function ErrorBox({ message }) {
+function ErrorBox({
+    message,
+}) {
     return (
         <div className="rounded-2xl border border-red-400/10 bg-red-400/[0.04] p-7">
+
             <div className="flex items-start gap-3">
+
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-red-400/40 text-xs text-red-400">
                     !
                 </span>
@@ -1002,7 +1335,9 @@ function ErrorBox({ message }) {
                 <p className="text-sm leading-6 text-red-300/80">
                     {message}
                 </p>
+
             </div>
+
         </div>
     );
 }
@@ -1011,12 +1346,16 @@ function ErrorBox({ message }) {
    EMPTY BOX
 ========================================================= */
 
-function EmptyBox({ text }) {
+function EmptyBox({
+    text,
+}) {
     return (
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8">
+
             <p className="text-sm text-white/40">
                 {text}
             </p>
+
         </div>
     );
 }
