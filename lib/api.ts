@@ -710,6 +710,7 @@ export type ReportResponse = {
     basis?: string;
   };
   executiveSummary?: string;
+  summaryPoints?: string[];
   status?: string;
   generatedAt?: string;
   risk?: RiskAssessment;

@@ -82,13 +82,13 @@ function StatusBadge({ status }: { status?: string }) {
 function tierClass(tier?: string) {
   switch (tier) {
     case 'LOW':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      return 'bg-teal-50 text-teal-800 border-teal-200';
     case 'MODERATE':
-      return 'bg-blue-50 text-blue-700 border-blue-200';
+      return 'bg-amber-50 text-amber-800 border-amber-200';
     case 'ELEVATED':
-      return 'bg-amber-50 text-amber-700 border-amber-200';
+      return 'bg-orange-50 text-orange-800 border-orange-200';
     case 'HIGH':
-      return 'bg-rose-50 text-rose-700 border-rose-200';
+      return 'bg-rose-50 text-rose-800 border-rose-200';
     default:
       // INSUFFICIENT_DATA and anything unknown: neutral gray
       return 'bg-slate-100 text-slate-600 border-slate-200';
@@ -96,16 +96,20 @@ function tierClass(tier?: string) {
 }
 
 /** Hex colors matching the risk tiers (0–100, higher = riskier). */
+/** Muted enterprise risk palette (0–100, higher = riskier). Desaturated
+ *  deep tones — text labels carry the meaning, color is a secondary cue. */
 function scoreHex(v: number): string {
-  if (v >= 55) return '#e11d48'; // rose-600 HIGH
-  if (v >= 20) return '#f59e0b'; // amber-500 ELEVATED
-  return '#10b981'; // emerald-500 LOW/MODERATE
+  if (v >= 55) return '#be123c'; // deep rose HIGH
+  if (v >= 40) return '#c2410c'; // muted orange ELEVATED
+  if (v >= 20) return '#b45309'; // muted gold MODERATE
+  return '#0f766e'; // muted teal LOW
 }
 
 function scoreChipClass(v: number): string {
-  if (v >= 55) return 'bg-rose-50 text-rose-700 border-rose-200';
-  if (v >= 20) return 'bg-amber-50 text-amber-700 border-amber-200';
-  return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (v >= 55) return 'bg-rose-50 text-rose-800 border-rose-200';
+  if (v >= 40) return 'bg-orange-50 text-orange-800 border-orange-200';
+  if (v >= 20) return 'bg-amber-50 text-amber-800 border-amber-200';
+  return 'bg-teal-50 text-teal-800 border-teal-200';
 }
 
 /**
@@ -321,7 +325,7 @@ function MarketTrendChart({
           {t.demandPulse != null && (
             <span
               className={`whitespace-nowrap text-[10px] font-semibold ${
-                t.demandPulse >= 0.5 ? 'text-emerald-600' : 'text-rose-600'
+                t.demandPulse >= 0.5 ? 'text-teal-800' : 'text-rose-800'
               }`}
             >
               demand {t.demandPulse}
@@ -889,20 +893,27 @@ function PropertyDetailsContent() {
             )}
             {aggregationStage && (
               <div className="mt-4 space-y-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-500">
-                    Run #{aggregationStage.aggregationRunId}
-                    <span className={aggregationStage.status === 'COMPLETED' ? ' text-emerald-600' : ' text-amber-600'}>
-                      {' '}· {aggregationStage.status.replaceAll('_', ' ')}
+                {aggregationStage.completedAt && (
+                  <div className="flex items-center gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-4 w-4 text-emerald-600"
+                      aria-hidden
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.308l-4.784 4.015-1.9-1.9a.75.75 0 1 0-1.06 1.06l2.424 2.425a.75.75 0 0 0 1.02.037l5.328-4.019a.75.75 0 0 0 .186-1.31Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span className="text-xs font-medium text-slate-600">
+                      Research completed {formatDateTime(aggregationStage.completedAt)}
                     </span>
-                  </span>
-                  {aggregationStage.completedAt && (
-                    <span className="text-xs text-slate-400">
-                      Completed {formatDateTime(aggregationStage.completedAt)}
-                    </span>
-                  )}
-                </div>
-                {aggregationStage.observations && aggregationStage.observations.length > 0 ? (
+                  </div>
+                )}
+                {aggregationStage.observations && aggregationStage.observations.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {aggregationStage.observations.map((o, i) => (
                       <span
@@ -917,10 +928,6 @@ function PropertyDetailsContent() {
                       </span>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-xs text-slate-400">
-                    Section details are shown when the research run completes. Re-run to refresh them.
-                  </p>
                 )}
 
                 {/* Risk scoring parameters — visible once the scoring has run */}
@@ -1040,8 +1047,8 @@ function PropertyDetailsContent() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Market Position</p>
                   <p className={`mt-1 text-sm font-semibold ${
-                    marketStage.positioning.verdict === 'BELOW_MARKET' ? 'text-emerald-600'
-                    : marketStage.positioning.verdict === 'ABOVE_MARKET' ? 'text-rose-600'
+                    marketStage.positioning.verdict === 'BELOW_MARKET' ? 'text-teal-800'
+                    : marketStage.positioning.verdict === 'ABOVE_MARKET' ? 'text-rose-800'
                     : 'text-slate-700'}`}>
                     {marketStage.positioning.verdict === 'BELOW_MARKET' && marketStage.positioning.deltaPercent !== undefined
                       ? `${Math.abs(marketStage.positioning.deltaPercent)}% below market`
@@ -1177,16 +1184,6 @@ function PropertyDetailsContent() {
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                       Report #{report.reportId}
                     </p>
-                    {report.aggregationRunId && (
-                      <p className="mt-1 inline-block rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-500">
-                        Research run #{report.aggregationRunId}
-                        {report.aggregationStatus && (
-                          <span className={report.aggregationStatus === 'COMPLETED' ? ' text-emerald-600' : ' text-amber-600'}>
-                            {' '}· {report.aggregationStatus.replaceAll('_', ' ')}
-                          </span>
-                        )}
-                      </p>
-                    )}
                     <p className="mt-1 text-xs text-slate-500">
                       Generated {formatDateTime(report.generatedAt)}
                     </p>
@@ -1200,9 +1197,19 @@ function PropertyDetailsContent() {
                 <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
                   Executive Summary
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                  {report.executiveSummary}
-                </p>
+                {report.summaryPoints && report.summaryPoints.length > 0 ? (
+                  <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-700">
+                    {report.summaryPoints.map((point, i) => (
+                      <li key={i} className={i === 0 ? 'font-semibold' : ''}>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                    {report.executiveSummary}
+                  </p>
+                )}
                 {report.marketPosition && report.marketPosition.verdict !== 'NO_COMPARABLES'
                   && report.marketPosition.verdict !== 'UNKNOWN' && (
                   <p className="mt-3 inline-block rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">

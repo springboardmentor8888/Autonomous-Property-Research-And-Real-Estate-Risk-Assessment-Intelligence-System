@@ -25,6 +25,16 @@ public class ReportResponse {
     private String propertyAddress;
     private String riskTier;
     private String executiveSummary;
+
+    /**
+     * Point-wise rendering of the executive summary for on-screen review —
+     * headline risk profile, one bullet per material concern, ownership,
+     * market positioning and data coverage. Computed on read so previously
+     * generated reports also get bullets; the stored paragraph remains the
+     * source for PDF/Excel/email.
+     */
+    private java.util.List<String> summaryPoints;
+
     private String status;
     private LocalDateTime generatedAt;
 

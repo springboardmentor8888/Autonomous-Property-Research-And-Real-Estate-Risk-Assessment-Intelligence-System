@@ -331,10 +331,10 @@ export default function AdminDashboard() {
             const a = dashboardStats.analytics;
             const risk = a.riskDistribution;
             const riskBars: Array<{ label: string; count: number; color: string }> = [
-              { label: 'Low', count: risk.low, color: 'bg-emerald-500' },
-              { label: 'Moderate', count: risk.moderate, color: 'bg-amber-500' },
-              { label: 'Elevated', count: risk.elevated, color: 'bg-orange-500' },
-              { label: 'High', count: risk.high, color: 'bg-red-500' },
+              { label: 'Low', count: risk.low, color: 'bg-teal-600' },
+              { label: 'Moderate', count: risk.moderate, color: 'bg-amber-600' },
+              { label: 'Elevated', count: risk.elevated, color: 'bg-orange-600' },
+              { label: 'High', count: risk.high, color: 'bg-rose-600' },
             ];
             const maxRisk = Math.max(1, ...riskBars.map((b) => b.count));
             const api = a.apiStats;

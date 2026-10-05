@@ -174,6 +174,48 @@ class ReportServiceTest {
     }
 
     @Test
+    void summaryPointsRenderPointWiseForHighRiskProperty() {
+        Property property = property(1004);
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+                DiligenceDataResponse.builder()
+                        .ownership(DiligenceDataResponse.OwnershipRecord.builder()
+                                .ownershipType("FREEHOLD").build())
+                        .tax(DiligenceDataResponse.TaxRecord.builder()
+                                .paymentStatus("OVERDUE").build())
+                        .permits(List.of(DiligenceDataResponse.PermitRecord.builder()
+                                .permitStatus("PENDING").build()))
+                        .zoning(DiligenceDataResponse.ZoningRecord.builder()
+                                .zoningStatus("PENDING").build())
+                        .flood(DiligenceDataResponse.FloodRecord.builder()
+                                .riskLevel("HIGH").build())
+                        .environmental(DiligenceDataResponse.EnvironmentalRecord.builder()
+                                .status("FLAGGED").build())
+                        .comparables(List.of(
+                                DiligenceDataResponse.ComparableRecord.builder().build(),
+                                DiligenceDataResponse.ComparableRecord.builder().build()))
+                        .build(),
+                noMarket());
+
+        ReportResponse response = service.generate(1004L, 1L);
+        List<String> points = response.getSummaryPoints();
+
+        assertThat(points).isNotNull();
+        assertThat(points).isNotEmpty();
+        // Headline bullet carries the tier and score.
+        assertThat(points.get(0)).isEqualTo("Overall risk profile: HIGH (56.5/100)");
+        // One bullet per material concern.
+        assertThat(points).anyMatch(p -> p.contains("Property tax payments are overdue"));
+        assertThat(points).anyMatch(p -> p.contains("high-risk flood zone"));
+        assertThat(points).anyMatch(p -> p.contains("pending approval"));
+        assertThat(points).anyMatch(p -> p.contains("environmental review is flagged"));
+        // Ownership bullet.
+        assertThat(points).anyMatch(p -> p.contains("Ownership: Freehold"));
+        // Data coverage bullet.
+        assertThat(points).anyMatch(p -> p.contains("Data coverage: 6 of 8 record types"));
+        assertThat(points).anyMatch(p -> p.contains("2 comparable listings"));
+    }
+
+    @Test
     void summaryIncludesMarketPositioningWhenComparablesExist() {
         Property property = property(1004);
         stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),

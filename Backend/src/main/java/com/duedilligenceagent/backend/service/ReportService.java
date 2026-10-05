@@ -155,6 +155,7 @@ public class ReportService {
                 .propertyAddress(property.getAddress())
                 .riskTier(assessment == null ? "UNKNOWN" : RiskAssessmentService.tierOf(assessment.getOverallScore()))
                 .executiveSummary(report.getExecutiveSummary())
+                .summaryPoints(summaryPoints(assessment, diligence, marketAnalysis, toCoverage(diligence)))
                 .status(report.getStatus())
                 .generatedAt(report.getGeneratedAt())
                 .aggregationRunId(report.getAggregationRunId())
@@ -305,6 +306,75 @@ public class ReportService {
 
         sb.append(completenessLine(coverage));
         return sb.toString().trim();
+    }
+
+    /**
+     * Point-wise executive summary for on-screen review: a headline risk
+     * bullet, one bullet per material concern, ownership, market
+     * positioning and data coverage. Mirrors the paragraph builder so the
+     * two never disagree.
+     */
+    private List<String> summaryPoints(RiskAssessmentDetails assessment,
+                                       DiligenceDataResponse diligence,
+                                       MarketAnalysisResponse marketAnalysis,
+                                       ReportResponse.DataCoverage coverage) {
+        List<String> points = new ArrayList<>();
+
+        if (assessment == null || assessment.getOverallScore() == null) {
+            points.add("Overall risk profile: could not be assessed — no diligence records on file");
+            if (coverage != null && coverage.getMissingSections() != null
+                    && !coverage.getMissingSections().isEmpty()) {
+                points.add("Unsourced sections: " + String.join(", ", coverage.getMissingSections()));
+            }
+            return points;
+        }
+
+        String tier = RiskAssessmentService.tierOf(assessment.getOverallScore());
+        points.add("Overall risk profile: " + tier + " ("
+                + assessment.getOverallScore().stripTrailingZeros().toPlainString() + "/100)");
+
+        List<String> concerns = concerns(assessment, diligence);
+        if (concerns.isEmpty()) {
+            points.add("No material concerns identified in the available diligence records");
+        } else {
+            points.addAll(concerns);
+        }
+
+        if (diligence.getOwnership() != null) {
+            points.add("Ownership: " + humanize(diligence.getOwnership().getOwnershipType()));
+        }
+
+        if (marketAnalysis != null && marketAnalysis.getPositioning() != null
+                && marketAnalysis.getPositioning().getDeltaPercent() != null) {
+            BigDecimal delta = marketAnalysis.getPositioning().getDeltaPercent();
+            String verdict = marketAnalysis.getPositioning().getVerdict();
+            if ("BELOW_MARKET".equals(verdict)) {
+                points.add("Market position: priced " + delta.abs().toPlainString() + "% below comparable average");
+            } else if ("ABOVE_MARKET".equals(verdict)) {
+                points.add("Market position: priced " + delta.toPlainString() + "% above comparable average");
+            } else if ("ALIGNED".equals(verdict)) {
+                points.add("Market position: in line with the comparable market");
+            }
+        }
+
+        if (coverage != null) {
+            int have = 0;
+            if (coverage.isOwnershipRecord()) have++;
+            if (coverage.isTaxRecord()) have++;
+            if (coverage.isPermitRecord()) have++;
+            if (coverage.isZoningRecord()) have++;
+            if (coverage.isFloodRecord()) have++;
+            if (coverage.isEnvironmentalRecord()) have++;
+            if (coverage.isUtilityRecords()) have++;
+            int comparables = coverage.getComparablesCount() == null ? 0 : coverage.getComparablesCount();
+            points.add("Data coverage: " + have + " of 8 record types"
+                    + (comparables > 0 ? " · " + comparables + " comparable listings" : "")
+                    + ((coverage.getMissingSections() == null || coverage.getMissingSections().isEmpty())
+                        ? " · complete coverage"
+                        : " · missing: " + String.join(", ", coverage.getMissingSections())));
+        }
+
+        return points;
     }
 
     private List<String> concerns(RiskAssessmentDetails assessment, DiligenceDataResponse diligence) {
