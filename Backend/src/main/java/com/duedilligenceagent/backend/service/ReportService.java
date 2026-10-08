@@ -13,6 +13,7 @@ import com.duedilligenceagent.backend.repositories.AggregationRunRepository;
 import com.duedilligenceagent.backend.repositories.DueDiligenceReportRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import com.duedilligenceagent.backend.repositories.RiskAssessmentDetailsRepository;
+import com.duedilligenceagent.backend.repositories.SupportingDocsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,7 @@ public class ReportService {
     private final PropertyRepository propertyRepository;
     private final DueDiligenceReportRepository reportRepository;
     private final RiskAssessmentDetailsRepository riskAssessmentRepository;
+    private final SupportingDocsRepository supportingDocsRepository;
     private final RiskAssessmentService riskAssessmentService;
     private final DiligenceService diligenceService;
     private final AggregationRunRepository aggregationRunRepository;
@@ -155,6 +157,13 @@ public class ReportService {
                 .propertyAddress(property.getAddress())
                 .riskTier(assessment == null ? "UNKNOWN" : RiskAssessmentService.tierOf(assessment.getOverallScore()))
                 .executiveSummary(report.getExecutiveSummary())
+                .propertyInfo(property == null ? null : ReportResponse.PropertyInfo.builder()
+                        .propertyType(property.getPropertyType())
+                        .locality(property.getLocality())
+                        .city(property.getCity())
+                        .price(property.getPrice())
+                        .reraId(property.getReraId())
+                        .build())
                 .summaryPoints(summaryPoints(assessment, diligence, marketAnalysis, toCoverage(diligence)))
                 .status(report.getStatus())
                 .generatedAt(report.getGeneratedAt())
@@ -167,6 +176,19 @@ public class ReportService {
                                 .basis(marketAnalysis.getPositioning().getBasis())
                                 .build())
                 .risk(toRiskResponse(assessment))
+                .timeline(timeline(diligence))
+                .findings(findings(diligence))
+                .verdict(verdict(assessment, diligence, toCoverage(diligence)))
+                .documents(supportingDocsRepository.findByPropertyIdOrderByUploadedAtDesc(
+                                report.getPropertyId()).stream()
+                        .map(doc -> ReportResponse.DocumentInfo.builder()
+                                .documentId(doc.getDocumentId())
+                                .fileName(doc.getFileName())
+                                .fileType(doc.getFileType())
+                                .uploadedAt(doc.getUploadedAt())
+                                .build())
+                        .toList())
+                .riskBasis(riskBasis(assessment, diligence))
                 .records(toRecordStatuses(diligence))
                 .coverage(toCoverage(diligence))
                 .build();
@@ -375,6 +397,271 @@ public class ReportService {
         }
 
         return points;
+    }
+
+    /**
+     * Property timeline derived from diligence record dates — newest first.
+     * PropertyHistory is a record-snapshot table, so events are derived
+     * from the dates on the stored diligence records.
+     */
+    private List<ReportResponse.TimelineEvent> timeline(DiligenceDataResponse diligence) {
+        List<ReportResponse.TimelineEvent> events = new ArrayList<>();
+        if (diligence.getOwnership() != null && diligence.getOwnership().getRecordDate() != null) {
+            events.add(ReportResponse.TimelineEvent.builder()
+                    .date(diligence.getOwnership().getRecordDate())
+                    .eventType("OWNERSHIP")
+                    .description("Ownership recorded as "
+                            + humanize(diligence.getOwnership().getOwnershipType())
+                            + (diligence.getOwnership().getOwnerName() != null
+                                ? " — " + diligence.getOwnership().getOwnerName() : ""))
+                    .source(diligence.getOwnership().getSource())
+                    .build());
+        }
+        if (diligence.getTax() != null && diligence.getTax().getTaxPayDate() != null) {
+            events.add(ReportResponse.TimelineEvent.builder()
+                    .date(diligence.getTax().getTaxPayDate())
+                    .eventType("TAX")
+                    .description("Property tax payment — "
+                            + lowerHuman(diligence.getTax().getPaymentStatus())
+                            + (diligence.getTax().getTaxAmount() != null
+                                ? " (₹" + diligence.getTax().getTaxAmount().toPlainString() + ")" : ""))
+                    .source(diligence.getTax().getSource())
+                    .build());
+        }
+        if (diligence.getPermits() != null) {
+            for (DiligenceDataResponse.PermitRecord permit : diligence.getPermits()) {
+                if (permit.getIssueDate() != null) {
+                    events.add(ReportResponse.TimelineEvent.builder()
+                            .date(permit.getIssueDate())
+                            .eventType("PERMIT")
+                            .description("Building permit "
+                                    + (permit.getPermitNumber() != null ? permit.getPermitNumber() + " " : "")
+                                    + lowerHuman(permit.getPermitStatus()))
+                            .source(permit.getPermitType())
+                            .build());
+                }
+                if (permit.getCompletionDate() != null) {
+                    events.add(ReportResponse.TimelineEvent.builder()
+                            .date(permit.getCompletionDate())
+                            .eventType("PERMIT")
+                            .description("Permitted works completed"
+                                    + (permit.getPermitNumber() != null
+                                        ? " — " + permit.getPermitNumber() : ""))
+                            .source(permit.getPermitType())
+                            .build());
+                }
+            }
+        }
+        if (diligence.getZoning() != null && diligence.getZoning().getEffectiveFrom() != null) {
+            events.add(ReportResponse.TimelineEvent.builder()
+                    .date(diligence.getZoning().getEffectiveFrom())
+                    .eventType("ZONING")
+                    .description("Zoning "
+                            + (diligence.getZoning().getZoningCode() != null
+                                ? diligence.getZoning().getZoningCode() + " " : "")
+                            + "effective"
+                            + (diligence.getZoning().getAllowedUse() != null
+                                ? " — " + diligence.getZoning().getAllowedUse() : ""))
+                    .source(null)
+                    .build());
+        }
+        if (diligence.getFlood() != null && diligence.getFlood().getEffectiveDate() != null) {
+            events.add(ReportResponse.TimelineEvent.builder()
+                    .date(diligence.getFlood().getEffectiveDate())
+                    .eventType("FLOOD_ZONE")
+                    .description("Flood-zone designation — "
+                            + (diligence.getFlood().getZone() != null
+                                ? "zone " + diligence.getFlood().getZone() + ", " : "")
+                            + lowerHuman(diligence.getFlood().getRiskLevel()) + " risk")
+                    .source(null)
+                    .build());
+        }
+        events.sort((a, b) -> b.getDate().compareTo(a.getDate()));
+        return events;
+    }
+
+    /** Due-diligence findings: status + key detail per sourced diligence area. */
+    private List<ReportResponse.Finding> findings(DiligenceDataResponse diligence) {
+        List<ReportResponse.Finding> findings = new ArrayList<>();
+        if (diligence.getOwnership() != null) {
+            findings.add(ReportResponse.Finding.builder()
+                    .area("Ownership")
+                    .status(diligence.getOwnership().getOwnershipType())
+                    .detail(diligence.getOwnership().getOwnerName() != null
+                            ? "Owner: " + diligence.getOwnership().getOwnerName()
+                            : null)
+                    .build());
+        }
+        if (diligence.getTax() != null) {
+            findings.add(ReportResponse.Finding.builder()
+                    .area("Property Tax")
+                    .status(diligence.getTax().getPaymentStatus())
+                    .detail((diligence.getTax().getTaxAmount() != null
+                                ? "Amount ₹" + diligence.getTax().getTaxAmount().toPlainString()
+                                : "")
+                            + (diligence.getTax().getTaxDue() != null
+                                ? (diligence.getTax().getTaxAmount() != null ? " · " : "")
+                                    + "Due ₹" + diligence.getTax().getTaxDue().toPlainString()
+                                : ""))
+                    .build());
+        }
+        if (diligence.getPermits() != null && !diligence.getPermits().isEmpty()) {
+            DiligenceDataResponse.PermitRecord latest = diligence.getPermits().get(0);
+            findings.add(ReportResponse.Finding.builder()
+                    .area("Building Permits")
+                    .status(latest.getPermitStatus())
+                    .detail((latest.getPermitNumber() != null ? "Permit " + latest.getPermitNumber() : "")
+                            + (latest.getPermitType() != null
+                                ? (latest.getPermitNumber() != null ? " · " : "") + latest.getPermitType()
+                                : ""))
+                    .build());
+        }
+        if (diligence.getZoning() != null) {
+            findings.add(ReportResponse.Finding.builder()
+                    .area("Zoning")
+                    .status(diligence.getZoning().getZoningStatus())
+                    .detail((diligence.getZoning().getZoningCode() != null
+                                ? "Code " + diligence.getZoning().getZoningCode() : "")
+                            + (diligence.getZoning().getAllowedUse() != null
+                                ? (diligence.getZoning().getZoningCode() != null ? " · " : "")
+                                    + "Allowed: " + diligence.getZoning().getAllowedUse()
+                                : ""))
+                    .build());
+        }
+        if (diligence.getFlood() != null) {
+            findings.add(ReportResponse.Finding.builder()
+                    .area("Flood")
+                    .status(diligence.getFlood().getRiskLevel())
+                    .detail(diligence.getFlood().getZone() != null
+                            ? "Zone " + diligence.getFlood().getZone() : null)
+                    .build());
+        }
+        if (diligence.getEnvironmental() != null) {
+            findings.add(ReportResponse.Finding.builder()
+                    .area("Environmental")
+                    .status(diligence.getEnvironmental().getStatus())
+                    .detail(diligence.getEnvironmental().getDescription())
+                    .build());
+        }
+        if (diligence.getUtilities() != null && !diligence.getUtilities().isEmpty()) {
+            String summary = diligence.getUtilities().stream()
+                    .map(u -> (u.getUtilityType() != null ? u.getUtilityType() : "Utility")
+                            + (u.getAvailabilityStatus() != null
+                                ? " (" + lowerHuman(u.getAvailabilityStatus()) + ")" : ""))
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse(null);
+            findings.add(ReportResponse.Finding.builder()
+                    .area("Utilities")
+                    .status(diligence.getUtilities().size() + " on record")
+                    .detail(summary)
+                    .build());
+        }
+        return findings;
+    }
+
+    /** Final due-diligence assessment: per-tier verdict, concerns, actions. */
+    private ReportResponse.Verdict verdict(RiskAssessmentDetails assessment,
+                                           DiligenceDataResponse diligence,
+                                           ReportResponse.DataCoverage coverage) {
+        if (assessment == null || assessment.getOverallScore() == null) {
+            return ReportResponse.Verdict.builder()
+                    .headline("Assessment not possible — no diligence records on file")
+                    .majorConcerns(List.of())
+                    .followUpActions(coverage != null && coverage.getMissingSections() != null
+                            ? List.of("Source the missing sections before evaluating this property: "
+                                + String.join(", ", coverage.getMissingSections()))
+                            : List.of())
+                    .build();
+        }
+
+        String tier = RiskAssessmentService.tierOf(assessment.getOverallScore());
+        String headline = switch (tier) {
+            case "LOW" -> "Favorable for purchase — no material concerns identified";
+            case "MODERATE" -> "Generally favorable for purchase — verify the flagged items before closing";
+            case "ELEVATED" -> "Proceed with caution — resolve the identified concerns before purchase";
+            case "HIGH" -> "High risk — proceed only after resolving the material concerns";
+            default -> "Unclassified risk — further verification required";
+        };
+
+        List<String> majorConcerns = concerns(assessment, diligence);
+
+        List<String> followUpActions = new ArrayList<>();
+        if (score(assessment.getTaxRisk()) >= 45) {
+            followUpActions.add("Obtain an up-to-date tax clearance and settle any outstanding dues");
+        }
+        if (score(assessment.getFloodRisk()) >= 45) {
+            followUpActions.add("Review flood-zone insurance requirements and mitigation measures");
+        }
+        if (score(assessment.getPermitCompliance()) >= 45) {
+            followUpActions.add("Follow up on the pending building-permit approval with the local authority");
+        }
+        if (score(assessment.getZoningCompliance()) >= 45) {
+            followUpActions.add("Confirm the zoning status and permitted use with the planning authority");
+        }
+        if (score(assessment.getLegalRisk()) >= 45) {
+            followUpActions.add("Obtain the environmental clearance record for legal review");
+        }
+        if (score(assessment.getOwnershipVerification()) >= 45) {
+            followUpActions.add("Verify the ownership record against the official registry");
+        }
+        if (coverage != null && coverage.getMissingSections() != null
+                && !coverage.getMissingSections().isEmpty()) {
+            followUpActions.add("Source the unavailable sections: "
+                    + String.join(", ", coverage.getMissingSections()));
+        }
+        if (followUpActions.isEmpty()) {
+            followUpActions.add("No further verification required — records are complete and clear");
+        }
+
+        return ReportResponse.Verdict.builder()
+                .headline(headline)
+                .majorConcerns(majorConcerns)
+                .followUpActions(followUpActions)
+                .build();
+    }
+
+    /** Per-domain risk basis: score, level and a one-line basis. */
+    private List<ReportResponse.RiskBasis> riskBasis(RiskAssessmentDetails assessment,
+                                                     DiligenceDataResponse diligence) {
+        if (assessment == null) {
+            return List.of();
+        }
+        List<ReportResponse.RiskBasis> rows = new ArrayList<>();
+        rows.add(basisRow("Overall", assessment.getOverallScore()));
+        rows.add(basisRow("Legal / Environmental", assessment.getLegalRisk(),
+                diligence.getEnvironmental() == null ? null
+                        : "Environmental review " + lowerHuman(diligence.getEnvironmental().getStatus())));
+        rows.add(basisRow("Property Tax", assessment.getTaxRisk(),
+                diligence.getTax() == null ? null
+                        : "Payments " + lowerHuman(diligence.getTax().getPaymentStatus())));
+        rows.add(basisRow("Flood", assessment.getFloodRisk(),
+                diligence.getFlood() == null ? null
+                        : (diligence.getFlood().getZone() != null
+                            ? "Zone " + diligence.getFlood().getZone() + ", " : "")
+                            + lowerHuman(diligence.getFlood().getRiskLevel()) + " risk"));
+        rows.add(basisRow("Building Permits", assessment.getPermitCompliance(),
+                diligence.getPermits() == null || diligence.getPermits().isEmpty() ? null
+                        : "Latest permit " + lowerHuman(diligence.getPermits().get(0).getPermitStatus())));
+        rows.add(basisRow("Zoning", assessment.getZoningCompliance(),
+                diligence.getZoning() == null ? null
+                        : "Zoning " + lowerHuman(diligence.getZoning().getZoningStatus())));
+        rows.add(basisRow("Ownership Verification", assessment.getOwnershipVerification(),
+                diligence.getOwnership() == null ? null
+                        : "Recorded as " + humanize(diligence.getOwnership().getOwnershipType())));
+        return rows;
+    }
+
+    private ReportResponse.RiskBasis basisRow(String domain, BigDecimal score) {
+        return basisRow(domain, score, null);
+    }
+
+    private ReportResponse.RiskBasis basisRow(String domain, BigDecimal score, String basis) {
+        return ReportResponse.RiskBasis.builder()
+                .domain(domain)
+                .score(score)
+                .level(score == null ? "NO_DATA" : RiskAssessmentService.tierOf(score))
+                .basis(basis)
+                .build();
     }
 
     private List<String> concerns(RiskAssessmentDetails assessment, DiligenceDataResponse diligence) {

@@ -11,6 +11,7 @@ import com.duedilligenceagent.backend.repositories.AggregationRunRepository;
 import com.duedilligenceagent.backend.repositories.DueDiligenceReportRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
 import com.duedilligenceagent.backend.repositories.RiskAssessmentDetailsRepository;
+import com.duedilligenceagent.backend.repositories.SupportingDocsRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -44,6 +45,7 @@ class ReportServiceTest {
     @Mock private DiligenceService diligenceService;
     @Mock private AggregationRunRepository aggregationRunRepository;
     @Mock private MarketAnalysisService marketAnalysisService;
+    @Mock private SupportingDocsRepository supportingDocsRepository;
 
     @InjectMocks private ReportService service;
 
@@ -80,6 +82,44 @@ class ReportServiceTest {
                         .verdict("NO_COMPARABLES")
                         .note("No comparable listings are stored for this property yet.")
                         .build())
+                .build();
+    }
+
+    /** Fully-sourced diligence data covering all 7 record areas. */
+    private static DiligenceDataResponse fullDiligence() {
+        return DiligenceDataResponse.builder()
+                .ownership(DiligenceDataResponse.OwnershipRecord.builder()
+                        .ownershipType("FREEHOLD").ownerName("Test Owner")
+                        .recordDate(java.time.LocalDate.of(2020, 5, 10)).source("Registry")
+                        .build())
+                .tax(DiligenceDataResponse.TaxRecord.builder()
+                        .paymentStatus("OVERDUE")
+                        .taxPayDate(java.time.LocalDate.of(2024, 4, 1))
+                        .taxAmount(new BigDecimal("25000"))
+                        .taxDue(new BigDecimal("8000"))
+                        .source("Municipal")
+                        .build())
+                .permits(List.of(DiligenceDataResponse.PermitRecord.builder()
+                        .permitNumber("BP-2024-11").permitType("Construction")
+                        .permitStatus("PENDING")
+                        .issueDate(java.time.LocalDate.of(2024, 6, 1))
+                        .build()))
+                .zoning(DiligenceDataResponse.ZoningRecord.builder()
+                        .zoningCode("R1").zoningStatus("PENDING").allowedUse("Residential")
+                        .effectiveFrom(java.time.LocalDate.of(2018, 1, 1))
+                        .build())
+                .flood(DiligenceDataResponse.FloodRecord.builder()
+                        .zone("ZONE-3").riskLevel("HIGH")
+                        .effectiveDate(java.time.LocalDate.of(2019, 11, 15))
+                        .build())
+                .environmental(DiligenceDataResponse.EnvironmentalRecord.builder()
+                        .recordType("CLEARANCE").status("FLAGGED")
+                        .description("Environmental review flagged for site inspection")
+                        .build())
+                .utilities(List.of(DiligenceDataResponse.UtilityRecord.builder()
+                        .utilityType("Water").provider("Metro Water")
+                        .availabilityStatus("AVAILABLE")
+                        .build()))
                 .build();
     }
 
@@ -213,6 +253,146 @@ class ReportServiceTest {
         // Data coverage bullet.
         assertThat(points).anyMatch(p -> p.contains("Data coverage: 6 of 8 record types"));
         assertThat(points).anyMatch(p -> p.contains("2 comparable listings"));
+    }
+
+    @Test
+    void verdictCarriesTierHeadlineConcernsAndActions() {
+        Property property = property(1004);
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+                fullDiligence(), noMarket());
+
+        ReportResponse response = service.generate(1004L, 1L);
+        ReportResponse.Verdict verdict = response.getVerdict();
+
+        assertThat(verdict).isNotNull();
+        // HIGH tier headline.
+        assertThat(verdict.getHeadline()).isEqualTo(
+                "High risk — proceed only after resolving the material concerns");
+        // Major concerns mirror the material concerns.
+        assertThat(verdict.getMajorConcerns()).isNotEmpty();
+        assertThat(verdict.getMajorConcerns()).anyMatch(c -> c.contains("Property tax payments are overdue"));
+        assertThat(verdict.getMajorConcerns()).anyMatch(c -> c.contains("high-risk flood zone"));
+        // Follow-up actions per flagged domain.
+        assertThat(verdict.getFollowUpActions()).isNotEmpty();
+        assertThat(verdict.getFollowUpActions()).anyMatch(a -> a.contains("tax clearance"));
+        assertThat(verdict.getFollowUpActions()).anyMatch(a -> a.contains("flood-zone insurance"));
+        assertThat(verdict.getFollowUpActions()).anyMatch(a -> a.contains("building-permit approval"));
+    }
+
+    @Test
+    void verdictForLowRiskPropertyIsFavorable() {
+        Property property = property(1001);
+        stubStages(property, assessment(7.75, 5, 5, 10, 10, 5, 10),
+                fullDiligence(), noMarket());
+
+        ReportResponse response = service.generate(1001L, 1L);
+        ReportResponse.Verdict verdict = response.getVerdict();
+
+        assertThat(verdict).isNotNull();
+        assertThat(verdict.getHeadline()).isEqualTo(
+                "Favorable for purchase — no material concerns identified");
+        assertThat(verdict.getMajorConcerns()).isEmpty();
+        // No flagged domains, but comparables/trends are absent from the
+        // stub data — sourcing them is the only follow-up action.
+        assertThat(verdict.getFollowUpActions()).containsExactly(
+                "Source the unavailable sections: comparable listings, market trends");
+    }
+
+    @Test
+    void timelineDerivesEventsFromDiligenceDates() {
+        Property property = property(1004);
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+                DiligenceDataResponse.builder()
+                        .ownership(DiligenceDataResponse.OwnershipRecord.builder()
+                                .ownershipType("FREEHOLD").ownerName("Test Owner")
+                                .recordDate(java.time.LocalDate.of(2020, 5, 10)).source("Registry")
+                                .build())
+                        .tax(DiligenceDataResponse.TaxRecord.builder()
+                                .paymentStatus("OVERDUE")
+                                .taxPayDate(java.time.LocalDate.of(2024, 4, 1))
+                                .build())
+                        .flood(DiligenceDataResponse.FloodRecord.builder()
+                                .zone("ZONE-3").riskLevel("HIGH")
+                                .effectiveDate(java.time.LocalDate.of(2019, 11, 15))
+                                .build())
+                        .build(),
+                noMarket());
+
+        ReportResponse response = service.generate(1004L, 1L);
+        List<ReportResponse.TimelineEvent> timeline = response.getTimeline();
+
+        assertThat(timeline).hasSize(3);
+        // Newest first.
+        assertThat(timeline.get(0).getDate()).isEqualTo(java.time.LocalDate.of(2024, 4, 1));
+        assertThat(timeline.get(0).getEventType()).isEqualTo("TAX");
+        assertThat(timeline.get(1).getEventType()).isEqualTo("OWNERSHIP");
+        assertThat(timeline.get(1).getDescription()).contains("Test Owner");
+        assertThat(timeline.get(2).getEventType()).isEqualTo("FLOOD_ZONE");
+        assertThat(timeline.get(2).getDescription()).contains("ZONE-3");
+    }
+
+    @Test
+    void findingsCoverSourcedDiligenceAreas() {
+        Property property = property(1004);
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+                fullDiligence(), noMarket());
+
+        ReportResponse response = service.generate(1004L, 1L);
+        List<ReportResponse.Finding> findings = response.getFindings();
+
+        assertThat(findings).isNotNull();
+        // One finding per sourced area.
+        assertThat(findings).extracting(ReportResponse.Finding::getArea)
+                .containsExactlyInAnyOrder("Ownership", "Property Tax", "Building Permits",
+                        "Zoning", "Flood", "Environmental", "Utilities");
+        // Statuses carry the record values.
+        assertThat(findings).filteredOn(f -> f.getArea().equals("Property Tax"))
+                .allSatisfy(f -> assertThat(f.getStatus()).isEqualTo("OVERDUE"));
+        assertThat(findings).filteredOn(f -> f.getArea().equals("Flood"))
+                .allSatisfy(f -> assertThat(f.getStatus()).isEqualTo("HIGH"));
+    }
+
+    @Test
+    void riskBasisCarriesScoreLevelAndBasisPerDomain() {
+        Property property = property(1004);
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+                fullDiligence(), noMarket());
+
+        ReportResponse response = service.generate(1004L, 1L);
+        List<ReportResponse.RiskBasis> basis = response.getRiskBasis();
+
+        assertThat(basis).isNotNull();
+        assertThat(basis).extracting(ReportResponse.RiskBasis::getDomain)
+                .contains("Overall", "Property Tax", "Flood", "Building Permits",
+                        "Zoning", "Legal / Environmental", "Ownership Verification");
+        // Overall row: score + level.
+        ReportResponse.RiskBasis overall = basis.stream()
+                .filter(b -> b.getDomain().equals("Overall")).findFirst().orElseThrow();
+        assertThat(overall.getScore().toPlainString()).isEqualTo("56.5");
+        assertThat(overall.getLevel()).isEqualTo("HIGH");
+        // Tax row carries a basis line.
+        ReportResponse.RiskBasis tax = basis.stream()
+                .filter(b -> b.getDomain().equals("Property Tax")).findFirst().orElseThrow();
+        assertThat(tax.getBasis()).contains("overdue");
+    }
+
+    @Test
+    void documentsListSupportingDocsForProperty() {
+        Property property = property(1004);
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+                fullDiligence(), noMarket());
+        when(supportingDocsRepository.findByPropertyIdOrderByUploadedAtDesc(1004L))
+                .thenReturn(List.of(
+                        com.duedilligenceagent.backend.entities.SupportingDocs.builder()
+                                .documentId(1L).fileName("title-deed.pdf").fileType("application/pdf")
+                                .build()));
+
+        ReportResponse response = service.generate(1004L, 1L);
+        List<ReportResponse.DocumentInfo> documents = response.getDocuments();
+
+        assertThat(documents).hasSize(1);
+        assertThat(documents.get(0).getFileName()).isEqualTo("title-deed.pdf");
+        assertThat(documents.get(0).getFileType()).isEqualTo("application/pdf");
     }
 
     @Test

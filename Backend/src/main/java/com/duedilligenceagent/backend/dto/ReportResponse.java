@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -25,6 +26,9 @@ public class ReportResponse {
     private String propertyAddress;
     private String riskTier;
     private String executiveSummary;
+
+    /** Basic property identification for the report header/overview. Computed on read. */
+    private PropertyInfo propertyInfo;
 
     /**
      * Point-wise rendering of the executive summary for on-screen review —
@@ -47,6 +51,103 @@ public class ReportResponse {
 
     /** The calculated risk assessment linked to this report (0-100, higher = riskier). */
     private RiskAssessmentResponse risk;
+
+    /**
+     * Property timeline derived from diligence record dates (ownership
+     * registered, tax payment, permit issued/completed, zoning effective,
+     * flood-zone designation) — newest first. Computed on read.
+     */
+    private java.util.List<TimelineEvent> timeline;
+
+    /**
+     * Due-diligence findings: one entry per sourced diligence area with its
+     * status and the key detail behind it. Computed on read.
+     */
+    private java.util.List<Finding> findings;
+
+    /**
+     * Final due-diligence assessment: per-tier verdict headline, major
+     * concerns and follow-up actions. Derived from the risk tier, the
+     * material concerns and the missing sections — no fabricated advice.
+     */
+    private Verdict verdict;
+
+    /** Supporting documents uploaded against this property. Computed on read. */
+    private java.util.List<DocumentInfo> documents;
+
+    /** Per-domain risk basis: score, level and a one-line basis for each domain. */
+    private java.util.List<RiskBasis> riskBasis;
+
+    /** Basic property identification for the report overview. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PropertyInfo {
+        private String propertyType;
+        private String locality;
+        private String city;
+        private java.math.BigDecimal price;
+        private String reraId;
+    }
+
+    /** One historical event on the property timeline. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TimelineEvent {
+        private LocalDate date;
+        private String eventType;
+        private String description;
+        private String source;
+    }
+
+    /** One due-diligence finding for a diligence area. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Finding {
+        private String area;
+        private String status;
+        private String detail;
+    }
+
+    /** Final due-diligence assessment for the property. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Verdict {
+        private String headline;
+        private java.util.List<String> majorConcerns;
+        private java.util.List<String> followUpActions;
+    }
+
+    /** Supporting-document reference information. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DocumentInfo {
+        private Long documentId;
+        private String fileName;
+        private String fileType;
+        private LocalDateTime uploadedAt;
+    }
+
+    /** Per-domain risk basis row. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RiskBasis {
+        private String domain;
+        private java.math.BigDecimal score;
+        private String level;
+        private String basis;
+    }
 
     /** The diligence record statuses that informed the assessment. */
     private RecordStatuses records;

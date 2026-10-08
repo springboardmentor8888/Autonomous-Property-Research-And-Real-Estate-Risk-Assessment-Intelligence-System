@@ -71,11 +71,14 @@ class ReportExcelServiceTest {
                 .thenReturn(DiligenceDataResponse.builder().build());
 
         try (XSSFWorkbook workbook = render(report())) {
-            assertThat(workbook.getNumberOfSheets()).isEqualTo(4);
-            assertThat(workbook.getSheetName(0)).isEqualTo("Summary");
+            assertThat(workbook.getNumberOfSheets()).isEqualTo(7);
+            assertThat(workbook.getSheetName(0)).isEqualTo("Executive Summary");
             assertThat(workbook.getSheetName(1)).isEqualTo("Risk Assessment");
-            assertThat(workbook.getSheetName(2)).isEqualTo("Comparables");
-            assertThat(workbook.getSheetName(3)).isEqualTo("Market Trends");
+            assertThat(workbook.getSheetName(2)).isEqualTo("Due Diligence Findings");
+            assertThat(workbook.getSheetName(3)).isEqualTo("Property Timeline");
+            assertThat(workbook.getSheetName(4)).isEqualTo("Comparables");
+            assertThat(workbook.getSheetName(5)).isEqualTo("Market Analysis");
+            assertThat(workbook.getSheetName(6)).isEqualTo("Supporting Documents");
         }
     }
 
@@ -85,7 +88,7 @@ class ReportExcelServiceTest {
                 .thenReturn(DiligenceDataResponse.builder().build());
 
         try (XSSFWorkbook workbook = render(report())) {
-            Sheet summary = workbook.getSheet("Summary");
+            Sheet summary = workbook.getSheet("Executive Summary");
             assertThat(summary.getRow(2).getCell(1).getStringCellValue()).isEqualTo("55");
             assertThat(summary.getRow(3).getCell(1).getStringCellValue())
                     .isEqualTo("Casagrand Bloom, Thirumudivakkam, Chennai");
@@ -181,7 +184,7 @@ class ReportExcelServiceTest {
                 .build());
 
         try (XSSFWorkbook workbook = render(report())) {
-            Sheet market = workbook.getSheet("Market Trends");
+            Sheet market = workbook.getSheet("Market Analysis");
             Row data = market.getRow(1);
             assertThat(data.getCell(0).getStringCellValue()).isEqualTo("Thirumudivakkam");
             assertThat(data.getCell(1).getStringCellValue()).isEqualTo("2026-Q3");
