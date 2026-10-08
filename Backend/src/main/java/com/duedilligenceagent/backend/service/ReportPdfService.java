@@ -425,7 +425,18 @@ public class ReportPdfService {
                         : "");
             y = ctx.breakIfNeeded(y, 14);
             text(ctx.cs, FONT, 9, MARGIN, y, line, SLATE);
-            y -= 16;
+            y -= 14;
+        }
+
+        // Property value history summary (spec §8) — mirrors the Excel's
+        // Market Analysis note so both formats carry the same content.
+        if (hasComparables) {
+            y = ctx.breakIfNeeded(y, 14);
+            text(ctx.cs, FONT, 9, MARGIN, y,
+                    "Property value history: derived from "
+                            + report.getComparables().size() + " comparable listings on record",
+                    SLATE);
+            y -= 14;
         }
         return y - 12;
     }

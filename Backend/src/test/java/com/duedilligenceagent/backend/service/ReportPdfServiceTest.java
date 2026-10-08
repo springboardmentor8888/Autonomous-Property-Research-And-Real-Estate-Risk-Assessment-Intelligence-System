@@ -192,6 +192,10 @@ class ReportPdfServiceTest {
             // Comparables table renders with its localities.
             report.getComparables().forEach(comp ->
                     assertThat(all).contains(comp.getLocality()));
+
+            // Property value history summary mirrors the Excel's note.
+            assertThat(all).contains("Property value history: derived from "
+                    + report.getComparables().size() + " comparable listings on record");
         }
     }
 
