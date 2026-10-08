@@ -189,6 +189,7 @@ public class ReportService {
                                 .build())
                         .toList())
                 .riskBasis(riskBasis(assessment, diligence))
+                .comparables(comparables(diligence))
                 .records(toRecordStatuses(diligence))
                 .coverage(toCoverage(diligence))
                 .build();
@@ -471,7 +472,7 @@ public class ReportService {
                     .eventType("FLOOD_ZONE")
                     .description("Flood-zone designation — "
                             + (diligence.getFlood().getZone() != null
-                                ? "zone " + diligence.getFlood().getZone() + ", " : "")
+                                ? "zone " + zoneName(diligence.getFlood().getZone()) + ", " : "")
                             + lowerHuman(diligence.getFlood().getRiskLevel()) + " risk")
                     .source(null)
                     .build());
@@ -496,13 +497,7 @@ public class ReportService {
             findings.add(ReportResponse.Finding.builder()
                     .area("Property Tax")
                     .status(diligence.getTax().getPaymentStatus())
-                    .detail((diligence.getTax().getTaxAmount() != null
-                                ? "Amount ₹" + diligence.getTax().getTaxAmount().toPlainString()
-                                : "")
-                            + (diligence.getTax().getTaxDue() != null
-                                ? (diligence.getTax().getTaxAmount() != null ? " · " : "")
-                                    + "Due ₹" + diligence.getTax().getTaxDue().toPlainString()
-                                : ""))
+                    .detail(taxDetail(diligence.getTax()))
                     .build());
         }
         if (diligence.getPermits() != null && !diligence.getPermits().isEmpty()) {
@@ -533,7 +528,7 @@ public class ReportService {
                     .area("Flood")
                     .status(diligence.getFlood().getRiskLevel())
                     .detail(diligence.getFlood().getZone() != null
-                            ? "Zone " + diligence.getFlood().getZone() : null)
+                            ? "Zone " + zoneName(diligence.getFlood().getZone()) : null)
                     .build());
         }
         if (diligence.getEnvironmental() != null) {
@@ -557,6 +552,30 @@ public class ReportService {
                     .build());
         }
         return findings;
+    }
+
+    /**
+     * One-line tax detail: a single figure when the amount and the due
+     * balance match (no "Amount ₹X · Due ₹X" duplication), both figures
+     * only when they genuinely differ.
+     */
+    private String taxDetail(DiligenceDataResponse.TaxRecord tax) {
+        BigDecimal amount = tax.getTaxAmount();
+        BigDecimal due = tax.getTaxDue();
+        if (amount != null && due != null) {
+            if (amount.compareTo(due) == 0) {
+                return "₹" + amount.toPlainString() + " due";
+            }
+            return "Amount ₹" + amount.toPlainString()
+                    + " · Due ₹" + due.toPlainString();
+        }
+        if (amount != null) {
+            return "Amount ₹" + amount.toPlainString();
+        }
+        if (due != null) {
+            return "Due ₹" + due.toPlainString();
+        }
+        return null;
     }
 
     /** Final due-diligence assessment: per-tier verdict, concerns, actions. */
@@ -637,7 +656,7 @@ public class ReportService {
         rows.add(basisRow("Flood", assessment.getFloodRisk(),
                 diligence.getFlood() == null ? null
                         : (diligence.getFlood().getZone() != null
-                            ? "Zone " + diligence.getFlood().getZone() + ", " : "")
+                            ? "Zone " + zoneName(diligence.getFlood().getZone()) + ", " : "")
                             + lowerHuman(diligence.getFlood().getRiskLevel()) + " risk"));
         rows.add(basisRow("Building Permits", assessment.getPermitCompliance(),
                 diligence.getPermits() == null || diligence.getPermits().isEmpty() ? null
@@ -662,6 +681,46 @@ public class ReportService {
                 .level(score == null ? "NO_DATA" : RiskAssessmentService.tierOf(score))
                 .basis(basis)
                 .build();
+    }
+
+    /**
+     * Key comparable listings for the report's market-analysis section —
+     * the compact dataset the PDF renders as a table. Computed on read so
+     * previously generated reports also carry it.
+     */
+    private List<ReportResponse.ComparableListing> comparables(DiligenceDataResponse diligence) {
+        if (diligence.getComparables() == null || diligence.getComparables().isEmpty()) {
+            return List.of();
+        }
+        return diligence.getComparables().stream()
+                .map(c -> ReportResponse.ComparableListing.builder()
+                        .listingId(c.getListingId())
+                        .locality(c.getLocality())
+                        .propertyType(c.getPropertyType())
+                        .bhk(c.getBhk())
+                        .areaSqft(c.getAreaSqft())
+                        .price(c.getPrice())
+                        .pricePerSqft(c.getPricePerSqft())
+                        .build())
+                .toList();
+    }
+
+    /**
+     * Zone display name with the redundant "ZONE-" prefix stripped, so
+     * "Zone " + zone reads as "Zone A" instead of "Zone ZONE-A".
+     */
+    private String zoneName(String zone) {
+        if (zone == null) {
+            return null;
+        }
+        String z = zone.trim();
+        String upper = z.toUpperCase();
+        for (String prefix : new String[] {"ZONE-", "ZONE:", "ZONE "}) {
+            if (upper.startsWith(prefix) && z.length() > prefix.length()) {
+                return z.substring(prefix.length());
+            }
+        }
+        return z;
     }
 
     private List<String> concerns(RiskAssessmentDetails assessment, DiligenceDataResponse diligence) {

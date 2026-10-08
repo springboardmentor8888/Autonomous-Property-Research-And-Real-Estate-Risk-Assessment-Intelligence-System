@@ -78,6 +78,12 @@ public class ReportResponse {
     /** Per-domain risk basis: score, level and a one-line basis for each domain. */
     private java.util.List<RiskBasis> riskBasis;
 
+    /**
+     * Key comparable listings backing the market analysis — the compact
+     * dataset the PDF's comparable table renders. Computed on read.
+     */
+    private java.util.List<ComparableListing> comparables;
+
     /** Basic property identification for the report overview. */
     @Data
     @Builder
@@ -147,6 +153,21 @@ public class ReportResponse {
         private java.math.BigDecimal score;
         private String level;
         private String basis;
+    }
+
+    /** One comparable listing backing the market analysis. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ComparableListing {
+        private String listingId;
+        private String locality;
+        private String propertyType;
+        private String bhk;
+        private Integer areaSqft;
+        private java.math.BigDecimal price;
+        private java.math.BigDecimal pricePerSqft;
     }
 
     /** The diligence record statuses that informed the assessment. */

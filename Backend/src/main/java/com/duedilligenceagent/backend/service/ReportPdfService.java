@@ -67,7 +67,7 @@ public class ReportPdfService {
 
                 ctx.y = header(cs, report, width, ctx.y);
                 ctx.y = propertyOverview(cs, report, width, ctx.y);
-                ctx.y = riskOverview(cs, report, width, ctx.y);
+                ctx.y = riskOverview(ctx, report, width, ctx.y);
                 ctx.y = riskBars(ctx, report, width, ctx.y);
                 ctx.y = executiveSummary(ctx, report, width, ctx.y);
                 ctx.y = findingsSection(ctx, report, width, ctx.y);
@@ -126,8 +126,22 @@ public class ReportPdfService {
             pageNumber++;
         }
 
-        boolean needsBreak(float required) {
-            return y - required < PAGE_BREAK_THRESHOLD;
+        boolean needsBreak(float currentY, float required) {
+            return currentY - required < PAGE_BREAK_THRESHOLD;
+        }
+
+        /**
+         * Page-break guard for section loops: breaks to a fresh page when
+         * the live cursor cannot fit the required height, returning the
+         * cursor to continue at (never the stale field value — callers
+         * track their position in a local y that this must see).
+         */
+        float breakIfNeeded(float currentY, float required) throws IOException {
+            if (needsBreak(currentY, required)) {
+                newPage();
+                return y;
+            }
+            return currentY;
         }
 
         void closeQuietly() {
@@ -201,9 +215,9 @@ public class ReportPdfService {
         return y - 16;
     }
 
-    private float riskOverview(PDPageContentStream cs, ReportResponse report,
+    private float riskOverview(RenderContext ctx, ReportResponse report,
                                float width, float y) throws IOException {
-        label(cs, MARGIN, y, "RISK OVERVIEW");
+        label(ctx.cs, MARGIN, y, "RISK OVERVIEW");
         y -= 26;
 
         String tier = report.getRiskTier() == null ? "UNKNOWN" : report.getRiskTier();
@@ -211,16 +225,16 @@ public class ReportPdfService {
         String tierLabel = "INSUFFICIENT_DATA".equals(tier) ? "INSUFFICIENT DATA" : tier + " RISK";
 
         float badgeWidth = FONT_BOLD.getStringWidth(tierLabel) / 1000 * 10 + 24;
-        rect(cs, MARGIN, y - 6, badgeWidth, 24, tierColor);
-        text(cs, FONT_BOLD, 10, MARGIN + 12, y + 3, tierLabel, Color.WHITE);
+        rect(ctx.cs, MARGIN, y - 6, badgeWidth, 24, tierColor);
+        text(ctx.cs, FONT_BOLD, 10, MARGIN + 12, y + 3, tierLabel, Color.WHITE);
 
         if (report.getRisk() != null && report.getRisk().getOverallScore() != null) {
             String score = "Overall Risk Score: "
                     + report.getRisk().getOverallScore().stripTrailingZeros().toPlainString()
                     + " / 100";
-            text(cs, FONT_BOLD, 11, MARGIN + badgeWidth + 16, y + 3, score, tierColor);
+            text(ctx.cs, FONT_BOLD, 11, MARGIN + badgeWidth + 16, y + 3, score, tierColor);
         } else {
-            text(cs, FONT, 10, MARGIN + badgeWidth + 16, y + 3,
+            text(ctx.cs, FONT, 10, MARGIN + badgeWidth + 16, y + 3,
                     "Risk scores could not be calculated — no diligence records available.", SLATE);
         }
         y -= 28;
@@ -228,7 +242,8 @@ public class ReportPdfService {
         // Short overall assessment + key risk findings (from the verdict).
         if (report.getVerdict() != null) {
             for (String line : wrap(report.getVerdict().getHeadline(), FONT_BOLD, 10, width - MARGIN * 2)) {
-                text(cs, FONT_BOLD, 10, MARGIN, y, line, TEXT);
+                y = ctx.breakIfNeeded(y, 14);
+                text(ctx.cs, FONT_BOLD, 10, MARGIN, y, line, TEXT);
                 y -= 14;
             }
             List<String> keyFindings = report.getVerdict().getMajorConcerns();
@@ -236,7 +251,8 @@ public class ReportPdfService {
                 y -= 2;
                 for (String concern : keyFindings) {
                     for (String line : wrap("• " + concern, FONT, 9, width - MARGIN * 2 - 8)) {
-                        text(cs, FONT, 9, MARGIN + 8, y, line, SLATE);
+                        y = ctx.breakIfNeeded(y, 12);
+                        text(ctx.cs, FONT, 9, MARGIN + 8, y, line, SLATE);
                         y -= 12;
                     }
                 }
@@ -250,9 +266,6 @@ public class ReportPdfService {
         if (report.getRisk() == null) {
             return y;
         }
-        label(ctx.cs, MARGIN, y, "RISK ASSESSMENT (0–100, HIGHER = RISKIER)");
-        y -= 14;
-
         var risk = report.getRisk();
         List<Domain> domains = List.of(
                 new Domain("Overall", risk.getOverallScore()),
@@ -265,11 +278,9 @@ public class ReportPdfService {
 
         float barX = MARGIN + 170;
         float barWidth = width - barX - MARGIN - 40;
+        y = sectionLabel(ctx, y, "RISK ASSESSMENT (0–100, HIGHER = RISKIER)", 20);
         for (Domain domain : domains) {
-            if (ctx.needsBreak(20)) {
-                ctx.newPage();
-                y = ctx.y;
-            }
+            y = ctx.breakIfNeeded(y, 20);
             text(ctx.cs, FONT, 9, MARGIN, y, domain.name(), TEXT);
             if (domain.score() == null) {
                 text(ctx.cs, FONT, 9, barX, y, "No records", SLATE);
@@ -287,17 +298,21 @@ public class ReportPdfService {
 
     private float executiveSummary(RenderContext ctx, ReportResponse report,
                                    float width, float y) throws IOException {
-        label(ctx.cs, MARGIN, y, "EXECUTIVE SUMMARY");
-        y -= 16;
+        y = sectionLabel(ctx, y, "EXECUTIVE SUMMARY", 14);
+
+        // The Risk Overview section already lists the material concerns —
+        // skip them here so the two sections never duplicate each other.
+        List<String> concerns = report.getVerdict() == null || report.getVerdict().getMajorConcerns() == null
+                ? List.of() : report.getVerdict().getMajorConcerns();
 
         // Point-wise bullets when available; paragraph fallback otherwise.
         if (report.getSummaryPoints() != null && !report.getSummaryPoints().isEmpty()) {
             for (String point : report.getSummaryPoints()) {
-                if (ctx.needsBreak(14)) {
-                    ctx.newPage();
-                    y = ctx.y;
+                if (concerns.contains(point)) {
+                    continue;
                 }
                 for (String line : wrap("• " + point, FONT, 10, width - MARGIN * 2 - 8)) {
+                    y = ctx.breakIfNeeded(y, 14);
                     text(ctx.cs, FONT, 10, MARGIN + 8, y, line, TEXT);
                     y -= 14;
                 }
@@ -307,10 +322,7 @@ public class ReportPdfService {
 
         String summary = report.getExecutiveSummary() == null ? "" : report.getExecutiveSummary();
         for (String line : wrap(summary, FONT, 10, width - MARGIN * 2)) {
-            if (ctx.needsBreak(14)) {
-                ctx.newPage();
-                y = ctx.y;
-            }
+            y = ctx.breakIfNeeded(y, 14);
             text(ctx.cs, FONT, 10, MARGIN, y, line, TEXT);
             y -= 14;
         }
@@ -322,25 +334,22 @@ public class ReportPdfService {
         if (report.getFindings() == null || report.getFindings().isEmpty()) {
             return y;
         }
-        label(ctx.cs, MARGIN, y, "DUE DILIGENCE FINDINGS");
-        y -= 16;
+        y = sectionLabel(ctx, y, "DUE DILIGENCE FINDINGS", 18);
 
         for (ReportResponse.Finding finding : report.getFindings()) {
-            if (ctx.needsBreak(18)) {
-                ctx.newPage();
-                y = ctx.y;
-            }
             String status = finding.getStatus() == null ? "—"
                     : finding.getStatus().replaceAll("_", " ");
+            List<String> detailLines = finding.getDetail() == null || finding.getDetail().isBlank()
+                    ? List.of()
+                    : wrap(finding.getDetail(), FONT, 8, width - MARGIN - 150 - 10);
+            y = ctx.breakIfNeeded(y, 11 + detailLines.size() * 11 + 5);
             text(ctx.cs, FONT_BOLD, 9, MARGIN, y, finding.getArea(), TEXT);
             float statusX = MARGIN + 150;
             text(ctx.cs, FONT_BOLD, 9, statusX, y, status, TEXT);
             y -= 11;
-            if (finding.getDetail() != null && !finding.getDetail().isBlank()) {
-                for (String line : wrap(finding.getDetail(), FONT, 8, width - MARGIN - 150 - 10)) {
-                    text(ctx.cs, FONT, 8, MARGIN + 150, y, line, SLATE);
-                    y -= 11;
-                }
+            for (String line : detailLines) {
+                text(ctx.cs, FONT, 8, MARGIN + 150, y, line, SLATE);
+                y -= 11;
             }
             y -= 5;
         }
@@ -352,24 +361,21 @@ public class ReportPdfService {
         if (report.getTimeline() == null || report.getTimeline().isEmpty()) {
             return y;
         }
-        label(ctx.cs, MARGIN, y, "PROPERTY TIMELINE");
-        y -= 16;
+        y = sectionLabel(ctx, y, "PROPERTY TIMELINE", 18);
 
         for (ReportResponse.TimelineEvent event : report.getTimeline()) {
-            if (ctx.needsBreak(18)) {
-                ctx.newPage();
-                y = ctx.y;
-            }
             String date = event.getDate() != null ? event.getDate().format(DATE_ONLY) : "—";
             String type = event.getEventType() == null ? "—"
                     : event.getEventType().replaceAll("_", " ");
-            text(ctx.cs, FONT_BOLD, 9, MARGIN, y, date, TEXT);
-            text(ctx.cs, FONT, 8, MARGIN + 70, y, type, SLATE);
-            y -= 11;
             String description = event.getDescription() == null ? "" : event.getDescription()
                     + (event.getSource() != null && !event.getSource().isBlank()
                         ? "  —  Source: " + event.getSource() : "");
-            for (String line : wrap(description, FONT, 9, width - MARGIN * 2 - 10)) {
+            List<String> lines = wrap(description, FONT, 9, width - MARGIN * 2 - 10);
+            y = ctx.breakIfNeeded(y, 11 + lines.size() * 12 + 4);
+            text(ctx.cs, FONT_BOLD, 9, MARGIN, y, date, TEXT);
+            text(ctx.cs, FONT, 8, MARGIN + 70, y, type, SLATE);
+            y -= 11;
+            for (String line : lines) {
                 text(ctx.cs, FONT, 9, MARGIN + 14, y, line, TEXT);
                 y -= 12;
             }
@@ -382,15 +388,16 @@ public class ReportPdfService {
                                 float width, float y) throws IOException {
         boolean hasPositioning = report.getMarketPosition() != null
                 && report.getMarketPosition().getVerdict() != null;
-        boolean hasComparables = report.getCoverage() != null
+        boolean hasComparables = report.getComparables() != null
+                && !report.getComparables().isEmpty();
+        boolean hasCounts = report.getCoverage() != null
                 && report.getCoverage().getComparablesCount() != null
                 && report.getCoverage().getComparablesCount() > 0;
-        if (!hasPositioning && !hasComparables) {
+        if (!hasPositioning && !hasComparables && !hasCounts) {
             return y;
         }
 
-        label(ctx.cs, MARGIN, y, "COMPARABLE & MARKET ANALYSIS");
-        y -= 16;
+        y = sectionLabel(ctx, y, "COMPARABLE & MARKET ANALYSIS", 18);
 
         if (hasPositioning) {
             var pos = report.getMarketPosition();
@@ -400,6 +407,7 @@ public class ReportPdfService {
                     + pos.getDeltaPercent().stripTrailingZeros().toPlainString() + "% vs comparables)";
             for (String line : wrap("Market positioning: " + verdict + delta,
                     FONT_BOLD, 10, width - MARGIN * 2)) {
+                y = ctx.breakIfNeeded(y, 14);
                 text(ctx.cs, FONT_BOLD, 10, MARGIN, y, line, TEXT);
                 y -= 14;
             }
@@ -407,14 +415,56 @@ public class ReportPdfService {
         }
 
         if (hasComparables) {
+            y = comparablesTable(ctx, report, width, y);
+        }
+
+        if (hasCounts) {
             String line = report.getCoverage().getComparablesCount() + " comparable listings on record"
                     + (report.getCoverage().getMarketTrendsCount() != null
                         ? "  ·  " + report.getCoverage().getMarketTrendsCount() + " market trend periods"
                         : "");
+            y = ctx.breakIfNeeded(y, 14);
             text(ctx.cs, FONT, 9, MARGIN, y, line, SLATE);
             y -= 16;
         }
         return y - 12;
+    }
+
+    /** Compact comparables table: locality, type, BHK, area, price, ₹/sqft. */
+    private float comparablesTable(RenderContext ctx, ReportResponse report,
+                                   float width, float y) throws IOException {
+        float tableX = MARGIN;
+        float tableW = width - MARGIN * 2;
+        float[] colW = {150, 80, 45, 60, 90, 0};
+        colW[5] = tableW - 150 - 80 - 45 - 60 - 90;
+
+        y = ctx.breakIfNeeded(y, 34);
+        rect(ctx.cs, tableX, y - 4, tableW, 16, SLATE_LIGHT);
+        String[] headers = {"LOCALITY", "TYPE", "BHK", "AREA (SQFT)", "PRICE", "₹/SQFT"};
+        float cx = tableX + 6;
+        for (int i = 0; i < headers.length; i++) {
+            text(ctx.cs, FONT_BOLD, 8, cx, y + 1, headers[i], SLATE);
+            cx += colW[i];
+        }
+        y -= 20;
+
+        for (ReportResponse.ComparableListing comp : report.getComparables()) {
+            y = ctx.breakIfNeeded(y, 14);
+            String area = comp.getAreaSqft() == null ? "—" : String.valueOf(comp.getAreaSqft());
+            String perSqft = comp.getPricePerSqft() == null ? "—"
+                    : "₹" + indianNumber(comp.getPricePerSqft());
+            String[] cells = {
+                    comp.getLocality(), comp.getPropertyType(), comp.getBhk(),
+                    area, compactRupees(comp.getPrice()), perSqft};
+            cx = tableX + 6;
+            for (int i = 0; i < cells.length; i++) {
+                text(ctx.cs, FONT, 8, cx, y,
+                        fit(cells[i], FONT, 8, colW[i] - 10), TEXT);
+                cx += colW[i];
+            }
+            y -= 13;
+        }
+        return y - 2;
     }
 
     private float dataCoverage(RenderContext ctx, ReportResponse report,
@@ -422,18 +472,19 @@ public class ReportPdfService {
         if (report.getCoverage() == null) {
             return y;
         }
-        label(ctx.cs, MARGIN, y, "DATA COVERAGE");
-        y -= 16;
+        y = sectionLabel(ctx, y, "DATA COVERAGE", 14);
         var coverage = report.getCoverage();
         String line = (coverage.getComparablesCount() == null ? 0 : coverage.getComparablesCount())
                 + " comparable listings  ·  "
                 + (coverage.getMarketTrendsCount() == null ? 0 : coverage.getMarketTrendsCount())
                 + " market trend periods";
+        y = ctx.breakIfNeeded(y, 14);
         text(ctx.cs, FONT, 10, MARGIN, y, line, TEXT);
         y -= 14;
         if (coverage.getMissingSections() != null && !coverage.getMissingSections().isEmpty()) {
             String missing = "Not yet sourced: " + String.join(", ", coverage.getMissingSections());
             for (String wrapped : wrap(missing, FONT, 9, width - MARGIN * 2)) {
+                y = ctx.breakIfNeeded(y, 12);
                 text(ctx.cs, FONT, 9, MARGIN, y, wrapped, SLATE);
                 y -= 12;
             }
@@ -446,19 +497,16 @@ public class ReportPdfService {
         if (report.getDocuments() == null || report.getDocuments().isEmpty()) {
             return y;
         }
-        label(ctx.cs, MARGIN, y, "SUPPORTING DOCUMENTS / EVIDENCE");
-        y -= 16;
+        y = sectionLabel(ctx, y, "SUPPORTING DOCUMENTS / EVIDENCE", 14);
 
         for (ReportResponse.DocumentInfo doc : report.getDocuments()) {
-            if (ctx.needsBreak(14)) {
-                ctx.newPage();
-                y = ctx.y;
-            }
             String line = doc.getFileName()
                     + (doc.getFileType() != null ? "  (" + doc.getFileType() + ")" : "")
                     + (doc.getUploadedAt() != null
                         ? "  —  uploaded " + doc.getUploadedAt().format(DATE_FORMAT) : "");
-            for (String wrapped : wrap(line, FONT, 9, width - MARGIN * 2)) {
+            List<String> lines = wrap(line, FONT, 9, width - MARGIN * 2);
+            y = ctx.breakIfNeeded(y, lines.size() * 12);
+            for (String wrapped : lines) {
                 text(ctx.cs, FONT, 9, MARGIN, y, wrapped, TEXT);
                 y -= 12;
             }
@@ -467,54 +515,71 @@ public class ReportPdfService {
     }
 
     private float finalAssessment(RenderContext ctx, ReportResponse report,
-                                  float width, float y) throws IOException {
+                                 float width, float y) throws IOException {
         if (report.getVerdict() == null) {
             return y;
-        }
-
-        if (ctx.needsBreak(130)) {
-            ctx.newPage();
-            y = ctx.y;
         }
 
         String tier = report.getRiskTier() == null ? "UNKNOWN" : report.getRiskTier();
         Color tierColor = tierColor(tier);
 
+        // Pre-compute every wrapped line so the box height is exact and
+        // the break decision is made with the real height, not a guess.
+        List<String> headlineLines = wrap(report.getVerdict().getHeadline(),
+                FONT_BOLD, 11, width - MARGIN * 2 - 32);
+        List<List<String>> concernLines = new ArrayList<>();
+        if (report.getVerdict().getMajorConcerns() != null) {
+            for (String concern : report.getVerdict().getMajorConcerns()) {
+                concernLines.add(wrap("• " + concern, FONT, 9, width - MARGIN * 2 - 44));
+            }
+        }
+        boolean hasActions = report.getVerdict().getFollowUpActions() != null
+                && !report.getVerdict().getFollowUpActions().isEmpty();
+        List<List<String>> actionLines = new ArrayList<>();
+        if (hasActions) {
+            for (String action : report.getVerdict().getFollowUpActions()) {
+                actionLines.add(wrap("• " + action, FONT, 9, width - MARGIN * 2 - 44));
+            }
+        }
+
+        float boxHeight = 52
+                + headlineLines.size() * 15 + 5
+                + concernLines.stream().mapToInt(List::size).sum() * 13
+                + (concernLines.isEmpty() ? 0 : 5)
+                + (hasActions ? 14 + actionLines.stream().mapToInt(List::size).sum() * 13 : 0)
+                + 16;
+
+        y = ctx.breakIfNeeded(y, boxHeight + 10);
+
         float boxTop = y;
-        int concernLines = report.getVerdict().getMajorConcerns() == null ? 0
-                : report.getVerdict().getMajorConcerns().size();
-        int actionLines = report.getVerdict().getFollowUpActions() == null ? 0
-                : report.getVerdict().getFollowUpActions().size();
-        float boxHeight = 52 + concernLines * 13 + actionLines * 26 + 16;
         rect(ctx.cs, MARGIN, boxTop - boxHeight, width - MARGIN * 2, boxHeight, SLATE_LIGHT);
         rect(ctx.cs, MARGIN, boxTop - boxHeight, 4, boxHeight, tierColor);
 
         float innerY = boxTop - 18;
         text(ctx.cs, FONT_BOLD, 8, MARGIN + 16, innerY, "FINAL DUE DILIGENCE ASSESSMENT", SLATE);
         innerY -= 17;
-        for (String line : wrap(report.getVerdict().getHeadline(), FONT_BOLD, 11, width - MARGIN * 2 - 32)) {
+        for (String line : headlineLines) {
             text(ctx.cs, FONT_BOLD, 11, MARGIN + 16, innerY, line, tierColor);
             innerY -= 15;
         }
         innerY -= 5;
 
-        if (report.getVerdict().getMajorConcerns() != null) {
-            for (String concern : report.getVerdict().getMajorConcerns()) {
-                for (String line : wrap("• " + concern, FONT, 9, width - MARGIN * 2 - 44)) {
-                    text(ctx.cs, FONT, 9, MARGIN + 20, innerY, line, TEXT);
-                    innerY -= 13;
-                }
+        for (List<String> lines : concernLines) {
+            for (String line : lines) {
+                text(ctx.cs, FONT, 9, MARGIN + 20, innerY, line, TEXT);
+                innerY -= 13;
             }
+        }
+        if (!concernLines.isEmpty()) {
             innerY -= 5;
         }
 
-        if (report.getVerdict().getFollowUpActions() != null
-                && !report.getVerdict().getFollowUpActions().isEmpty()) {
+        if (hasActions) {
             text(ctx.cs, FONT_BOLD, 8, MARGIN + 16, innerY,
                     "REQUIRES FURTHER VERIFICATION / ACTION", SLATE);
             innerY -= 14;
-            for (String action : report.getVerdict().getFollowUpActions()) {
-                for (String line : wrap("• " + action, FONT, 9, width - MARGIN * 2 - 44)) {
+            for (List<String> lines : actionLines) {
+                for (String line : lines) {
                     text(ctx.cs, FONT, 9, MARGIN + 20, innerY, line, TEXT);
                     innerY -= 13;
                 }
@@ -540,6 +605,18 @@ public class ReportPdfService {
     // --- helpers ---
 
     private record Domain(String name, java.math.BigDecimal score) {
+    }
+
+    /**
+     * Draws a section label, breaking to a fresh page first when the
+     * label plus its first item cannot fit — so a heading can never land
+     * off-page or get orphaned at the bottom of a page.
+     */
+    private float sectionLabel(RenderContext ctx, float y, String text,
+                                float firstItemHeight) throws IOException {
+        y = ctx.breakIfNeeded(y, 16 + firstItemHeight);
+        label(ctx.cs, MARGIN, y, text);
+        return y - 16;
     }
 
     private void label(PDPageContentStream cs, float x, float y, String text) throws IOException {
@@ -589,6 +666,11 @@ public class ReportPdfService {
         return TEAL;
     }
 
+    /**
+     * Greedy word-wrap. Deliberately does NOT split on sentence
+     * boundaries: pdfSafe maps ₹ to "Rs. " whose trailing space would
+     * otherwise be read as a sentence end, breaking lines mid-amount.
+     */
     private List<String> wrap(String text, PDType1Font font, float size, float maxWidth)
             throws IOException {
         List<String> lines = new ArrayList<>();
@@ -596,22 +678,60 @@ public class ReportPdfService {
             return lines;
         }
         String safe = pdfSafe(text);
-        for (String paragraph : safe.split("(?<=\\.)\\s+")) {
-            String[] words = paragraph.split("\\s+");
-            StringBuilder current = new StringBuilder();
-            for (String word : words) {
-                String candidate = current.isEmpty() ? word : current + " " + word;
-                if (font.getStringWidth(candidate) / 1000 * size > maxWidth && !current.isEmpty()) {
-                    lines.add(current.toString());
-                    current = new StringBuilder(word);
-                } else {
-                    current = new StringBuilder(candidate);
-                }
-            }
-            if (!current.isEmpty()) {
+        String[] words = safe.split("\\s+");
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            String candidate = current.isEmpty() ? word : current + " " + word;
+            if (font.getStringWidth(candidate) / 1000 * size > maxWidth && !current.isEmpty()) {
                 lines.add(current.toString());
+                current = new StringBuilder(word);
+            } else {
+                current = new StringBuilder(candidate);
             }
         }
+        if (!current.isEmpty()) {
+            lines.add(current.toString());
+        }
         return lines;
+    }
+
+    /** Compact Indian price notation: ₹1.2 Cr, ₹45.5 L, ₹12,345. */
+    private static String compactRupees(java.math.BigDecimal value) {
+        if (value == null) {
+            return "—";
+        }
+        java.math.BigDecimal cr = value.divide(new java.math.BigDecimal("10000000"),
+                2, java.math.RoundingMode.HALF_UP);
+        if (cr.compareTo(java.math.BigDecimal.ONE) >= 0) {
+            return "₹" + cr.stripTrailingZeros().toPlainString() + " Cr";
+        }
+        java.math.BigDecimal lakh = value.divide(new java.math.BigDecimal("100000"),
+                2, java.math.RoundingMode.HALF_UP);
+        if (lakh.compareTo(java.math.BigDecimal.ONE) >= 0) {
+            return "₹" + lakh.stripTrailingZeros().toPlainString() + " L";
+        }
+        return "₹" + indianNumber(value);
+    }
+
+    /** Indian-grouping number format: 1,20,45,000. */
+    private static String indianNumber(java.math.BigDecimal value) {
+        return java.text.NumberFormat.getNumberInstance(new java.util.Locale("en", "IN"))
+                .format(value);
+    }
+
+    /** Truncates with "..." when a cell cannot fit its table column. */
+    private static String fit(String s, PDType1Font font, float size, float maxWidth)
+            throws IOException {
+        if (s == null || s.isBlank()) {
+            return "—";
+        }
+        String t = pdfSafe(s);
+        if (font.getStringWidth(t) / 1000 * size <= maxWidth) {
+            return t;
+        }
+        while (t.length() > 1 && font.getStringWidth(t + "...") / 1000 * size > maxWidth) {
+            t = t.substring(0, t.length() - 1);
+        }
+        return t + "...";
     }
 }

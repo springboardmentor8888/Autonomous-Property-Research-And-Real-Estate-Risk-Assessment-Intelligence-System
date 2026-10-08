@@ -328,7 +328,8 @@ class ReportServiceTest {
         assertThat(timeline.get(1).getEventType()).isEqualTo("OWNERSHIP");
         assertThat(timeline.get(1).getDescription()).contains("Test Owner");
         assertThat(timeline.get(2).getEventType()).isEqualTo("FLOOD_ZONE");
-        assertThat(timeline.get(2).getDescription()).contains("ZONE-3");
+        // Zone prefix stripped — "zone ZONE-3" reads badly.
+        assertThat(timeline.get(2).getDescription()).contains("zone 3,");
     }
 
     @Test
@@ -448,5 +449,74 @@ class ReportServiceTest {
         assertThat(response.getExecutiveSummary())
                 .startsWith("No due-diligence records are available for this property yet")
                 .contains("unsourced");
+    }
+
+    @Test
+    void taxDetailShowsSingleFigureWhenAmountMatchesDue() {
+        Property property = property(1004);
+        DiligenceDataResponse diligence = fullDiligence().toBuilder()
+                .tax(DiligenceDataResponse.TaxRecord.builder()
+                        .paymentStatus("OVERDUE")
+                        .taxAmount(new BigDecimal("31100"))
+                        .taxDue(new BigDecimal("31100"))
+                        .build())
+                .build();
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10), diligence, noMarket());
+
+        ReportResponse response = service.generate(1004L, 1L);
+
+        assertThat(response.getFindings())
+                .filteredOn(f -> f.getArea().equals("Property Tax"))
+                .first()
+                .satisfies(f -> {
+                    assertThat(f.getDetail()).isEqualTo("₹31100 due");
+                    assertThat(f.getDetail()).doesNotContain("Amount");
+                });
+    }
+
+    @Test
+    void zoneDisplayStripsRedundantPrefix() {
+        Property property = property(1004);
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10),
+                fullDiligence(), noMarket());
+
+        ReportResponse response = service.generate(1004L, 1L);
+
+        // "Zone ZONE-3" reads badly — the prefix is stripped to "Zone 3".
+        assertThat(response.getFindings())
+                .filteredOn(f -> f.getArea().equals("Flood"))
+                .first()
+                .satisfies(f -> assertThat(f.getDetail()).isEqualTo("Zone 3"));
+        assertThat(response.getTimeline())
+                .filteredOn(e -> e.getEventType().equals("FLOOD_ZONE"))
+                .first()
+                .satisfies(e -> assertThat(e.getDescription()).contains("zone 3,"));
+        assertThat(response.getRiskBasis())
+                .filteredOn(b -> b.getDomain().equals("Flood"))
+                .first()
+                .satisfies(b -> assertThat(b.getBasis()).startsWith("Zone 3,"));
+    }
+
+    @Test
+    void comparablesCarryTheMarketDataset() {
+        Property property = property(1004);
+        DiligenceDataResponse diligence = fullDiligence().toBuilder()
+                .comparables(List.of(
+                        DiligenceDataResponse.ComparableRecord.builder()
+                                .listingId("LIST-1003").locality("Casagrand Savoye")
+                                .propertyType("RESIDENTIAL").bhk("3BHK").areaSqft(1650)
+                                .price(new BigDecimal("12045000"))
+                                .pricePerSqft(new BigDecimal("7300"))
+                                .build()))
+                .build();
+        stubStages(property, assessment(56.5, 75, 75, 45, 45, 45, 10), diligence, noMarket());
+
+        ReportResponse response = service.generate(1004L, 1L);
+
+        assertThat(response.getComparables()).hasSize(1);
+        ReportResponse.ComparableListing comp = response.getComparables().get(0);
+        assertThat(comp.getListingId()).isEqualTo("LIST-1003");
+        assertThat(comp.getLocality()).isEqualTo("Casagrand Savoye");
+        assertThat(comp.getPricePerSqft()).isEqualByComparingTo("7300");
     }
 }

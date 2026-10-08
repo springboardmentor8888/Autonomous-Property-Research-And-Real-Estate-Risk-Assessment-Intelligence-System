@@ -15,7 +15,7 @@ import java.util.List;
  * dataset are null — the frontend only renders what exists.
  */
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class DiligenceDataResponse {
