@@ -36,6 +36,15 @@ public class PropertyMonitoring {
     @Column(name = "next_check_at")
     private LocalDateTime nextCheckAt;
 
+    /**
+     * SHA-256 fingerprint of the property's stored diligence record
+     * values at the previous scheduled check. Null until the first
+     * check stores the baseline; a mismatch on a later check means a
+     * record changed and a MONITORING_UPDATE notification is sent.
+     */
+    @Column(name = "last_digest")
+    private String lastDigest;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
