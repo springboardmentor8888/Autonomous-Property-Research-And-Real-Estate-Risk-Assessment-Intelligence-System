@@ -62,8 +62,12 @@ async function fetchWithAuth<T>(
   }
 
   if (res.status === 403) {
+    // Surface the backend's own message (e.g. profile-incomplete guard)
+    // instead of a generic access-denied string.
+    const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      'Access denied. You do not have permission to perform this action.'
+      errorData.message ||
+        'Access denied. You do not have permission to perform this action.'
     );
   }
 
@@ -114,8 +118,12 @@ async function fetchWithAuthForm<T>(
   }
 
   if (res.status === 403) {
+    // Surface the backend's own message (e.g. profile-incomplete guard)
+    // instead of a generic access-denied string.
+    const errorData = await res.json().catch(() => ({}));
     throw new Error(
-      'Access denied. You do not have permission to perform this action.'
+      errorData.message ||
+        'Access denied. You do not have permission to perform this action.'
     );
   }
 

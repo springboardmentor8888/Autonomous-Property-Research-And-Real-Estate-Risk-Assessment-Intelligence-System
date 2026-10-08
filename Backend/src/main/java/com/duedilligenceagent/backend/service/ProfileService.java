@@ -7,6 +7,7 @@ import com.duedilligenceagent.backend.entities.User;
 import com.duedilligenceagent.backend.entities.UserProfile;
 import com.duedilligenceagent.backend.entities.enums.RoleName;
 import com.duedilligenceagent.backend.exception.InvalidAuthRequestException;
+import com.duedilligenceagent.backend.exception.ProfileIncompleteException;
 import com.duedilligenceagent.backend.repositories.RoleRepository;
 import com.duedilligenceagent.backend.repositories.UserProfileRepository;
 import com.duedilligenceagent.backend.repositories.UserRepository;
@@ -15,6 +16,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -100,5 +103,49 @@ public class ProfileService {
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
                 .build();
+    }
+
+    /**
+     * Guards actions that require a completed profile (property search):
+     * throws {@link ProfileIncompleteException} naming the missing fields
+     * when the caller's profile is incomplete. Administrators are exempt —
+     * the consumer profile flow does not apply to them.
+     */
+    public void requireCompleteProfile(UserDetails userDetails) {
+        if (userDetails == null) {
+            return;
+        }
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMINISTRATOR".equals(a.getAuthority()));
+        if (isAdmin) {
+            return;
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername()).orElse(null);
+        if (user == null) {
+            return;
+        }
+        UserProfile profile = profileRepository.findByUserId(user.getUserId()).orElse(null);
+        if (profile == null) {
+            throw new ProfileIncompleteException("first name, last name, phone");
+        }
+
+        List<String> missing = new ArrayList<>();
+        if (isBlank(profile.getFirstName())) {
+            missing.add("first name");
+        }
+        if (isBlank(profile.getLastName())) {
+            missing.add("last name");
+        }
+        if (isBlank(profile.getPhone())) {
+            missing.add("phone");
+        }
+        if (!missing.isEmpty()) {
+            throw new ProfileIncompleteException(String.join(", ", missing));
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

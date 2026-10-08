@@ -65,7 +65,13 @@ export default function PropertySearch() {
         toastError(res.message || 'Address validation service is currently unavailable. Please try again later.');
       }
     } catch (err: any) {
-      toastError(err.message || 'Search failed. Please try again.');
+      const message: string = err?.message || 'Search failed. Please try again.';
+      toastError(message);
+      // Profile completion is compulsory before searching — route the
+      // user to their profile page to finish it.
+      if (message.toLowerCase().includes('profile')) {
+        setTimeout(() => router.push('/profile'), 1200);
+      }
     } finally {
       setLoading(false);
     }

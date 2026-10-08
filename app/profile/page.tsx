@@ -40,7 +40,9 @@ function validate(v: FormValues): Errors {
     errors.lastName = 'Last name must be 50 characters or fewer.';
   }
 
-  if (v.phone && !PHONE_RE.test(v.phone)) {
+  if (!v.phone.trim()) {
+    errors.phone = 'Phone is required to complete your profile.';
+  } else if (!PHONE_RE.test(v.phone)) {
     errors.phone = 'Phone must be 10-15 digits, optionally starting with +';
   }
 
@@ -237,6 +239,11 @@ export default function ProfilePage() {
               <span className="inline-block mt-1.5 pill bg-slate-100 text-slate-700 text-xs font-medium">
                 {profile.role}
               </span>
+              {profile.role !== 'ADMINISTRATOR' && !(profile.firstName && profile.lastName && profile.phone) && (
+                <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
+                  Complete your profile (name and phone) to unlock property search.
+                </p>
+              )}
             </div>
           </div>
 
@@ -305,7 +312,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label htmlFor="editPhone" className="label-base">Phone number (optional)</label>
+                <label htmlFor="editPhone" className="label-base">Phone number <span className="text-red-600">*</span></label>
                 <input
                   id="editPhone"
                   type="tel"

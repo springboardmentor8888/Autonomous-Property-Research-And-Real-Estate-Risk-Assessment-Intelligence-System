@@ -28,7 +28,7 @@ export function useProfileGuard() {
       try {
         await ensureAuthInitialized();
         const email = getAuthEmail();
-        
+
         // If not authenticated, let the existing auth guard handle it
         if (!email) {
           return;
@@ -36,12 +36,13 @@ export function useProfileGuard() {
 
         // Check if profile is complete
         const profile = await profileApi.getProfile();
-        
-        // Profile is incomplete if firstName or lastName is empty
-        const isProfileComplete = profile.firstName && profile.lastName && 
-          profile.firstName.trim() !== '' && profile.lastName.trim() !== '';
-        
-        if (!isProfileComplete && pathname !== '/profile') {
+
+        // Administrators don't follow the consumer profile flow.
+        if (profile.role === 'ADMINISTRATOR') {
+          return;
+        }
+
+        if (!isProfileComplete(profile) && pathname !== '/profile') {
           router.push('/profile');
           router.refresh();
         }
@@ -56,8 +57,18 @@ export function useProfileGuard() {
 }
 
 /**
- * Check if user profile is complete (has firstName and lastName)
+ * Check if user profile is complete: first name, last name and contact
+ * phone are all filled. Registration makes phone optional, so it must
+ * be completed on the profile page before searching properties.
  */
-export function isProfileComplete(profile: { firstName?: string; lastName?: string } | null): boolean {
-  return !!(profile?.firstName?.trim() && profile?.lastName?.trim());
+export function isProfileComplete(profile: {
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  role?: string | null;
+} | null): boolean {
+  if (profile?.role === 'ADMINISTRATOR') {
+    return true;
+  }
+  return !!(profile?.firstName?.trim() && profile?.lastName?.trim() && profile?.phone?.trim());
 }

@@ -107,13 +107,18 @@ class ReportExcelServiceTest {
         try (XSSFWorkbook workbook = render(report())) {
             Sheet risk = workbook.getSheet("Risk Assessment");
             assertThat(risk.getRow(3).getCell(0).getStringCellValue()).isEqualTo("Overall");
-            assertThat(risk.getRow(3).getCell(1).getStringCellValue()).isEqualTo("7.75");
+            assertThat(risk.getRow(3).getCell(1).getNumericCellValue()).isEqualTo(7.75);
             assertThat(risk.getRow(4).getCell(0).getStringCellValue()).isEqualTo("Property Tax");
-            assertThat(risk.getRow(4).getCell(1).getStringCellValue()).isEqualTo("5");
+            assertThat(risk.getRow(4).getCell(1).getNumericCellValue()).isEqualTo(5.0);
             assertThat(risk.getRow(8).getCell(0).getStringCellValue())
                     .isEqualTo("Legal / Environmental");
             assertThat(risk.getRow(9).getCell(0).getStringCellValue())
                     .isEqualTo("Ownership Verification");
+            // Scores are real numeric cells with a number format applied.
+            assertThat(risk.getRow(3).getCell(1).getCellStyle().getDataFormatString())
+                    .isEqualTo("0.0#");
+            // Header pane frozen for scrolling.
+            assertThat(risk.getPaneInformation()).isNotNull();
         }
     }
 
@@ -150,10 +155,14 @@ class ReportExcelServiceTest {
 
         try (XSSFWorkbook workbook = render(report())) {
             Sheet comparables = workbook.getSheet("Comparables");
-            Row data = comparables.getRow(1);
+            Row data = comparables.getRow(3);
             assertThat(data.getCell(0).getStringCellValue()).isEqualTo("L1");
             assertThat(data.getCell(1).getStringCellValue()).isEqualTo("Thirumudivakkam");
-            assertThat(data.getCell(5).getStringCellValue()).isEqualTo("9500000");
+            // Price and area are real numeric cells with the rupee format.
+            assertThat(data.getCell(4).getNumericCellValue()).isEqualTo(1450.0);
+            assertThat(data.getCell(5).getNumericCellValue()).isEqualTo(9500000.0);
+            assertThat(data.getCell(5).getCellStyle().getDataFormatString()).contains("₹");
+            assertThat(data.getCell(6).getNumericCellValue()).isEqualTo(6551.0);
             assertThat(data.getCell(8).getStringCellValue()).isEqualTo("Yes");
         }
     }
@@ -165,7 +174,7 @@ class ReportExcelServiceTest {
 
         try (XSSFWorkbook workbook = render(report())) {
             Sheet comparables = workbook.getSheet("Comparables");
-            assertThat(comparables.getRow(1).getCell(0).getStringCellValue())
+            assertThat(comparables.getRow(3).getCell(0).getStringCellValue())
                     .contains("No comparable listings stored");
         }
     }
@@ -185,11 +194,11 @@ class ReportExcelServiceTest {
 
         try (XSSFWorkbook workbook = render(report())) {
             Sheet market = workbook.getSheet("Market Analysis");
-            Row data = market.getRow(1);
+            Row data = market.getRow(3);
             assertThat(data.getCell(0).getStringCellValue()).isEqualTo("Thirumudivakkam");
             assertThat(data.getCell(1).getStringCellValue()).isEqualTo("2026-Q3");
-            assertThat(data.getCell(2).getStringCellValue()).isEqualTo("6600");
-            assertThat(data.getCell(3).getStringCellValue()).isEqualTo("42");
+            assertThat(data.getCell(2).getNumericCellValue()).isEqualTo(6600.0);
+            assertThat(data.getCell(3).getNumericCellValue()).isEqualTo(42.0);
         }
     }
 }

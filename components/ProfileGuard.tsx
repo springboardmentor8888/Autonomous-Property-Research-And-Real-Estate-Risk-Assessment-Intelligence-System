@@ -23,7 +23,7 @@ export default function ProfileGuard() {
       try {
         await ensureAuthInitialized();
         const email = getAuthEmail();
-        
+
         // If not authenticated, let the existing auth guard handle it
         if (!email) {
           return;
@@ -31,11 +31,21 @@ export default function ProfileGuard() {
 
         // Check if profile is complete
         const profile = await profileApi.getProfile();
-        
-        // Profile is incomplete if firstName or lastName is empty
-        const isProfileComplete = profile.firstName && profile.lastName && 
-          profile.firstName.trim() !== '' && profile.lastName.trim() !== '';
-        
+
+        // Administrators don't follow the consumer profile flow.
+        if (profile.role === 'ADMINISTRATOR') {
+          return;
+        }
+
+        // Profile is complete only when the required identity fields
+        // (first name, last name) AND the contact phone are filled —
+        // registration makes phone optional, so it must be completed
+        // on the profile page before searching.
+        const isProfileComplete =
+          !!profile.firstName?.trim() &&
+          !!profile.lastName?.trim() &&
+          !!profile.phone?.trim();
+
         if (mounted && !isProfileComplete && pathname !== '/profile') {
           router.push('/profile');
           router.refresh();

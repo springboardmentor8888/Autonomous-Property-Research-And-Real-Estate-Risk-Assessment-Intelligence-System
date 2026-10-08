@@ -151,6 +151,8 @@ public class ReportService {
                 : aggregationRunRepository.findById(report.getAggregationRunId())
                         .map(run -> run.getStatus())
                         .orElse(null);
+        ReportResponse.Verdict verdict =
+                verdict(assessment, diligence, toCoverage(diligence));
         return ReportResponse.builder()
                 .reportId(report.getReportId())
                 .propertyId(report.getPropertyId())
@@ -178,7 +180,7 @@ public class ReportService {
                 .risk(toRiskResponse(assessment))
                 .timeline(timeline(diligence))
                 .findings(findings(diligence))
-                .verdict(verdict(assessment, diligence, toCoverage(diligence)))
+                .verdict(verdict)
                 .documents(supportingDocsRepository.findByPropertyIdOrderByUploadedAtDesc(
                                 report.getPropertyId()).stream()
                         .map(doc -> ReportResponse.DocumentInfo.builder()
@@ -188,7 +190,7 @@ public class ReportService {
                                 .uploadedAt(doc.getUploadedAt())
                                 .build())
                         .toList())
-                .riskBasis(riskBasis(assessment, diligence))
+                .riskBasis(riskBasis(assessment, diligence, verdict))
                 .comparables(comparables(diligence))
                 .records(toRecordStatuses(diligence))
                 .coverage(toCoverage(diligence))
@@ -641,12 +643,14 @@ public class ReportService {
 
     /** Per-domain risk basis: score, level and a one-line basis. */
     private List<ReportResponse.RiskBasis> riskBasis(RiskAssessmentDetails assessment,
-                                                     DiligenceDataResponse diligence) {
+                                                     DiligenceDataResponse diligence,
+                                                     ReportResponse.Verdict verdict) {
         if (assessment == null) {
             return List.of();
         }
         List<ReportResponse.RiskBasis> rows = new ArrayList<>();
-        rows.add(basisRow("Overall", assessment.getOverallScore()));
+        rows.add(basisRow("Overall", assessment.getOverallScore(),
+                verdict == null ? null : verdict.getHeadline()));
         rows.add(basisRow("Legal / Environmental", assessment.getLegalRisk(),
                 diligence.getEnvironmental() == null ? null
                         : "Environmental review " + lowerHuman(diligence.getEnvironmental().getStatus())));

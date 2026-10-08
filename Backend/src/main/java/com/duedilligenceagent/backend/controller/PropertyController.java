@@ -10,6 +10,7 @@ import com.duedilligenceagent.backend.dto.MarketAnalysisResponse;
 import com.duedilligenceagent.backend.dto.MonitoringStatusResponse;
 import com.duedilligenceagent.backend.dto.ReportResponse;
 import com.duedilligenceagent.backend.dto.RiskAssessmentResponse;
+import com.duedilligenceagent.backend.service.ProfileService;
 import com.duedilligenceagent.backend.service.ReportExcelService;
 import com.duedilligenceagent.backend.service.ReportPdfService;
 import com.duedilligenceagent.backend.service.RiskAssessmentService;
@@ -64,6 +65,7 @@ public class PropertyController {
     private final AggregationRunRepository aggregationRunRepository;
     private final RiskAssessmentDetailsRepository riskAssessmentRepository;
     private final UserRepository userRepository;
+    private final ProfileService profileService;
 
     public PropertyController(PropertyService propertyService,
                               PropertySearchService propertySearchService,
@@ -77,7 +79,8 @@ public class PropertyController {
                               MarketAnalysisService marketAnalysisService,
                               AggregationRunRepository aggregationRunRepository,
                               RiskAssessmentDetailsRepository riskAssessmentRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              ProfileService profileService) {
         this.propertyService = propertyService;
         this.propertySearchService = propertySearchService;
         this.aggregationService = aggregationService;
@@ -91,6 +94,7 @@ public class PropertyController {
         this.aggregationRunRepository = aggregationRunRepository;
         this.riskAssessmentRepository = riskAssessmentRepository;
         this.userRepository = userRepository;
+        this.profileService = profileService;
     }
 
     @GetMapping
@@ -131,6 +135,9 @@ public class PropertyController {
     public ResponseEntity<PropertySearchApiResponse> searchByAddress(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody PropertyDetailsRequest request) {
+        // Profile completion is compulsory before a property search — the
+        // guard throws 403 naming the missing profile fields.
+        profileService.requireCompleteProfile(userDetails);
         return ResponseEntity.ok(
                 propertySearchService.searchByAddress(request, userIdOf(userDetails))
         );

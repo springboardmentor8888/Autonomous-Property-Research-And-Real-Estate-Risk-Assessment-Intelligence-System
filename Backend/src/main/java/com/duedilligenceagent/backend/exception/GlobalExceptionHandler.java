@@ -51,4 +51,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("message", ex.getMessage()));
     }
+
+    // Profile incomplete before a gated action (e.g. property search) -> 403
+    // with the missing fields, plus a machine-readable reason the frontend
+    // can use to route the user to the profile page.
+    @ExceptionHandler(ProfileIncompleteException.class)
+    public ResponseEntity<Map<String, String>> handleProfileIncomplete(ProfileIncompleteException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                        "message", ex.getMessage(),
+                        "reason", "PROFILE_INCOMPLETE",
+                        "missingFields", ex.getMissingFields()));
+    }
 }
