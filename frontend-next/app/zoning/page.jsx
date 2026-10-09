@@ -771,14 +771,6 @@ export default function ZoningPage() {
                         development restrictions, and planning authority information.
                     </p>
 
-                    <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/[0.04] px-4 py-2 text-xs text-sky-300/70">
-
-                        <span className="h-2 w-2 rounded-full bg-sky-400" />
-
-                        BACKEND DATA
-
-                    </div>
-
                 </div>
 
             </section>
@@ -950,8 +942,8 @@ export default function ZoningPage() {
                                 className={`grid gap-10 ${hasValue(
                                     zoningData.permittedUse
                                 )
-                                        ? "md:grid-cols-2"
-                                        : "md:grid-cols-1"
+                                    ? "md:grid-cols-2"
+                                    : "md:grid-cols-1"
                                     }`}
                             >
 
@@ -1313,8 +1305,8 @@ export default function ZoningPage() {
 
                             <div
                                 className={`rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10 ${hasCoordinates
-                                        ? "grid gap-10 md:grid-cols-2"
-                                        : ""
+                                    ? "grid gap-10 md:grid-cols-2"
+                                    : ""
                                     }`}
                             >
 

@@ -35,7 +35,6 @@ export default function OwnershipPage() {
         }
 
         const selected = JSON.parse(savedProperty);
-
         setProperty(selected);
 
         const rawId =
@@ -102,34 +101,6 @@ export default function OwnershipPage() {
         }
 
         const details = data?.data ?? data;
-
-        /*
-         * Backend should return:
-         *
-         * {
-         *   ownershipHistory: [
-         *     {
-         *       id: 4,
-         *       ownerName: "Lakshmi Devi",
-         *       acquiredDate: "2008-02-10",
-         *       transferDate: null
-         *     },
-         *     {
-         *       id: 5,
-         *       ownerName: "Kiran Rao",
-         *       acquiredDate: "2015-07-18",
-         *       transferDate: null
-         *     },
-         *     {
-         *       id: 6,
-         *       ownerName: "Priya Reddy",
-         *       acquiredDate: "2023-01-25",
-         *       transferDate: null
-         *     }
-         *   ]
-         * }
-         */
-
         let history = [];
 
         if (Array.isArray(details?.ownershipHistory)) {
@@ -143,10 +114,7 @@ export default function OwnershipPage() {
           history = [details.ownership];
         }
 
-        /*
-         * Normalize the records so that small backend naming
-         * differences do not break the frontend.
-         */
+        // Normalize backend field names.
         history = history
           .filter(Boolean)
           .map((record) => ({
@@ -167,31 +135,19 @@ export default function OwnershipPage() {
             id: record.id ?? record.recordId ?? null,
           }));
 
-        /*
-         * Sort oldest acquisition → newest acquisition.
-         */
+        // Sort from oldest acquisition to newest.
         history.sort((a, b) => {
           const dateA = a?.acquiredDate || "";
           const dateB = b?.acquiredDate || "";
-
           return dateA.localeCompare(dateB);
         });
 
-        console.log(
-          "Ownership records received:",
-          history
-        );
-
+        console.log("Ownership records received:", history);
         setOwnershipHistory(history);
       } catch (err) {
-        console.error(
-          "Ownership loading error:",
-          err
-        );
-
+        console.error("Ownership loading error:", err);
         setError(
-          err.message ||
-          "Unable to load ownership records."
+          err.message || "Unable to load ownership records."
         );
       } finally {
         setLoading(false);
@@ -214,27 +170,16 @@ export default function OwnershipPage() {
         address
       )}`;
 
-  /*
-   * Always work with a sorted copy.
-   */
-  const sortedOwnershipHistory = [
-    ...ownershipHistory,
-  ].sort((a, b) => {
-    const dateA = a?.acquiredDate || "";
-    const dateB = b?.acquiredDate || "";
+  // Always work with a sorted copy.
+  const sortedOwnershipHistory = [...ownershipHistory].sort(
+    (a, b) => {
+      const dateA = a?.acquiredDate || "";
+      const dateB = b?.acquiredDate || "";
+      return dateA.localeCompare(dateB);
+    }
+  );
 
-    return dateA.localeCompare(dateB);
-  });
-
-  /*
-   * Determine the current owner.
-   *
-   * If transfer dates are available, a record with no transfer
-   * date can normally represent the current owner.
-   *
-   * If ALL transfer dates are NULL, use the latest acquisition
-   * date as the current owner.
-   */
+  // Determine the current owner.
   const recordsWithoutTransferDate =
     sortedOwnershipHistory.filter(
       (record) => record?.transferDate == null
@@ -243,61 +188,23 @@ export default function OwnershipPage() {
   let currentOwner = null;
 
   if (recordsWithoutTransferDate.length > 0) {
-    /*
-     * If multiple records have NULL transfer dates,
-     * select the latest acquired record.
-     *
-     * Example:
-     *
-     * Lakshmi Devi  2008-02-10
-     * Kiran Rao     2015-07-18
-     * Priya Reddy   2023-01-25
-     *
-     * Priya Reddy becomes current owner.
-     */
     currentOwner =
       recordsWithoutTransferDate[
       recordsWithoutTransferDate.length - 1
       ];
   } else if (sortedOwnershipHistory.length > 0) {
-    /*
-     * Fallback when every record has a transfer date.
-     * Use the latest acquisition record.
-     */
     currentOwner =
       sortedOwnershipHistory[
       sortedOwnershipHistory.length - 1
       ];
   }
 
-  /*
-   * Determine whether the backend supplied any transfer dates.
-   */
-  const hasTransferDates =
-    sortedOwnershipHistory.some(
-      (record) => record?.transferDate != null
-    );
+  // Determine whether the backend supplied transfer dates.
+  const hasTransferDates = sortedOwnershipHistory.some(
+    (record) => record?.transferDate != null
+  );
 
-  /*
-   * IMPORTANT:
-   *
-   * Previous owners are ALL records except currentOwner.
-   *
-   * This guarantees that if the backend sends:
-   *
-   * 4 - Lakshmi Devi
-   * 5 - Kiran Rao
-   * 6 - Priya Reddy
-   *
-   * then:
-   *
-   * Current:
-   * Priya Reddy
-   *
-   * Previous:
-   * Lakshmi Devi
-   * Kiran Rao
-   */
+  // Previous owners are all records except the current owner.
   const previousOwners =
     currentOwner == null
       ? []
@@ -305,13 +212,8 @@ export default function OwnershipPage() {
         (record) => record !== currentOwner
       );
 
-  /*
-   * When transfer dates are missing, the previous/current
-   * classification is inferred from acquisition dates.
-   */
   const inferredPreviousOwners =
-    !hasTransferDates &&
-    previousOwners.length > 0;
+    !hasTransferDates && previousOwners.length > 0;
 
   if (loading) {
     return (
@@ -319,10 +221,7 @@ export default function OwnershipPage() {
         <div className="flex min-h-screen items-center justify-center">
           <div className="flex items-center gap-4 text-white/50">
             <div className="h-5 w-5 animate-spin rounded-full border border-white/20 border-t-white" />
-
-            <span>
-              Loading ownership records...
-            </span>
+            <span>Loading ownership records...</span>
           </div>
         </div>
       </main>
@@ -334,9 +233,7 @@ export default function OwnershipPage() {
       {/* Background */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute left-[-200px] top-[5%] h-[550px] w-[550px] rounded-full bg-orange-500/[0.06] blur-[150px]" />
-
         <div className="absolute right-[-200px] top-[35%] h-[650px] w-[650px] rounded-full bg-blue-500/[0.05] blur-[170px]" />
-
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.035),transparent_45%)]" />
       </div>
 
@@ -358,15 +255,12 @@ export default function OwnershipPage() {
           <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
             Verify
             <br />
-            <span className="text-white/35">
-              ownership.
-            </span>
+            <span className="text-white/35">ownership.</span>
           </h1>
 
           <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
-            Review current and previous ownership
-            information and available registry records
-            for the selected property.
+            Review current and previous ownership information and
+            available registry records for the selected property.
           </p>
         </div>
       </section>
@@ -464,8 +358,8 @@ export default function OwnershipPage() {
                   </h3>
 
                   <p className="mt-4 text-sm leading-7 text-white/40">
-                    The backend did not return ownership
-                    information for this property.
+                    The backend did not return ownership information
+                    for this property.
                   </p>
                 </div>
               ) : (
@@ -497,16 +391,14 @@ export default function OwnershipPage() {
                     </h3>
 
                     <p className="mt-4 text-sm text-white/40">
-                      Current ownership information
-                      returned by the backend.
+                      Current ownership information returned by the
+                      backend.
                     </p>
 
                     <div className="mt-10 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
                       <DetailCard
                         label="Acquired Date"
-                        value={
-                          currentOwner?.acquiredDate
-                        }
+                        value={currentOwner?.acquiredDate}
                       />
 
                       <DetailCard
@@ -547,86 +439,82 @@ export default function OwnershipPage() {
 
                     {inferredPreviousOwners && (
                       <p className="mt-6 text-sm leading-6 text-amber-200/70">
-                        Transfer dates were not provided.
-                        Previous owners are shown based
-                        on acquisition dates and should be
-                        verified with the backend records.
+                        Transfer dates were not provided. Previous
+                        owners are shown based on acquisition dates
+                        and should be verified with the backend
+                        records.
                       </p>
                     )}
 
                     {previousOwners.length === 0 ? (
                       <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-8">
                         <p className="text-lg text-white/65">
-                          No previous ownership records
-                          found.
+                          No previous ownership records found.
                         </p>
 
                         <p className="mt-3 text-sm leading-7 text-white/40">
-                          No earlier ownership records
-                          could be identified.
+                          No earlier ownership records could be
+                          identified.
                         </p>
                       </div>
                     ) : (
                       <div className="mt-8 space-y-5">
-                        {previousOwners.map(
-                          (owner, index) => (
-                            <div
-                              key={
-                                owner.id ??
-                                `${owner.ownerName}-${owner.acquiredDate}-${index}`
-                              }
-                              className="rounded-2xl border border-white/10 bg-white/[0.02] p-7 transition hover:border-white/20 md:p-9"
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
-                                    <UserRound
-                                      size={18}
-                                      className="text-white/50"
-                                    />
-                                  </div>
-
-                                  <span className="text-xs tracking-[0.2em] text-white/35">
-                                    PREVIOUS OWNER{" "}
-                                    {index + 1}
-                                  </span>
+                        {previousOwners.map((owner, index) => (
+                          <div
+                            key={
+                              owner.id ??
+                              `${owner.ownerName}-${owner.acquiredDate}-${index}`
+                            }
+                            className="rounded-2xl border border-white/10 bg-white/[0.02] p-7 transition hover:border-white/20 md:p-9"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                                  <UserRound
+                                    size={18}
+                                    className="text-white/50"
+                                  />
                                 </div>
 
-                                <span className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/45">
-                                  Ownership ended
+                                <span className="text-xs tracking-[0.2em] text-white/35">
+                                  PREVIOUS OWNER {index + 1}
                                 </span>
                               </div>
 
-                              <h3 className="mt-6 break-words text-2xl font-light text-white/85 md:text-3xl">
-                                {owner.ownerName ||
-                                  owner.owner ||
-                                  owner.name ||
-                                  "Not available"}
-                              </h3>
-
-                              <div className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
-                                <DetailCard
-                                  label="Acquired Date"
-                                  value={
-                                    owner.acquiredDate
-                                  }
-                                />
-
-                                <DetailCard
-                                  label="Transfer Date"
-                                  value={
-                                    owner.transferDate
-                                  }
-                                />
-
-                                <DetailCard
-                                  label="Record ID"
-                                  value={owner.id}
-                                />
-                              </div>
+                              <span className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/45">
+                                Ownership ended
+                              </span>
                             </div>
-                          )
-                        )}
+
+                            <h3 className="mt-6 break-words text-2xl font-light text-white/85 md:text-3xl">
+                              {owner.ownerName ||
+                                owner.owner ||
+                                owner.name ||
+                                "Not available"}
+                            </h3>
+
+                            <div className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
+                              <DetailCard
+                                label="Acquired Date"
+                                value={owner.acquiredDate}
+                              />
+
+                              {/* Hide the entire Transfer Date field when no date exists. */}
+                              {owner.transferDate != null &&
+                                owner.transferDate !== "" && (
+                                  <DetailCard
+                                    label="Transfer Date"
+                                    value={owner.transferDate}
+                                  />
+                                )}
+
+                              <DetailCard
+                                label="Record ID"
+                                value={owner.id}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -714,9 +602,9 @@ export default function OwnershipPage() {
               </h2>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-white/40">
-                Review historical property tax
-                assessments, tax amounts, payment status,
-                and changes across previous tax years.
+                Review historical property tax assessments, tax
+                amounts, payment status, and changes across previous
+                tax years.
               </p>
 
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">

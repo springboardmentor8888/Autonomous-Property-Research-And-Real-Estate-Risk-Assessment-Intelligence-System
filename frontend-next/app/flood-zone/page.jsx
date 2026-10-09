@@ -771,12 +771,6 @@ export default function FloodZonePage() {
                         flood-related property
                         indicators.
                     </p>
-
-                    <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/[0.04] px-4 py-2 text-xs text-sky-300/70">
-                        <span className="h-2 w-2 rounded-full bg-sky-400" />
-
-                        BACKEND DATA
-                    </div>
                 </div>
             </section>
 
@@ -853,10 +847,10 @@ export default function FloodZonePage() {
 
                         <div
                             className={`grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 ${floodOverview.length >= 4
-                                    ? "lg:grid-cols-4"
-                                    : floodOverview.length === 3
-                                        ? "lg:grid-cols-3"
-                                        : "lg:grid-cols-2"
+                                ? "lg:grid-cols-4"
+                                : floodOverview.length === 3
+                                    ? "lg:grid-cols-3"
+                                    : "lg:grid-cols-2"
                                 }`}
                         >
                             {floodOverview.map(
@@ -1007,8 +1001,8 @@ export default function FloodZonePage() {
                                                     <AlertTriangle
                                                         size={21}
                                                         className={`mt-1 ${riskIsHigh
-                                                                ? "text-red-400"
-                                                                : "text-orange-400"
+                                                            ? "text-red-400"
+                                                            : "text-orange-400"
                                                             }`}
                                                     />
                                                 )}
@@ -1057,10 +1051,10 @@ export default function FloodZonePage() {
 
                         <div
                             className={`grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 ${floodDetailFields.length >= 6
+                                ? "lg:grid-cols-3"
+                                : floodDetailFields.length >= 3
                                     ? "lg:grid-cols-3"
-                                    : floodDetailFields.length >= 3
-                                        ? "lg:grid-cols-3"
-                                        : "lg:grid-cols-2"
+                                    : "lg:grid-cols-2"
                                 }`}
                         >
                             {floodDetailFields.map(

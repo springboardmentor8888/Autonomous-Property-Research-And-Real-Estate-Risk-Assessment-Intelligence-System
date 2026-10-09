@@ -9,15 +9,10 @@ function getStoredToken() {
         return null;
     }
 
-    const tokenKeys = [
-        "token",
-        "accessToken",
-        "authToken",
-    ];
+    const tokenKeys = ["token", "accessToken", "authToken"];
 
     for (const key of tokenKeys) {
         const token = localStorage.getItem(key);
-
         if (token && token.trim()) {
             return token.trim();
         }
@@ -25,82 +20,117 @@ function getStoredToken() {
 
     for (const key of tokenKeys) {
         const token = sessionStorage.getItem(key);
-
         if (token && token.trim()) {
             return token.trim();
         }
     }
 
-    const storedUser =
-        localStorage.getItem("user");
+    const storedUser = localStorage.getItem("user");
 
     if (storedUser) {
         try {
-            const user =
-                JSON.parse(storedUser);
+            const user = JSON.parse(storedUser);
 
             if (user?.token) {
-                localStorage.setItem(
-                    "token",
-                    user.token
-                );
-
+                localStorage.setItem("token", user.token);
                 return user.token;
             }
 
             if (user?.accessToken) {
-                localStorage.setItem(
-                    "token",
-                    user.accessToken
-                );
-
+                localStorage.setItem("token", user.accessToken);
                 return user.accessToken;
             }
         } catch (error) {
-            console.error(
-                "Unable to parse stored user:",
-                error
-            );
+            console.error("Unable to parse stored user:", error);
         }
     }
 
     return null;
 }
 
+/*
+ * OWNERSHIP FIELD HELPERS
+ *
+ * The backend returns ownershipHistory as an array of
+ * OwnershipRecord objects. These helpers support the
+ * field names returned by the backend.
+ */
+
+function getOwnerName(record) {
+    return (
+        record?.ownerName ??
+        record?.owner_name ??
+        record?.owner ??
+        record?.fullName ??
+        record?.full_name ??
+        null
+    );
+}
+
+function getAcquiredDate(record) {
+    return (
+        record?.acquiredDate ??
+        record?.acquisitionDate ??
+        record?.acquired_date ??
+        record?.acquisition_date ??
+        null
+    );
+}
+
+function getTransferDate(record) {
+    return (
+        record?.transferDate ??
+        record?.transferredDate ??
+        record?.transfer_date ??
+        record?.transferred_date ??
+        null
+    );
+}
+
+function isAvailable(value) {
+    if (value === null || value === undefined) {
+        return false;
+    }
+
+    if (typeof value === "string") {
+        const cleaned = value.trim().toLowerCase();
+
+        if (
+            cleaned === "" ||
+            cleaned === "not available" ||
+            cleaned === "n/a" ||
+            cleaned === "na" ||
+            cleaned === "null" ||
+            cleaned === "undefined"
+        ) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 export default function DueDiligenceReportPage() {
-    const [property, setProperty] =
-        useState(null);
+    const [property, setProperty] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
-    const [loading, setLoading] =
-        useState(true);
+    const [riskAssessment, setRiskAssessment] = useState(null);
+    const [comparables, setComparables] = useState([]);
+    const [milestone3Loading, setMilestone3Loading] = useState(false);
+    const [milestone3Error, setMilestone3Error] = useState("");
+    const [downloading, setDownloading] = useState("");
 
-    const [error, setError] =
-        useState("");
-
-    const [riskAssessment, setRiskAssessment] =
-        useState(null);
-
-    const [comparables, setComparables] =
-        useState([]);
-
-    const [milestone3Loading, setMilestone3Loading] =
-        useState(false);
-
-    const [milestone3Error, setMilestone3Error] =
-        useState("");
-
-    const [downloading, setDownloading] =
-        useState("");
+    /*
+     * LOAD PROPERTY REPORT
+     */
 
     useEffect(() => {
         let cancelled = false;
 
         async function loadReport() {
             try {
-                const saved =
-                    sessionStorage.getItem(
-                        "selectedProperty"
-                    );
+                const saved = sessionStorage.getItem("selectedProperty");
 
                 if (!saved) {
                     throw new Error(
@@ -108,8 +138,7 @@ export default function DueDiligenceReportPage() {
                     );
                 }
 
-                const selected =
-                    JSON.parse(saved);
+                const selected = JSON.parse(saved);
 
                 const propertyId =
                     selected.propertyDbId ||
@@ -122,36 +151,27 @@ export default function DueDiligenceReportPage() {
                     );
                 }
 
-                const token =
-                    getStoredToken();
+                const token = getStoredToken();
 
                 if (!token) {
-                    throw new Error(
-                        "Please log in first."
-                    );
+                    throw new Error("Please log in first.");
                 }
 
-                const response =
-                    await fetch(
-                        `${API_URL}/properties/${propertyId}`,
-                        {
-                            method: "GET",
-                            headers: {
-                                Authorization:
-                                    `Bearer ${token}`,
-                                Accept:
-                                    "application/json",
-                            },
-                            cache: "no-store",
-                        }
-                    );
+                const response = await fetch(
+                    `${API_URL}/properties/${propertyId}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            Accept: "application/json",
+                        },
+                        cache: "no-store",
+                    }
+                );
 
-                const result =
-                    await response
-                        .json()
-                        .catch(
-                            () => null
-                        );
+                const result = await response
+                    .json()
+                    .catch(() => null);
 
                 if (!response.ok) {
                     throw new Error(
@@ -161,9 +181,7 @@ export default function DueDiligenceReportPage() {
                     );
                 }
 
-                const data =
-                    result?.data ||
-                    result;
+                const data = result?.data || result;
 
                 if (!cancelled) {
                     setProperty({
@@ -185,10 +203,7 @@ export default function DueDiligenceReportPage() {
                 }
             } catch (err) {
                 if (!cancelled) {
-                    console.error(
-                        "Property loading error:",
-                        err
-                    );
+                    console.error("Property loading error:", err);
 
                     setError(
                         err?.message ||
@@ -209,6 +224,10 @@ export default function DueDiligenceReportPage() {
         };
     }, []);
 
+    /*
+     * LOAD RISK ASSESSMENT AND COMPARABLE PROPERTIES
+     */
+
     useEffect(() => {
         if (!property) {
             return;
@@ -224,23 +243,16 @@ export default function DueDiligenceReportPage() {
         }
     }, [property]);
 
-    async function loadMilestone3(
-        propertyId
-    ) {
-        const token =
-            getStoredToken();
+    async function loadMilestone3(propertyId) {
+        const token = getStoredToken();
 
         if (!token) {
-            setMilestone3Error(
-                "Please log in first."
-            );
+            setMilestone3Error("Please log in first.");
             return;
         }
 
         if (!propertyId) {
-            setMilestone3Error(
-                "Property ID is missing."
-            );
+            setMilestone3Error("Property ID is missing.");
             return;
         }
 
@@ -249,48 +261,38 @@ export default function DueDiligenceReportPage() {
 
         try {
             const headers = {
-                Authorization:
-                    `Bearer ${token}`,
-                Accept:
-                    "application/json",
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
             };
 
-            const [
-                riskResponse,
-                comparablesResponse,
-            ] = await Promise.all([
-                fetch(
-                    `${API_URL}/properties/${propertyId}/risk-assessment`,
-                    {
-                        method: "GET",
-                        headers,
-                        cache: "no-store",
-                    }
-                ),
+            const [riskResponse, comparablesResponse] =
+                await Promise.all([
+                    fetch(
+                        `${API_URL}/properties/${propertyId}/risk-assessment`,
+                        {
+                            method: "GET",
+                            headers,
+                            cache: "no-store",
+                        }
+                    ),
 
-                fetch(
-                    `${API_URL}/properties/${propertyId}/comparables`,
-                    {
-                        method: "GET",
-                        headers,
-                        cache: "no-store",
-                    }
-                ),
-            ]);
+                    fetch(
+                        `${API_URL}/properties/${propertyId}/comparables`,
+                        {
+                            method: "GET",
+                            headers,
+                            cache: "no-store",
+                        }
+                    ),
+                ]);
 
-            const riskData =
-                await riskResponse
-                    .json()
-                    .catch(
-                        () => null
-                    );
+            const riskData = await riskResponse
+                .json()
+                .catch(() => null);
 
-            const comparableData =
-                await comparablesResponse
-                    .json()
-                    .catch(
-                        () => null
-                    );
+            const comparableData = await comparablesResponse
+                .json()
+                .catch(() => null);
 
             if (!riskResponse.ok) {
                 throw new Error(
@@ -308,121 +310,65 @@ export default function DueDiligenceReportPage() {
                 );
             }
 
-            setRiskAssessment(
-                riskData?.data ||
-                riskData
-            );
+            setRiskAssessment(riskData?.data || riskData);
 
             setComparables(
-                Array.isArray(
-                    comparableData
-                )
+                Array.isArray(comparableData)
                     ? comparableData
-                    : comparableData?.data ||
-                    []
+                    : comparableData?.data || []
             );
         } catch (err) {
-            console.error(
-                "Milestone 3 error:",
-                err
-            );
+            console.error("Milestone 3 error:", err);
 
             setMilestone3Error(
                 err?.message ||
                 "Unable to load Milestone 3 data."
             );
         } finally {
-            setMilestone3Loading(
-                false
-            );
+            setMilestone3Loading(false);
         }
     }
 
     /*
-     * =====================================================
-     * DOWNLOAD REPORT
-     * =====================================================
+     * DOWNLOAD PDF OR EXCEL REPORT
      */
 
-    async function downloadReport(
-        type
-    ) {
-        console.log(
-            "===================================="
-        );
-
-        console.log(
-            "REPORT BUTTON CLICKED"
-        );
-
-        console.log(
-            "TYPE:",
-            type
-        );
+    async function downloadReport(type) {
+        console.log("====================================");
+        console.log("REPORT BUTTON CLICKED");
+        console.log("TYPE:", type);
 
         const propertyId =
             property?.id ||
             property?.propertyDbId ||
             property?.propertyId;
 
-        console.log(
-            "PROPERTY ID:",
-            propertyId
-        );
+        console.log("PROPERTY ID:", propertyId);
 
         if (!propertyId) {
-            const message =
-                "Property ID is missing.";
-
-            setMilestone3Error(
-                message
-            );
-
-            console.error(
-                message
-            );
-
+            const message = "Property ID is missing.";
+            setMilestone3Error(message);
+            console.error(message);
             return;
         }
 
-        if (
-            type !== "pdf" &&
-            type !== "excel"
-        ) {
-            const message =
-                "Invalid report type.";
-
-            setMilestone3Error(
-                message
-            );
-
-            console.error(
-                message
-            );
-
+        if (type !== "pdf" && type !== "excel") {
+            const message = "Invalid report type.";
+            setMilestone3Error(message);
+            console.error(message);
             return;
         }
 
-        let token =
-            getStoredToken();
+        let token = getStoredToken();
 
-        console.log(
-            "TOKEN EXISTS:",
-            Boolean(token)
-        );
+        console.log("TOKEN EXISTS:", Boolean(token));
 
         if (!token) {
             const message =
                 "Authentication required. Please log in again.";
 
-            setMilestone3Error(
-                message
-            );
-
-            console.error(
-                message
-            );
-
+            setMilestone3Error(message);
+            console.error(message);
             return;
         }
 
@@ -432,21 +378,43 @@ export default function DueDiligenceReportPage() {
         const endpoint =
             `${API_URL}/properties/${propertyId}/report/${type}`;
 
-        console.log(
-            "REQUEST URL:",
-            endpoint
-        );
+        console.log("REQUEST URL:", endpoint);
 
         try {
-            let response =
-                await fetch(
-                    endpoint,
-                    {
+            let response = await fetch(endpoint, {
+                method: "GET",
+
+                headers: {
+                    Authorization: `Bearer ${token}`,
+
+                    Accept:
+                        type === "pdf"
+                            ? "application/pdf"
+                            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                },
+
+                cache: "no-store",
+            });
+
+            console.log("HTTP STATUS:", response.status);
+
+            /*
+             * Retry with the latest token if the server returns 401.
+             */
+
+            if (response.status === 401) {
+                console.log("401 received. Trying latest token...");
+
+                const latestToken = getStoredToken();
+
+                if (latestToken && latestToken !== token) {
+                    token = latestToken;
+
+                    response = await fetch(endpoint, {
                         method: "GET",
 
                         headers: {
-                            Authorization:
-                                `Bearer ${token}`,
+                            Authorization: `Bearer ${token}`,
 
                             Accept:
                                 type === "pdf"
@@ -455,76 +423,16 @@ export default function DueDiligenceReportPage() {
                         },
 
                         cache: "no-store",
-                    }
-                );
+                    });
 
-            console.log(
-                "HTTP STATUS:",
-                response.status
-            );
-
-            /*
-             * If token expired, try the
-             * latest stored token once more.
-             */
-
-            if (
-                response.status ===
-                401
-            ) {
-                console.log(
-                    "401 received. Trying latest token..."
-                );
-
-                const latestToken =
-                    getStoredToken();
-
-                if (
-                    latestToken &&
-                    latestToken !== token
-                ) {
-                    token =
-                        latestToken;
-
-                    response =
-                        await fetch(
-                            endpoint,
-                            {
-                                method:
-                                    "GET",
-
-                                headers: {
-                                    Authorization:
-                                        `Bearer ${token}`,
-
-                                    Accept:
-                                        type ===
-                                            "pdf"
-                                            ? "application/pdf"
-                                            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                },
-
-                                cache:
-                                    "no-store",
-                            }
-                        );
-
-                    console.log(
-                        "RETRY STATUS:",
-                        response.status
-                    );
+                    console.log("RETRY STATUS:", response.status);
                 }
             }
 
             const contentType =
-                response.headers.get(
-                    "content-type"
-                ) || "";
+                response.headers.get("content-type") || "";
 
-            console.log(
-                "CONTENT TYPE:",
-                contentType
-            );
+            console.log("CONTENT TYPE:", contentType);
 
             if (!response.ok) {
                 let message =
@@ -533,16 +441,11 @@ export default function DueDiligenceReportPage() {
                 if (
                     contentType
                         .toLowerCase()
-                        .includes(
-                            "application/json"
-                        )
+                        .includes("application/json")
                 ) {
-                    const data =
-                        await response
-                            .json()
-                            .catch(
-                                () => null
-                            );
+                    const data = await response
+                        .json()
+                        .catch(() => null);
 
                     message =
                         data?.message ||
@@ -550,56 +453,29 @@ export default function DueDiligenceReportPage() {
                         data?.error ||
                         message;
                 } else {
-                    const responseText =
-                        await response
-                            .text()
-                            .catch(
-                                () => ""
-                            );
+                    const responseText = await response
+                        .text()
+                        .catch(() => "");
 
-                    if (
-                        responseText.trim()
-                    ) {
-                        message =
-                            responseText
-                                .trim()
-                                .slice(
-                                    0,
-                                    500
-                                );
+                    if (responseText.trim()) {
+                        message = responseText.trim().slice(0, 500);
                     }
                 }
 
-                if (
-                    response.status ===
-                    401
-                ) {
+                if (response.status === 401) {
                     message =
                         "Authentication failed. Please log out and log in again.";
                 }
 
-                throw new Error(
-                    message
-                );
+                throw new Error(message);
             }
 
-            const blob =
-                await response.blob();
+            const blob = await response.blob();
 
-            console.log(
-                "BLOB SIZE:",
-                blob.size
-            );
+            console.log("BLOB SIZE:", blob.size);
+            console.log("BLOB TYPE:", blob.type);
 
-            console.log(
-                "BLOB TYPE:",
-                blob.type
-            );
-
-            if (
-                !blob ||
-                blob.size === 0
-            ) {
+            if (!blob || blob.size === 0) {
                 throw new Error(
                     "The backend returned an empty report file."
                 );
@@ -610,14 +486,10 @@ export default function DueDiligenceReportPage() {
                 contentType &&
                 !contentType
                     .toLowerCase()
-                    .includes(
-                        "application/pdf"
-                    ) &&
+                    .includes("application/pdf") &&
                 !contentType
                     .toLowerCase()
-                    .includes(
-                        "application/octet-stream"
-                    )
+                    .includes("application/octet-stream")
             ) {
                 throw new Error(
                     `The backend did not return a PDF. Received: ${contentType}`
@@ -625,40 +497,27 @@ export default function DueDiligenceReportPage() {
             }
 
             /*
-             * Get filename from backend
-             * when available.
+             * Read the filename from the response when available.
              */
 
             const disposition =
-                response.headers.get(
-                    "content-disposition"
-                ) || "";
+                response.headers.get("content-disposition") || "";
 
-            let backendFilename =
-                "";
+            let backendFilename = "";
 
-            const utf8Match =
-                disposition.match(
-                    /filename\*=UTF-8''([^;]+)/i
-                );
+            const utf8Match = disposition.match(
+                /filename\*=UTF-8''([^;]+)/i
+            );
 
-            const normalMatch =
-                disposition.match(
-                    /filename=["']?([^;"']+)["']?/i
-                );
+            const normalMatch = disposition.match(
+                /filename=["']?([^;"']+)["']?/i
+            );
 
-            if (
-                utf8Match?.[1]
-            ) {
+            if (utf8Match?.[1]) {
                 backendFilename =
-                    decodeURIComponent(
-                        utf8Match[1]
-                    );
-            } else if (
-                normalMatch?.[1]
-            ) {
-                backendFilename =
-                    normalMatch[1];
+                    decodeURIComponent(utf8Match[1]);
+            } else if (normalMatch?.[1]) {
+                backendFilename = normalMatch[1];
             }
 
             const filename =
@@ -669,106 +528,54 @@ export default function DueDiligenceReportPage() {
                         : `property-due-diligence-${propertyId}.xlsx`
                 );
 
-            console.log(
-                "FILENAME:",
-                filename
-            );
+            console.log("FILENAME:", filename);
 
             const blobUrl =
-                window.URL.createObjectURL(
-                    blob
-                );
+                window.URL.createObjectURL(blob);
 
-            console.log(
-                "BLOB URL CREATED"
-            );
+            console.log("BLOB URL CREATED");
 
-            const link =
-                document.createElement(
-                    "a"
-                );
+            const link = document.createElement("a");
 
-            link.href =
-                blobUrl;
+            link.href = blobUrl;
+            link.download = filename;
+            link.rel = "noopener";
+            link.target = "_self";
 
-            link.download =
-                filename;
+            link.style.position = "fixed";
+            link.style.left = "-9999px";
+            link.style.top = "0";
+            link.style.width = "1px";
+            link.style.height = "1px";
+            link.style.opacity = "0";
+            link.style.pointerEvents = "none";
 
-            link.rel =
-                "noopener";
+            document.body.appendChild(link);
 
-            link.target =
-                "_self";
-
-            link.style.position =
-                "fixed";
-
-            link.style.left =
-                "-9999px";
-
-            link.style.top =
-                "0";
-
-            link.style.width =
-                "1px";
-
-            link.style.height =
-                "1px";
-
-            link.style.opacity =
-                "0";
-
-            link.style.pointerEvents =
-                "none";
-
-            document.body.appendChild(
-                link
-            );
-
-            console.log(
-                "TRIGGERING DOWNLOAD..."
-            );
+            console.log("TRIGGERING DOWNLOAD...");
 
             link.click();
 
+            /*
+             * Delay cleanup so Chrome can start the download.
+             */
+
             setTimeout(() => {
-                if (
-                    link.parentNode
-                ) {
-                    link.parentNode.removeChild(
-                        link
-                    );
+                if (link.parentNode) {
+                    link.parentNode.removeChild(link);
                 }
 
-                window.URL.revokeObjectURL(
-                    blobUrl
-                );
+                window.URL.revokeObjectURL(blobUrl);
 
-                console.log(
-                    "DOWNLOAD CLEANUP COMPLETE"
-                );
+                console.log("DOWNLOAD CLEANUP COMPLETE");
             }, 3000);
 
-            console.log(
-                "DOWNLOAD STARTED:",
-                filename
-            );
+            console.log("DOWNLOAD STARTED:", filename);
         } catch (err) {
-            console.error(
-                "===================================="
-            );
-
-            console.error(
-                "REPORT DOWNLOAD FAILED"
-            );
-
-            console.error(
-                err
-            );
-
-            console.error(
-                "===================================="
-            );
+            console.error("====================================");
+            console.error("REPORT DOWNLOAD FAILED");
+            console.error(err);
+            console.error("====================================");
 
             setMilestone3Error(
                 err?.message ||
@@ -779,384 +586,315 @@ export default function DueDiligenceReportPage() {
         }
     }
 
-    const ownership =
-        property?.ownership || {};
+    /*
+     * OWNERSHIP HISTORY
+     *
+     * The backend DTO returns ownershipHistory (an array).
+     * Do not use property.ownership, which is not the field
+     * returned by the API.
+     */
 
-    const tax =
-        property?.taxHistory;
-
-    const zoning =
-        property?.zoning || {};
-
-    const flood =
-        property?.floodZone || {};
-
-    const environmental =
-        property?.environmental || {};
-
-    const utility =
-        property?.utility || {};
-
-    const taxRecords =
-        Array.isArray(tax)
-            ? tax
-            : tax
-                ? [tax]
-                : [];
-
-    const permits =
-        Array.isArray(
-            property?.permits
-        )
-            ? property.permits
+    const ownershipHistory = Array.isArray(property?.ownershipHistory)
+        ? property.ownershipHistory
+        : Array.isArray(property?.ownership_history)
+            ? property.ownership_history
             : [];
 
+    const sortedOwnershipHistory = [...ownershipHistory].sort((a, b) => {
+        const dateA = getAcquiredDate(a) || "";
+        const dateB = getAcquiredDate(b) || "";
+
+        return String(dateA).localeCompare(String(dateB));
+    });
+
+    /*
+     * A record without a transfer date is considered current.
+     * If there are several such records, select the most recently
+     * acquired one as current owner.
+     */
+
+    const currentOwnerCandidates = sortedOwnershipHistory.filter(
+        (record) => {
+            const transferDate = getTransferDate(record);
+
+            return (
+                transferDate === null ||
+                transferDate === undefined ||
+                transferDate === ""
+            );
+        }
+    );
+
+    const currentOwner =
+        currentOwnerCandidates.length > 0
+            ? currentOwnerCandidates[
+            currentOwnerCandidates.length - 1
+            ]
+            : sortedOwnershipHistory.length > 0
+                ? sortedOwnershipHistory[
+                sortedOwnershipHistory.length - 1
+                ]
+                : null;
+
+    /*
+     * IMPORTANT FIX:
+     * All ownership records other than the selected current owner
+     * are shown as previous owners. A missing transfer date does
+     * not exclude a record from the ownership history.
+     */
+
+    const previousOwners = currentOwner
+        ? sortedOwnershipHistory.filter(
+            (record) => record !== currentOwner
+        )
+        : [];
+
+    const tax = property?.taxHistory;
+    const zoning = property?.zoning || {};
+    const flood = property?.floodZone || {};
+    const environmental = property?.environmental || {};
+    const utility = property?.utility || {};
+
+    const taxRecords = Array.isArray(tax)
+        ? tax
+        : tax
+            ? [tax]
+            : [];
+
+    const permits = Array.isArray(property?.permits)
+        ? property.permits
+        : [];
+
     const riskLevel =
-        riskAssessment?.overallRiskLevel ||
-        "UNKNOWN";
+        riskAssessment?.overallRiskLevel || "UNKNOWN";
 
     const riskConfig = {
         LOW: {
-            label:
-                "LOW RISK",
-
+            label: "LOW RISK",
             className:
                 "border-emerald-400/30 bg-emerald-400/[0.08] text-emerald-300",
-
-            scoreClass:
-                "text-emerald-400",
+            scoreClass: "text-emerald-400",
         },
 
         MEDIUM: {
-            label:
-                "MEDIUM RISK",
-
+            label: "MEDIUM RISK",
             className:
                 "border-yellow-400/30 bg-yellow-400/[0.08] text-yellow-300",
-
-            scoreClass:
-                "text-yellow-400",
+            scoreClass: "text-yellow-400",
         },
 
         HIGH: {
-            label:
-                "HIGH RISK",
-
+            label: "HIGH RISK",
             className:
                 "border-red-400/30 bg-red-400/[0.08] text-red-300",
-
-            scoreClass:
-                "text-red-400",
+            scoreClass: "text-red-400",
         },
 
         UNKNOWN: {
-            label:
-                "RISK UNAVAILABLE",
-
+            label: "RISK UNAVAILABLE",
             className:
                 "border-white/10 bg-white/[0.03] text-white/50",
-
-            scoreClass:
-                "text-white/70",
+            scoreClass: "text-white/70",
         },
     };
 
     const currentRisk =
-        riskConfig[riskLevel] ||
-        riskConfig.UNKNOWN;
+        riskConfig[riskLevel] || riskConfig.UNKNOWN;
 
     const sections = [
         {
             number: "01",
-
-            title:
-                "Ownership Records",
-
+            title: "Ownership Records",
             description:
                 "Property ownership and acquisition details.",
-
-            href:
-                "/ownership",
+            href: "/ownership",
 
             fields: [
                 [
-                    "Owner Name",
-                    ownership.owner,
+                    "Current Owner",
+                    getOwnerName(currentOwner),
                 ],
 
                 [
                     "Acquired Date",
-                    formatDate(
-                        ownership.acquiredDate
-                    ),
+                    formatDate(getAcquiredDate(currentOwner)),
+                ],
+
+                [
+                    "Transfer Date",
+                    currentOwner
+                        ? (
+                            getTransferDate(currentOwner)
+                                ? formatDate(getTransferDate(currentOwner))
+                                : "Current owner"
+                        )
+                        : null,
                 ],
 
                 [
                     "Property ID",
-                    property?.id,
+                    property?.id ??
+                    property?.propertyDbId ??
+                    property?.propertyId,
                 ],
             ],
+
+            records: previousOwners,
+            recordType: "ownership",
         },
 
         {
             number: "02",
-
-            title:
-                "Property Tax History",
-
+            title: "Property Tax History",
             description:
                 "Tax amounts, years, and payment status.",
+            href: "/tax-history",
 
-            href:
-                "/tax-history",
-
-            fields:
-                taxRecords.length > 0
-                    ? taxRecords.flatMap(
-                        (
-                            record,
-                            index
-                        ) => [
-                                [
-                                    taxRecords.length >
-                                        1
-                                        ? `Tax Year ${index + 1}`
-                                        : "Tax Year",
-
-                                    record.year,
-                                ],
-
-                                [
-                                    "Amount Paid",
-
-                                    formatCurrency(
-                                        record.amountPaid
-                                    ),
-                                ],
-
-                                [
-                                    "Payment Status",
-
-                                    record.status,
-                                ],
-                            ]
-                    )
-                    : [
-                        [
-                            "Tax Year",
-                            null,
-                        ],
-
-                        [
-                            "Amount Paid",
-                            null,
-                        ],
-
-                        [
-                            "Payment Status",
-                            null,
-                        ],
+            fields: taxRecords.length > 0
+                ? taxRecords.flatMap((record, index) => [
+                    [
+                        taxRecords.length > 1
+                            ? `Tax Year ${index + 1}`
+                            : "Tax Year",
+                        record.year,
                     ],
+
+                    [
+                        "Amount Paid",
+                        formatCurrency(record.amountPaid),
+                    ],
+
+                    [
+                        "Payment Status",
+                        record.status,
+                    ],
+                ])
+                : [
+                    ["Tax Year", null],
+                    ["Amount Paid", null],
+                    ["Payment Status", null],
+                ],
         },
 
         {
             number: "03",
-
-            title:
-                "Building Permit Records",
-
+            title: "Building Permit Records",
             description:
                 "Building, electrical, plumbing, and other permits.",
-
-            href:
-                "/permit-environmental#permit-records",
+            href: "/permit-environmental#permit-records",
 
             fields: [
-                [
-                    "Total Permits",
-                    permits.length,
-                ],
+                ["Total Permits", permits.length],
 
                 [
                     "Permit Types",
-
                     permits.length
                         ? permits
-                            .map(
-                                (p) =>
-                                    p.permitType ||
-                                    p.type
-                            )
-                            .filter(
-                                Boolean
-                            )
-                            .join(
-                                ", "
-                            )
+                            .map((p) => p.permitType || p.type)
+                            .filter(Boolean)
+                            .join(", ")
                         : null,
                 ],
 
                 [
                     "Permit Statuses",
-
                     permits.length
                         ? permits
-                            .map(
-                                (p) =>
-                                    p.status
-                            )
-                            .filter(
-                                Boolean
-                            )
-                            .join(
-                                ", "
-                            )
+                            .map((p) => p.status)
+                            .filter(Boolean)
+                            .join(", ")
                         : null,
                 ],
             ],
 
-            records:
-                permits,
+            records: permits,
         },
 
         {
             number: "04",
-
-            title:
-                "Zoning Information",
-
+            title: "Zoning Information",
             description:
                 "Land-use classification and compliance.",
-
-            href:
-                "/zoning",
+            href: "/zoning",
 
             fields: [
-                [
-                    "Zone Type",
-                    zoning.zoneType,
-                ],
+                ["Zone Type", zoning.zoneType],
 
                 [
                     "Compliance",
-
-                    formatBoolean(
-                        zoning.compliant
-                    ),
+                    formatBoolean(zoning.compliant),
                 ],
 
-                [
-                    "Property Type",
-                    property?.propertyType,
-                ],
+                ["Property Type", property?.propertyType],
             ],
         },
 
         {
             number: "05",
-
-            title:
-                "Flood Zone Verification",
-
+            title: "Flood Zone Verification",
             description:
                 "Flood-zone classification and risk level.",
-
-            href:
-                "/flood-zone",
+            href: "/flood-zone",
 
             fields: [
-                [
-                    "Flood Zone",
-                    flood.zone,
-                ],
-
-                [
-                    "Risk Level",
-                    flood.riskLevel,
-                ],
+                ["Flood Zone", flood.zone],
+                ["Risk Level", flood.riskLevel],
             ],
         },
 
         {
             number: "06",
-
-            title:
-                "Environmental Records",
-
+            title: "Environmental Records",
             description:
                 "Environmental hazards and assessment details.",
-
-            href:
-                "/permit-environmental#environmental-records",
+            href: "/permit-environmental#environmental-records",
 
             fields: [
                 [
                     "Hazard Found",
-
-                    formatBoolean(
-                        environmental.hazardFound
-                    ),
+                    formatBoolean(environmental.hazardFound),
                 ],
 
-                [
-                    "Hazard Type",
-                    environmental.hazardType,
-                ],
+                ["Hazard Type", environmental.hazardType],
 
                 [
                     "Assessment Date",
-
-                    formatDate(
-                        environmental.assessmentDate
-                    ),
+                    formatDate(environmental.assessmentDate),
                 ],
             ],
         },
 
         {
             number: "07",
-
-            title:
-                "Utility Information",
-
+            title: "Utility Information",
             description:
                 "Electricity, gas, water, and service provider.",
-
-            href:
-                "#utility-information",
+            href: "#utility-information",
 
             fields: [
                 [
                     "Electricity Connected",
-
-                    formatBoolean(
-                        utility.electricityConnected
-                    ),
+                    formatBoolean(utility.electricityConnected),
                 ],
 
                 [
                     "Gas Connected",
-
-                    formatBoolean(
-                        utility.gasConnected
-                    ),
+                    formatBoolean(utility.gasConnected),
                 ],
 
                 [
                     "Water Connected",
-
-                    formatBoolean(
-                        utility.waterConnected
-                    ),
+                    formatBoolean(utility.waterConnected),
                 ],
 
-                [
-                    "Provider",
-                    utility.provider,
-                ],
+                ["Provider", utility.provider],
             ],
         },
     ];
+
+    /*
+     * LOADING STATE
+     */
 
     if (loading) {
         return (
@@ -1169,6 +907,10 @@ export default function DueDiligenceReportPage() {
             </main>
         );
     }
+
+    /*
+     * ERROR STATE
+     */
 
     if (error) {
         return (
@@ -1203,6 +945,8 @@ export default function DueDiligenceReportPage() {
     return (
         <>
             <main className="report-print min-h-screen bg-black text-white">
+                {/* REPORT HEADER */}
+
                 <section className="border-b border-white/10 px-6 pb-16 pt-32 sm:px-10 md:px-16 lg:px-24 print:pt-8">
                     <div className="mx-auto max-w-[1400px]">
                         <p className="mb-7 text-xs font-semibold tracking-[0.35em] text-white/35">
@@ -1236,9 +980,7 @@ export default function DueDiligenceReportPage() {
 
                             <button
                                 type="button"
-                                onClick={() =>
-                                    window.print()
-                                }
+                                onClick={() => window.print()}
                                 className="no-print inline-flex w-fit items-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm text-white/70 transition hover:bg-white hover:text-black"
                             >
                                 Print Report
@@ -1250,6 +992,8 @@ export default function DueDiligenceReportPage() {
                         </div>
                     </div>
                 </section>
+
+                {/* PROPERTY INFORMATION */}
 
                 <section className="px-6 py-12 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
@@ -1267,35 +1011,29 @@ export default function DueDiligenceReportPage() {
                             <div className="mt-9 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
                                 <Detail
                                     label="City"
-                                    value={
-                                        property.city
-                                    }
+                                    value={property.city}
                                 />
 
                                 <Detail
                                     label="State"
-                                    value={
-                                        property.state
-                                    }
+                                    value={property.state}
                                 />
 
                                 <Detail
                                     label="Postal Code"
-                                    value={
-                                        property.postalCode
-                                    }
+                                    value={property.postalCode}
                                 />
 
                                 <Detail
                                     label="Property ID"
-                                    value={
-                                        property.id
-                                    }
+                                    value={property.id}
                                 />
                             </div>
                         </div>
                     </div>
                 </section>
+
+                {/* REPORT OVERVIEW */}
 
                 <section className="px-6 pb-12 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
@@ -1312,43 +1050,35 @@ export default function DueDiligenceReportPage() {
 
                             <OverviewCard
                                 label="Tax Records"
-                                value={
-                                    taxRecords.length
-                                }
+                                value={taxRecords.length}
                                 description="Tax history records available"
                             />
 
                             <OverviewCard
                                 label="Permits"
-                                value={
-                                    permits.length
-                                }
+                                value={permits.length}
                                 description="Permit records available"
                             />
                         </div>
                     </div>
                 </section>
 
+                {/* DUE DILIGENCE SECTIONS */}
+
                 <section className="px-6 pb-20 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
                         <div className="space-y-5">
-                            {sections.map(
-                                (
-                                    section
-                                ) => (
-                                    <ReportSection
-                                        key={
-                                            section.number
-                                        }
-                                        section={
-                                            section
-                                        }
-                                    />
-                                )
-                            )}
+                            {sections.map((section) => (
+                                <ReportSection
+                                    key={section.number}
+                                    section={section}
+                                />
+                            ))}
                         </div>
                     </div>
                 </section>
+
+                {/* MILESTONE 3 */}
 
                 <section className="px-6 pb-20 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
@@ -1359,7 +1089,7 @@ export default function DueDiligenceReportPage() {
 
                             <h2 className="mt-5 text-4xl font-light md:text-5xl">
                                 Risk, Comparables
-                                & Reports
+                                &amp; Reports
                             </h2>
 
                             <p className="mt-5 max-w-3xl text-sm leading-7 text-white/40">
@@ -1388,12 +1118,12 @@ export default function DueDiligenceReportPage() {
                                 </p>
 
                                 <p className="mt-3 text-sm leading-6 text-red-200/80">
-                                    {
-                                        milestone3Error
-                                    }
+                                    {milestone3Error}
                                 </p>
                             </div>
                         )}
+
+                        {/* RISK ASSESSMENT */}
 
                         <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-7 md:p-9">
                             <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
@@ -1403,8 +1133,7 @@ export default function DueDiligenceReportPage() {
                                     </p>
 
                                     <h3 className="mt-5 text-3xl font-light">
-                                        Overall Property
-                                        Risk
+                                        Overall Property Risk
                                     </h3>
 
                                     <p className="mt-3 max-w-2xl text-sm leading-7 text-white/40">
@@ -1421,18 +1150,13 @@ export default function DueDiligenceReportPage() {
                                     className={`w-fit rounded-2xl border px-7 py-6 ${currentRisk.className}`}
                                 >
                                     <p className="text-xs tracking-[0.25em]">
-                                        {
-                                            currentRisk.label
-                                        }
+                                        {currentRisk.label}
                                     </p>
 
                                     <p
                                         className={`mt-3 text-5xl font-light ${currentRisk.scoreClass}`}
                                     >
-                                        {
-                                            riskAssessment?.riskScore ??
-                                            "—"
-                                        }
+                                        {riskAssessment?.riskScore ?? "—"}
                                     </p>
 
                                     <p className="mt-2 text-xs text-white/40">
@@ -1444,40 +1168,32 @@ export default function DueDiligenceReportPage() {
                             <div className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-2">
                                 <RiskNote
                                     label="TAX RISK"
-                                    value={
-                                        riskAssessment?.taxRiskNote
-                                    }
+                                    value={riskAssessment?.taxRiskNote}
                                 />
 
                                 <RiskNote
                                     label="FLOOD RISK"
-                                    value={
-                                        riskAssessment?.floodRiskNote
-                                    }
+                                    value={riskAssessment?.floodRiskNote}
                                 />
 
                                 <RiskNote
                                     label="ZONING RISK"
-                                    value={
-                                        riskAssessment?.zoningRiskNote
-                                    }
+                                    value={riskAssessment?.zoningRiskNote}
                                 />
 
                                 <RiskNote
                                     label="PERMIT RISK"
-                                    value={
-                                        riskAssessment?.permitRiskNote
-                                    }
+                                    value={riskAssessment?.permitRiskNote}
                                 />
 
                                 <RiskNote
                                     label="ENVIRONMENTAL RISK"
-                                    value={
-                                        riskAssessment?.environmentalRiskNote
-                                    }
+                                    value={riskAssessment?.environmentalRiskNote}
                                 />
                             </div>
                         </div>
+
+                        {/* COMPARABLE PROPERTIES */}
 
                         <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.02] p-7 md:p-9">
                             <p className="text-xs tracking-[0.3em] text-white/30">
@@ -1485,8 +1201,7 @@ export default function DueDiligenceReportPage() {
                             </p>
 
                             <h3 className="mt-5 text-3xl font-light">
-                                Nearby Comparable
-                                Properties
+                                Nearby Comparable Properties
                             </h3>
 
                             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/40">
@@ -1496,62 +1211,48 @@ export default function DueDiligenceReportPage() {
                                 backend.
                             </p>
 
-                            {comparables.length >
-                                0 ? (
+                            {comparables.length > 0 ? (
                                 <div className="mt-8 space-y-3">
-                                    {comparables.map(
-                                        (
-                                            item,
-                                            index
-                                        ) => (
-                                            <div
-                                                key={
-                                                    item.id ||
-                                                    index
-                                                }
-                                                className="rounded-2xl border border-white/10 bg-black/20 p-6"
-                                            >
-                                                <div className="grid gap-6 md:grid-cols-[1fr_auto_auto] md:items-center">
-                                                    <div>
-                                                        <p className="text-xs tracking-[0.15em] text-white/30">
-                                                            ADDRESS
-                                                        </p>
+                                    {comparables.map((item, index) => (
+                                        <div
+                                            key={item.id || index}
+                                            className="rounded-2xl border border-white/10 bg-black/20 p-6"
+                                        >
+                                            <div className="grid gap-6 md:grid-cols-[1fr_auto_auto] md:items-center">
+                                                <div>
+                                                    <p className="text-xs tracking-[0.15em] text-white/30">
+                                                        ADDRESS
+                                                    </p>
 
-                                                        <p className="mt-2 text-base text-white/75">
-                                                            {
-                                                                item.address
-                                                            }
-                                                        </p>
-                                                    </div>
+                                                    <p className="mt-2 text-base text-white/75">
+                                                        {item.address}
+                                                    </p>
+                                                </div>
 
-                                                    <div>
-                                                        <p className="text-xs tracking-[0.15em] text-white/30">
-                                                            PRICE
-                                                        </p>
+                                                <div>
+                                                    <p className="text-xs tracking-[0.15em] text-white/30">
+                                                        PRICE
+                                                    </p>
 
-                                                        <p className="mt-2 text-base text-white/75">
-                                                            {formatCurrency(
-                                                                item.price
-                                                            )}
-                                                        </p>
-                                                    </div>
+                                                    <p className="mt-2 text-base text-white/75">
+                                                        {formatCurrency(item.price)}
+                                                    </p>
+                                                </div>
 
-                                                    <div>
-                                                        <p className="text-xs tracking-[0.15em] text-white/30">
-                                                            DISTANCE
-                                                        </p>
+                                                <div>
+                                                    <p className="text-xs tracking-[0.15em] text-white/30">
+                                                        DISTANCE
+                                                    </p>
 
-                                                        <p className="mt-2 text-base text-white/75">
-                                                            {item.distanceKm !=
-                                                                null
-                                                                ? `${item.distanceKm} km`
-                                                                : "Not available"}
-                                                        </p>
-                                                    </div>
+                                                    <p className="mt-2 text-base text-white/75">
+                                                        {item.distanceKm != null
+                                                            ? `${item.distanceKm} km`
+                                                            : "Not available"}
+                                                    </p>
                                                 </div>
                                             </div>
-                                        )
-                                    )}
+                                        </div>
+                                    ))}
                                 </div>
                             ) : (
                                 !milestone3Loading && (
@@ -1564,14 +1265,15 @@ export default function DueDiligenceReportPage() {
                             )}
                         </div>
 
+                        {/* DOWNLOADABLE REPORTS */}
+
                         <div className="relative z-20 mt-6 rounded-3xl border border-white/10 bg-white/[0.02] p-7 md:p-9">
                             <p className="text-xs tracking-[0.3em] text-white/30">
                                 DOWNLOADABLE REPORTS
                             </p>
 
                             <h3 className="mt-5 text-3xl font-light">
-                                Export this
-                                property report
+                                Export this property report
                             </h3>
 
                             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/40">
@@ -1584,91 +1286,58 @@ export default function DueDiligenceReportPage() {
                             <div className="no-print relative z-30 mt-8 flex flex-col gap-4 sm:flex-row">
                                 <button
                                     type="button"
-                                    disabled={
-                                        Boolean(
-                                            downloading
-                                        )
-                                    }
+                                    disabled={Boolean(downloading)}
                                     onPointerDown={() => {
-                                        console.log(
-                                            "PDF BUTTON POINTER DOWN"
-                                        );
+                                        console.log("PDF BUTTON POINTER DOWN");
                                     }}
                                     onMouseDown={() => {
-                                        console.log(
-                                            "PDF BUTTON MOUSE DOWN"
-                                        );
+                                        console.log("PDF BUTTON MOUSE DOWN");
                                     }}
                                     onClick={() => {
-                                        console.log(
-                                            "PDF BUTTON ONCLICK"
-                                        );
-
-                                        downloadReport(
-                                            "pdf"
-                                        );
+                                        console.log("PDF BUTTON ONCLICK");
+                                        downloadReport("pdf");
                                     }}
                                     className="relative z-40 inline-flex cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm text-white/75 transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-40"
                                 >
-                                    {downloading ===
-                                        "pdf"
+                                    {downloading === "pdf"
                                         ? "Generating PDF..."
                                         : "Download PDF Report"}
 
-                                    <span>
-                                        ↓
-                                    </span>
+                                    <span>↓</span>
                                 </button>
 
                                 <button
                                     type="button"
-                                    disabled={
-                                        Boolean(
-                                            downloading
-                                        )
-                                    }
+                                    disabled={Boolean(downloading)}
                                     onPointerDown={() => {
-                                        console.log(
-                                            "EXCEL BUTTON POINTER DOWN"
-                                        );
+                                        console.log("EXCEL BUTTON POINTER DOWN");
                                     }}
                                     onMouseDown={() => {
-                                        console.log(
-                                            "EXCEL BUTTON MOUSE DOWN"
-                                        );
+                                        console.log("EXCEL BUTTON MOUSE DOWN");
                                     }}
                                     onClick={() => {
-                                        console.log(
-                                            "EXCEL BUTTON ONCLICK"
-                                        );
-
-                                        downloadReport(
-                                            "excel"
-                                        );
+                                        console.log("EXCEL BUTTON ONCLICK");
+                                        downloadReport("excel");
                                     }}
                                     className="relative z-40 inline-flex cursor-pointer items-center justify-center gap-3 rounded-full border border-white/10 px-7 py-4 text-sm text-white/55 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                                 >
-                                    {downloading ===
-                                        "excel"
+                                    {downloading === "excel"
                                         ? "Generating Excel..."
                                         : "Download Excel Report"}
 
-                                    <span>
-                                        ↓
-                                    </span>
+                                    <span>↓</span>
                                 </button>
                             </div>
 
                             <p className="mt-5 text-xs leading-6 text-white/25">
-                                Generating a report may
-                                also trigger the
-                                confirmation email
-                                configured by the
-                                backend.
+                                Generating a report may also trigger the
+                                confirmation email configured by the backend.
                             </p>
                         </div>
                     </div>
                 </section>
+
+                {/* FINAL REVIEW */}
 
                 <section className="px-6 pb-24 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
@@ -1678,8 +1347,7 @@ export default function DueDiligenceReportPage() {
                             </p>
 
                             <h2 className="mt-5 text-4xl font-light md:text-5xl">
-                                Due diligence
-                                complete.
+                                Due diligence complete.
                             </h2>
 
                             <p className="mt-5 max-w-3xl text-sm leading-7 text-white/40">
@@ -1693,6 +1361,8 @@ export default function DueDiligenceReportPage() {
                 </section>
             </main>
 
+            {/* PRINT STYLES */}
+
             <style jsx global>{`
                 @media print {
                     @page {
@@ -1704,9 +1374,6 @@ export default function DueDiligenceReportPage() {
                     body {
                         background: #ffffff !important;
                         color: #111111 !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        width: 100% !important;
                     }
 
                     body {
@@ -1719,398 +1386,62 @@ export default function DueDiligenceReportPage() {
                     }
 
                     .report-print {
-                        width: 100% !important;
-                        max-width: none !important;
-                        min-height: 0 !important;
                         background: #ffffff !important;
                         color: #111111 !important;
                     }
 
-                    /*
-                     * IMPORTANT:
-                     * Do not use break-inside: avoid on
-                     * entire sections. It causes Chrome
-                     * to create large blank areas when a
-                     * section does not fit on the remaining
-                     * part of an A4 page.
-                     */
-
                     .report-print section {
-                        break-inside: auto !important;
-                        page-break-inside: auto !important;
-                    }
-
-                    .report-print .space-y-5 {
-                        display: block !important;
+                        break-inside: avoid;
+                        page-break-inside: avoid;
                     }
 
                     .report-print .space-y-5 > div {
-                        break-inside: auto !important;
-                        page-break-inside: auto !important;
-                        margin-bottom: 18px !important;
+                        break-inside: avoid;
+                        page-break-inside: avoid;
                     }
 
-                    /*
-                     * Allow individual cards to remain
-                     * together when possible, but do not
-                     * force large parent sections to stay
-                     * together.
-                     */
-
-                    .report-print
-                        .rounded-2xl,
-                    .report-print
-                        .rounded-3xl {
-                        break-inside: auto !important;
-                        page-break-inside: auto !important;
-                    }
-
-                    /*
-                     * Make the report flow naturally
-                     * from one A4 page to the next.
-                     */
-
-                    .report-print > section {
-                        margin-top: 0 !important;
-                        margin-bottom: 0 !important;
-                    }
-
-                    /*
-                     * Reduce screen-sized spacing for
-                     * printed pages.
-                     */
-
-                    .report-print
-                        .pt-32 {
-                        padding-top: 12mm !important;
-                    }
-
-                    .report-print
-                        .pb-24 {
-                        padding-bottom: 10mm !important;
-                    }
-
-                    .report-print
-                        .pb-20 {
-                        padding-bottom: 8mm !important;
-                    }
-
-                    .report-print
-                        .pb-16 {
-                        padding-bottom: 8mm !important;
-                    }
-
-                    .report-print
-                        .py-12 {
-                        padding-top: 7mm !important;
-                        padding-bottom: 7mm !important;
-                    }
-
-                    .report-print
-                        .mt-10 {
-                        margin-top: 5mm !important;
-                    }
-
-                    .report-print
-                        .mt-9 {
-                        margin-top: 4mm !important;
-                    }
-
-                    .report-print
-                        .mt-8 {
-                        margin-top: 4mm !important;
-                    }
-
-                    .report-print
-                        .mt-6 {
-                        margin-top: 4mm !important;
-                    }
-
-                    .report-print
-                        .mt-5 {
-                        margin-top: 3mm !important;
-                    }
-
-                    .report-print
-                        .mt-4 {
-                        margin-top: 2mm !important;
-                    }
-
-                    .report-print
-                        .mt-3 {
-                        margin-top: 2mm !important;
-                    }
-
-                    /*
-                     * Print heading sizes.
-                     */
-
-                    .report-print h1 {
-                        font-size: 42pt !important;
-                        line-height: 1.05 !important;
-                        letter-spacing: -0.03em !important;
-                    }
-
-                    .report-print h2 {
-                        font-size: 25pt !important;
-                        line-height: 1.15 !important;
-                    }
-
-                    .report-print h3 {
-                        font-size: 17pt !important;
-                        line-height: 1.2 !important;
-                    }
-
-                    .report-print p {
-                        font-size: 9.5pt !important;
-                        line-height: 1.45 !important;
-                    }
-
-                    /*
-                     * Convert dark UI backgrounds to
-                     * clean printable backgrounds.
-                     */
-
-                    .report-print {
-                        background: #ffffff !important;
-                    }
-
-                    .report-print
-                        .bg-black,
-                    .report-print
-                        .bg-black\/20,
-                    .report-print
-                        .bg-\[\#101010\] {
+                    .report-print .bg-white\\/\\[0\\.025\\] {
                         background-color: #ffffff !important;
                     }
 
-                    .report-print
-                        .bg-white\/\[0\.025\],
-                    .report-print
-                        .bg-white\/\[0\.02\] {
+                    .report-print .bg-white\\/\\[0\\.02\\] {
                         background-color: #ffffff !important;
                     }
 
-                    .report-print
-                        .bg-white\/10 {
+                    .report-print .bg-white\\/10 {
                         background-color: #e5e7eb !important;
                     }
 
-                    /*
-                     * Print borders.
-                     */
-
-                    .report-print
-                        .border-white\/10,
-                    .report-print
-                        .border-white\/20 {
+                    .report-print .border-white\\/10,
+                    .report-print .border-white\\/20 {
                         border-color: #d1d5db !important;
                     }
 
-                    /*
-                     * Print text colors.
-                     */
-
-                    .report-print
-                        .text-white,
-                    .report-print
-                        .text-white\/90,
-                    .report-print
-                        .text-white\/80,
-                    .report-print
-                        .text-white\/75,
-                    .report-print
-                        .text-white\/70 {
-                        color: #111111 !important;
-                    }
-
-                    .report-print
-                        .text-white\/55,
-                    .report-print
-                        .text-white\/50,
-                    .report-print
-                        .text-white\/45,
-                    .report-print
-                        .text-white\/40,
-                    .report-print
-                        .text-white\/35,
-                    .report-print
-                        .text-white\/30,
-                    .report-print
-                        .text-white\/25 {
+                    .report-print .text-white\\/30 {
                         color: #555555 !important;
                     }
 
-                    /*
-                     * Risk colors remain readable when
-                     * printed.
-                     */
-
-                    .report-print
-                        .text-emerald-300,
-                    .report-print
-                        .text-emerald-400 {
-                        color: #047857 !important;
+                    .report-print .text-white\\/35 {
+                        color: #555555 !important;
                     }
 
-                    .report-print
-                        .text-yellow-300,
-                    .report-print
-                        .text-yellow-400 {
-                        color: #a16207 !important;
+                    .report-print .text-white\\/40 {
+                        color: #555555 !important;
                     }
 
-                    .report-print
-                        .text-red-300,
-                    .report-print
-                        .text-red-400 {
-                        color: #b91c1c !important;
+                    .report-print .text-white\\/45 {
+                        color: #555555 !important;
                     }
 
-                    .report-print
-                        .border-emerald-400\/30 {
-                        border-color: #86efac !important;
+                    .report-print .text-white\\/50 {
+                        color: #444444 !important;
                     }
 
-                    .report-print
-                        .border-yellow-400\/30 {
-                        border-color: #fde68a !important;
-                    }
-
-                    .report-print
-                        .border-red-400\/30 {
-                        border-color: #fca5a5 !important;
-                    }
-
-                    /*
-                     * Make grid content compact and
-                     * readable on A4 paper.
-                     */
-
-                    .report-print
-                        .grid {
-                        gap: 0 !important;
-                    }
-
-                    .report-print
-                        .gap-8 {
-                        gap: 5mm !important;
-                    }
-
-                    .report-print
-                        .gap-6 {
-                        gap: 3mm !important;
-                    }
-
-                    .report-print
-                        .gap-5 {
-                        gap: 3mm !important;
-                    }
-
-                    .report-print
-                        .gap-4 {
-                        gap: 2.5mm !important;
-                    }
-
-                    .report-print
-                        .gap-3 {
-                        gap: 2mm !important;
-                    }
-
-                    /*
-                     * Compact cards for printing.
-                     */
-
-                    .report-print
-                        .p-10 {
-                        padding: 7mm !important;
-                    }
-
-                    .report-print
-                        .p-9 {
-                        padding: 6mm !important;
-                    }
-
-                    .report-print
-                        .p-7 {
-                        padding: 5mm !important;
-                    }
-
-                    .report-print
-                        .p-6 {
-                        padding: 4mm !important;
-                    }
-
-                    .report-print
-                        .p-5 {
-                        padding: 3.5mm !important;
-                    }
-
-                    /*
-                     * Keep useful table/card borders
-                     * visible in the printed report.
-                     */
-
-                    .report-print
-                        .overflow-hidden {
-                        overflow: visible !important;
-                    }
-
-                    /*
-                     * Do not print navigation links.
-                     */
-
-                    .report-print a.no-print {
-                        display: none !important;
-                    }
-
-                    /*
-                     * Prevent individual small content
-                     * blocks from being split in awkward
-                     * places.
-                     */
-
-                    .report-print
-                        .grid > div {
-                        break-inside: avoid !important;
-                        page-break-inside: avoid !important;
-                    }
-
-                    .report-print
-                        .space-y-3 > div {
-                        break-inside: avoid !important;
-                        page-break-inside: avoid !important;
-                    }
-
-                    /*
-                     * Keep headings with the content
-                     * immediately below them.
-                     */
-
-                    .report-print h2,
-                    .report-print h3 {
-                        break-after: avoid !important;
-                        page-break-after: avoid !important;
-                    }
-
-                    /*
-                     * Remove screen-only shadows/transitions.
-                     */
-
-                    .report-print * {
-                        box-shadow: none !important;
-                        transition: none !important;
-                        animation: none !important;
-                    }
-
-                    /*
-                     * Make links normal black text in
-                     * printed output.
-                     */
-
-                    .report-print a {
+                    .report-print .text-white\\/70,
+                    .report-print .text-white\\/75,
+                    .report-print .text-white\\/80,
+                    .report-print .text-white\\/90 {
                         color: #111111 !important;
-                        text-decoration: none !important;
                     }
                 }
             `}</style>
@@ -2118,10 +1449,11 @@ export default function DueDiligenceReportPage() {
     );
 }
 
-function RiskNote({
-    label,
-    value,
-}) {
+/*
+ * RISK NOTE
+ */
+
+function RiskNote({ label, value }) {
     return (
         <div className="bg-[#101010] p-7">
             <p className="text-xs tracking-[0.2em] text-white/30">
@@ -2135,10 +1467,11 @@ function RiskNote({
     );
 }
 
-function Detail({
-    label,
-    value,
-}) {
+/*
+ * DETAIL CARD
+ */
+
+function Detail({ label, value }) {
     return (
         <div className="bg-[#101010] p-6">
             <p className="text-xs tracking-[0.2em] text-white/30">
@@ -2152,11 +1485,11 @@ function Detail({
     );
 }
 
-function OverviewCard({
-    label,
-    value,
-    description,
-}) {
+/*
+ * OVERVIEW CARD
+ */
+
+function OverviewCard({ label, value, description }) {
     return (
         <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-7">
             <p className="text-xs tracking-[0.2em] text-white/30">
@@ -2174,14 +1507,15 @@ function OverviewCard({
     );
 }
 
-function ReportSection({
-    section,
-}) {
+/*
+ * REPORT SECTION
+ */
+
+function ReportSection({ section }) {
     return (
         <div
             id={
-                section.number ===
-                    "07"
+                section.number === "07"
                     ? "utility-information"
                     : undefined
             }
@@ -2190,30 +1524,22 @@ function ReportSection({
             <div className="flex flex-col gap-5 border-b border-white/10 p-7 md:flex-row md:items-start md:justify-between md:p-9">
                 <div className="flex gap-5">
                     <span className="pt-1 text-xs tracking-[0.2em] text-white/25">
-                        {
-                            section.number
-                        }
+                        {section.number}
                     </span>
 
                     <div>
                         <h3 className="text-2xl font-light text-white/90 md:text-3xl">
-                            {
-                                section.title
-                            }
+                            {section.title}
                         </h3>
 
                         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/40">
-                            {
-                                section.description
-                            }
+                            {section.description}
                         </p>
                     </div>
                 </div>
 
                 <a
-                    href={
-                        section.href
-                    }
+                    href={section.href}
                     className="no-print w-fit shrink-0 rounded-full border border-white/10 px-5 py-3 text-xs text-white/50 transition hover:border-white/30 hover:text-white"
                 >
                     View Section →
@@ -2221,89 +1547,150 @@ function ReportSection({
             </div>
 
             <div className="grid gap-px bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
-                {section.fields.map(
-                    (
-                        [
-                            label,
-                            value,
-                        ],
-                        index
-                    ) => (
-                        <Detail
-                            key={`${section.number}-${label}-${index}`}
-                            label={
-                                label
-                            }
-                            value={
-                                value
-                            }
-                        />
-                    )
-                )}
+                {section.fields.map(([label, value], index) => (
+                    <Detail
+                        key={`${section.number}-${label}-${index}`}
+                        label={label}
+                        value={value}
+                    />
+                ))}
             </div>
 
-            {section.records?.length >
-                0 && (
+            {/* OWNERSHIP HISTORY */}
+
+            {section.recordType === "ownership" && (
+                <div className="border-t border-white/10 p-7 md:p-9">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p className="text-xs tracking-[0.2em] text-white/30">
+                                OWNERSHIP HISTORY
+                            </p>
+
+                            <h4 className="mt-3 text-xl font-light text-white/85">
+                                Previous Owners
+                            </h4>
+                        </div>
+
+                        <span className="w-fit rounded-full border border-white/10 px-4 py-2 text-xs text-white/45">
+                            {section.records?.length || 0}{" "}
+                            {(section.records?.length || 0) === 1
+                                ? "previous owner"
+                                : "previous owners"}
+                        </span>
+                    </div>
+
+                    {section.records?.length > 0 ? (
+                        <div className="mt-6 space-y-3">
+                            {section.records.map((record, index) => (
+                                <div
+                                    key={
+                                        record.id ??
+                                        record.ownershipId ??
+                                        `${getOwnerName(record) || "owner"}-${index}`
+                                    }
+                                    className="rounded-xl border border-white/10 bg-black/20 p-5"
+                                >
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <p className="text-xs tracking-[0.15em] text-white/30">
+                                                PREVIOUS OWNER {index + 1}
+                                            </p>
+
+                                            <p className="mt-2 text-lg text-white/85">
+                                                {displayValue(getOwnerName(record))}
+                                            </p>
+                                        </div>
+
+                                        <span className="w-fit rounded-full border border-white/10 px-3 py-1 text-xs text-white/50">
+                                            Ownership ended
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                        <Detail
+                                            label="Acquired Date"
+                                            value={formatDate(getAcquiredDate(record))}
+                                        />
+
+                                        {isAvailable(getTransferDate(record)) && (
+                                            <Detail
+                                                label="Transfer Date"
+                                                value={formatDate(getTransferDate(record))}
+                                            />
+                                        )}
+
+                                        <Detail
+                                            label="Record ID"
+                                            value={record.id ?? record.ownershipId}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="mt-6 text-sm leading-7 text-white/40">
+                            No previous ownership records were returned
+                            by the backend for this property.
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* PERMIT DETAILS */}
+
+            {section.recordType !== "ownership" &&
+                section.records?.length > 0 && (
                     <div className="border-t border-white/10 p-7 md:p-9">
                         <p className="mb-5 text-xs tracking-[0.2em] text-white/30">
                             PERMIT DETAILS
                         </p>
 
                         <div className="space-y-3">
-                            {section.records.map(
-                                (
-                                    record,
-                                    index
-                                ) => (
-                                    <div
-                                        key={
-                                            record.id ||
-                                            index
-                                        }
-                                        className="rounded-xl border border-white/10 bg-black/20 p-5"
-                                    >
-                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                            <div>
-                                                <p className="text-base text-white/80">
-                                                    {record.permitType ||
-                                                        record.type ||
-                                                        "Permit"}
-                                                </p>
+                            {section.records.map((record, index) => (
+                                <div
+                                    key={record.id || index}
+                                    className="rounded-xl border border-white/10 bg-black/20 p-5"
+                                >
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <p className="text-base text-white/80">
+                                                {record.permitType ||
+                                                    record.type ||
+                                                    "Permit"}
+                                            </p>
 
-                                                <p className="mt-2 text-sm text-white/40">
-                                                    {record.description ||
-                                                        record.details ||
-                                                        "Description not available"}
-                                                </p>
-                                            </div>
-
-                                            <span className="w-fit rounded-full border border-white/10 px-3 py-1 text-xs text-white/50">
-                                                {record.status ||
-                                                    "Not available"}
-                                            </span>
+                                            <p className="mt-2 text-sm text-white/40">
+                                                {record.description ||
+                                                    record.details ||
+                                                    "Description not available"}
+                                            </p>
                                         </div>
 
-                                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                                            <Detail
-                                                label="Permit Number"
-                                                value={
-                                                    record.permitNumber ||
-                                                    record.permitNo ||
-                                                    record.id
-                                                }
-                                            />
-
-                                            <Detail
-                                                label="Issued Date"
-                                                value={formatDate(
-                                                    record.issuedDate ||
-                                                    record.issueDate
-                                                )}
-                                            />
-                                        </div>
+                                        <span className="w-fit rounded-full border border-white/10 px-3 py-1 text-xs text-white/50">
+                                            {record.status || "Not available"}
+                                        </span>
                                     </div>
-                                )
-                            )}
+
+                                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                        <Detail
+                                            label="Permit Number"
+                                            value={
+                                                record.permitNumber ||
+                                                record.permitNo ||
+                                                record.id
+                                            }
+                                        />
+
+                                        <Detail
+                                            label="Issued Date"
+                                            value={formatDate(
+                                                record.issuedDate ||
+                                                record.issueDate
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -2311,9 +1698,11 @@ function ReportSection({
     );
 }
 
-function displayValue(
-    value
-) {
+/*
+ * DISPLAY VALUE
+ */
+
+function displayValue(value) {
     if (
         value === null ||
         value === undefined ||
@@ -2322,21 +1711,18 @@ function displayValue(
         return "Not available";
     }
 
-    if (
-        typeof value ===
-        "boolean"
-    ) {
-        return value
-            ? "Yes"
-            : "No";
+    if (typeof value === "boolean") {
+        return value ? "Yes" : "No";
     }
 
     return String(value);
 }
 
-function formatBoolean(
-    value
-) {
+/*
+ * FORMAT BOOLEAN
+ */
+
+function formatBoolean(value) {
     if (value === true) {
         return "Yes";
     }
@@ -2348,37 +1734,33 @@ function formatBoolean(
     return null;
 }
 
-function formatDate(
-    value
-) {
+/*
+ * FORMAT DATE
+ */
+
+function formatDate(value) {
     if (!value) {
         return null;
     }
 
-    const date =
-        new Date(value);
+    const date = new Date(value);
 
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
+    if (Number.isNaN(date.getTime())) {
         return value;
     }
 
-    return date.toLocaleDateString(
-        "en-GB",
-        {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-        }
-    );
+    return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
 }
 
-function formatCurrency(
-    value
-) {
+/*
+ * FORMAT CURRENCY
+ */
+
+function formatCurrency(value) {
     if (
         value === null ||
         value === undefined ||
@@ -2387,23 +1769,15 @@ function formatCurrency(
         return null;
     }
 
-    const amount =
-        Number(value);
+    const amount = Number(value);
 
-    if (
-        !Number.isFinite(
-            amount
-        )
-    ) {
+    if (!Number.isFinite(amount)) {
         return String(value);
     }
 
-    return new Intl.NumberFormat(
-        "en-IN",
-        {
-            style: "currency",
-            currency: "INR",
-            maximumFractionDigits: 2,
-        }
-    ).format(amount);
+    return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 2,
+    }).format(amount);
 }
