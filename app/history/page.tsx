@@ -158,11 +158,19 @@ export default function History() {
             const price = formatPrice(property.price);
             return (
               <li key={property.propertyId}>
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() =>
                     router.push(`/property-details?propertyId=${property.propertyId}`)
                   }
-                  className="card block w-full p-6 text-left transition hover:border-slate-300 hover:shadow-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/property-details?propertyId=${property.propertyId}`);
+                    }
+                  }}
+                  className="card block w-full cursor-pointer p-6 text-left transition hover:border-slate-300 hover:shadow-sm"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -264,7 +272,7 @@ export default function History() {
                       </p>
                     </div>
                   </div>
-                </button>
+                </div>
               </li>
             );
           })}

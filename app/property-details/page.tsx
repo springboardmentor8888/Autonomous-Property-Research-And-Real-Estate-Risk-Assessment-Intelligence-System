@@ -752,81 +752,6 @@ function PropertyDetailsContent() {
         )}
       </section>
 
-      {details && (
-        <section className="card mt-6 p-8">
-          <h2 className="text-sm font-semibold text-slate-700">Due Diligence Records</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            The records stored for this property. Absent sections have not been sourced yet.
-          </p>
-
-          {!hasDiligenceRecords ? (
-            <p className="mt-4 text-sm text-slate-500">
-              No due-diligence records are stored for this property yet.
-            </p>
-          ) : (
-            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {diligence?.ownership && (
-                <RecordCard title="Ownership">
-                  <Field label="Owner" value={diligence.ownership.ownerName ?? '—'} />
-                  <Field label="Type" value={<StatusBadge status={diligence.ownership.ownershipType} />} />
-                  <Field label="Recorded" value={formatDate(diligence.ownership.recordDate)} />
-                </RecordCard>
-              )}
-              {diligence?.tax && (
-                <RecordCard title="Property Tax">
-                  <Field label="Status" value={<StatusBadge status={diligence.tax.paymentStatus} />} />
-                  <Field label="Amount" value={formatPrice(diligence.tax.taxAmount)} />
-                  <Field label="Due" value={formatPrice(diligence.tax.taxDue)} />
-                  <Field label="Paid on" value={formatDate(diligence.tax.taxPayDate)} />
-                </RecordCard>
-              )}
-              {diligence?.permits && diligence.permits.length > 0 && (
-                <RecordCard title="Building Permits">
-                  {diligence.permits.map((p, i) => (
-                    <div key={i} className="space-y-1 border-b border-slate-100 pb-1.5 last:border-b-0">
-                      <Field label={p.permitNumber ?? 'Permit'} value={<StatusBadge status={p.permitStatus} />} />
-                      <Field label="Issued" value={formatDate(p.issueDate)} />
-                    </div>
-                  ))}
-                </RecordCard>
-              )}
-              {diligence?.zoning && (
-                <RecordCard title="Zoning">
-                  <Field label="Code" value={diligence.zoning.zoningCode ?? '—'} />
-                  <Field label="Status" value={<StatusBadge status={diligence.zoning.zoningStatus} />} />
-                  <Field label="Allowed use" value={diligence.zoning.allowedUse ?? '—'} />
-                </RecordCard>
-              )}
-              {diligence?.flood && (
-                <RecordCard title="Flood Zone">
-                  <Field label="Zone" value={diligence.flood.zone ?? '—'} />
-                  <Field label="Risk" value={<StatusBadge status={diligence.flood.riskLevel} />} />
-                  <Field label="Effective" value={formatDate(diligence.flood.effectiveDate)} />
-                </RecordCard>
-              )}
-              {diligence?.environmental && (
-                <RecordCard title="Environmental">
-                  <Field label="Type" value={diligence.environmental.recordType ?? '—'} />
-                  <Field label="Status" value={<StatusBadge status={diligence.environmental.status} />} />
-                  <Field label="Risk" value={<StatusBadge status={diligence.environmental.riskLevel} />} />
-                </RecordCard>
-              )}
-              {diligence?.utilities && diligence.utilities.length > 0 && (
-                <RecordCard title="Utilities">
-                  {diligence.utilities.map((u, i) => (
-                    <Field
-                      key={i}
-                      label={u.utilityType ?? 'Utility'}
-                      value={<StatusBadge status={u.availabilityStatus} />}
-                    />
-                  ))}
-                </RecordCard>
-              )}
-            </div>
-          )}
-
-        </section>
-      )}
 
       {details && (
         <section className="card mt-6 p-6">
@@ -993,6 +918,81 @@ function PropertyDetailsContent() {
                 <p className="mt-3 text-xs font-medium text-rose-600">{riskError}</p>
               )}
             </div>
+
+            <section className="card mt-6 p-8">
+            <h2 className="text-sm font-semibold text-slate-700">Stored diligence records</h2>
+            <p className="mt-1 text-xs text-slate-500">
+            The records stored for this property. Absent sections have not been sourced yet.
+            </p>
+
+            {!hasDiligenceRecords ? (
+            <p className="mt-4 text-sm text-slate-500">
+            No due-diligence records are stored for this property yet.
+            </p>
+            ) : (
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {diligence?.ownership && (
+            <RecordCard title="Ownership">
+            <Field label="Owner" value={diligence.ownership.ownerName ?? '—'} />
+            <Field label="Type" value={<StatusBadge status={diligence.ownership.ownershipType} />} />
+            <Field label="Recorded" value={formatDate(diligence.ownership.recordDate)} />
+            </RecordCard>
+            )}
+            {diligence?.tax && (
+            <RecordCard title="Property Tax">
+            <Field label="Status" value={<StatusBadge status={diligence.tax.paymentStatus} />} />
+            <Field label="Amount" value={formatPrice(diligence.tax.taxAmount)} />
+            <Field label="Due" value={formatPrice(diligence.tax.taxDue)} />
+            <Field label="Paid on" value={formatDate(diligence.tax.taxPayDate)} />
+            </RecordCard>
+            )}
+            {diligence?.permits && diligence.permits.length > 0 && (
+            <RecordCard title="Building Permits">
+            {diligence.permits.map((p, i) => (
+            <div key={i} className="space-y-1 border-b border-slate-100 pb-1.5 last:border-b-0">
+            <Field label={p.permitNumber ?? 'Permit'} value={<StatusBadge status={p.permitStatus} />} />
+            <Field label="Issued" value={formatDate(p.issueDate)} />
+            </div>
+            ))}
+            </RecordCard>
+            )}
+            {diligence?.zoning && (
+            <RecordCard title="Zoning">
+            <Field label="Code" value={diligence.zoning.zoningCode ?? '—'} />
+            <Field label="Status" value={<StatusBadge status={diligence.zoning.zoningStatus} />} />
+            <Field label="Allowed use" value={diligence.zoning.allowedUse ?? '—'} />
+            </RecordCard>
+            )}
+            {diligence?.flood && (
+            <RecordCard title="Flood Zone">
+            <Field label="Zone" value={diligence.flood.zone ?? '—'} />
+            <Field label="Risk" value={<StatusBadge status={diligence.flood.riskLevel} />} />
+            <Field label="Effective" value={formatDate(diligence.flood.effectiveDate)} />
+            </RecordCard>
+            )}
+            {diligence?.environmental && (
+            <RecordCard title="Environmental">
+            <Field label="Type" value={diligence.environmental.recordType ?? '—'} />
+            <Field label="Status" value={<StatusBadge status={diligence.environmental.status} />} />
+            <Field label="Risk" value={<StatusBadge status={diligence.environmental.riskLevel} />} />
+            </RecordCard>
+            )}
+            {diligence?.utilities && diligence.utilities.length > 0 && (
+            <RecordCard title="Utilities">
+            {diligence.utilities.map((u, i) => (
+            <Field
+            key={i}
+            label={u.utilityType ?? 'Utility'}
+            value={<StatusBadge status={u.availabilityStatus} />}
+            />
+            ))}
+            </RecordCard>
+            )}
+            </div>
+            )}
+
+            </section>
+
         </section>
       )}
 
