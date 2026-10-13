@@ -98,7 +98,7 @@ export default function LoginPage() {
         new Event('auth-change')
       )
 
-      router.push('/dashboard')
+      router.push(String(data.role || '').replace(/^ROLE_/, '').toUpperCase() === 'ADMINISTRATOR' ? '/admin/dashboard' : '/dashboard')
 
     } catch (err) {
       setError(
