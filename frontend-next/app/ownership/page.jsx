@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import {
   ArrowLeft,
   MapPin,
@@ -9,38 +9,37 @@ import {
   UserRound,
   FileText,
   Clock3,
-} from "lucide-react";
+} from 'lucide-react'
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = 'http://localhost:8080/api'
 
 export default function OwnershipPage() {
-  const [property, setProperty] = useState(null);
-  const [ownershipHistory, setOwnershipHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [property, setProperty] = useState(null)
+  const [ownershipHistory, setOwnershipHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     async function loadOwnership() {
       try {
-        setLoading(true);
-        setError("");
+        setLoading(true)
+        setError('')
 
-        const savedProperty =
-          sessionStorage.getItem("selectedProperty");
+        const savedProperty = sessionStorage.getItem('selectedProperty')
 
         if (!savedProperty) {
           throw new Error(
-            "No property selected. Please search for a property first."
-          );
+            'No property selected. Please search for a property first.'
+          )
         }
 
-        const selected = JSON.parse(savedProperty);
-        setProperty(selected);
+        const selected = JSON.parse(savedProperty)
+        setProperty(selected)
 
         const rawId =
           selected.propertyDbId ??
           selected.id ??
-          selected.propertyId;
+          selected.propertyId
 
         if (
           rawId === null ||
@@ -48,70 +47,64 @@ export default function OwnershipPage() {
           !/^\d+$/.test(String(rawId))
         ) {
           throw new Error(
-            "A valid numeric property database ID was not found. Please select a property from Property Search."
-          );
+            'A valid numeric property database ID was not found. Please select a property from Property Search.'
+          )
         }
 
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem('token')
 
         if (!token) {
           throw new Error(
-            "Authentication token not found. Please log in again."
-          );
+            'Authentication token not found. Please log in again.'
+          )
         }
 
-        console.log(
-          "Loading ownership for property ID:",
-          rawId
-        );
+        console.log('Loading ownership for property ID:', rawId)
 
-        const response = await fetch(
-          `${API_URL}/properties/${rawId}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await fetch(`${API_URL}/properties/${rawId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
 
-        const data = await response.json().catch(() => null);
+        const data = await response.json().catch(() => null)
 
-        console.log("Property API response:", data);
+        console.log('Property API response:', data)
 
         if (!response.ok) {
           if (response.status === 401) {
             throw new Error(
-              "401 Unauthorized. Your login token may be invalid or expired. Please log in again."
-            );
+              '401 Unauthorized. Your login token may be invalid or expired. Please log in again.'
+            )
           }
 
           if (response.status === 403) {
             throw new Error(
-              "403 Forbidden. You do not have permission to view these records."
-            );
+              '403 Forbidden. You do not have permission to view these records.'
+            )
           }
 
           throw new Error(
             data?.message ||
             data?.error?.message ||
             `Unable to load ownership records. Server returned ${response.status}.`
-          );
+          )
         }
 
-        const details = data?.data ?? data;
-        let history = [];
+        const details = data?.data ?? data
+        let history = []
 
         if (Array.isArray(details?.ownershipHistory)) {
-          history = details.ownershipHistory;
+          history = details.ownershipHistory
         } else if (Array.isArray(details?.ownership)) {
-          history = details.ownership;
+          history = details.ownership
         } else if (
           details?.ownership &&
-          typeof details.ownership === "object"
+          typeof details.ownership === 'object'
         ) {
-          history = [details.ownership];
+          history = [details.ownership]
         }
 
         // Normalize backend field names.
@@ -123,7 +116,7 @@ export default function OwnershipPage() {
               record.ownerName ??
               record.owner ??
               record.name ??
-              "",
+              '',
             acquiredDate:
               record.acquiredDate ??
               record.acquisitionDate ??
@@ -133,76 +126,73 @@ export default function OwnershipPage() {
               record.transferredDate ??
               null,
             id: record.id ?? record.recordId ?? null,
-          }));
+          }))
 
         // Sort from oldest acquisition to newest.
         history.sort((a, b) => {
-          const dateA = a?.acquiredDate || "";
-          const dateB = b?.acquiredDate || "";
-          return dateA.localeCompare(dateB);
-        });
+          const dateA = a?.acquiredDate || ''
+          const dateB = b?.acquiredDate || ''
+          return dateA.localeCompare(dateB)
+        })
 
-        console.log("Ownership records received:", history);
-        setOwnershipHistory(history);
+        console.log('Ownership records received:', history)
+        setOwnershipHistory(history)
       } catch (err) {
-        console.error("Ownership loading error:", err);
-        setError(
-          err.message || "Unable to load ownership records."
-        );
+        console.error('Ownership loading error:', err)
+        setError(err.message || 'Unable to load ownership records.')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
 
-    loadOwnership();
-  }, []);
+    loadOwnership()
+  }, [])
 
   const address =
     property?.formattedAddress ||
     property?.address ||
-    "Property Address";
+    'Property Address'
 
   const mapUrl =
-    property?.latitude != null &&
-      property?.longitude != null
+    property?.latitude != null && property?.longitude != null
       ? `https://www.openstreetmap.org/?mlat=${property.latitude}&mlon=${property.longitude}#map=17/${property.latitude}/${property.longitude}`
       : `https://www.openstreetmap.org/search?query=${encodeURIComponent(
         address
-      )}`;
+      )}`
 
   // Always work with a sorted copy.
   const sortedOwnershipHistory = [...ownershipHistory].sort(
     (a, b) => {
-      const dateA = a?.acquiredDate || "";
-      const dateB = b?.acquiredDate || "";
-      return dateA.localeCompare(dateB);
+      const dateA = a?.acquiredDate || ''
+      const dateB = b?.acquiredDate || ''
+      return dateA.localeCompare(dateB)
     }
-  );
+  )
 
   // Determine the current owner.
   const recordsWithoutTransferDate =
     sortedOwnershipHistory.filter(
       (record) => record?.transferDate == null
-    );
+    )
 
-  let currentOwner = null;
+  let currentOwner = null
 
   if (recordsWithoutTransferDate.length > 0) {
     currentOwner =
       recordsWithoutTransferDate[
       recordsWithoutTransferDate.length - 1
-      ];
+      ]
   } else if (sortedOwnershipHistory.length > 0) {
     currentOwner =
       sortedOwnershipHistory[
       sortedOwnershipHistory.length - 1
-      ];
+      ]
   }
 
   // Determine whether the backend supplied transfer dates.
   const hasTransferDates = sortedOwnershipHistory.some(
     (record) => record?.transferDate != null
-  );
+  )
 
   // Previous owners are all records except the current owner.
   const previousOwners =
@@ -210,10 +200,10 @@ export default function OwnershipPage() {
       ? []
       : sortedOwnershipHistory.filter(
         (record) => record !== currentOwner
-      );
+      )
 
   const inferredPreviousOwners =
-    !hasTransferDates && previousOwners.length > 0;
+    !hasTransferDates && previousOwners.length > 0
 
   if (loading) {
     return (
@@ -225,7 +215,7 @@ export default function OwnershipPage() {
           </div>
         </div>
       </main>
-    );
+    )
   }
 
   return (
@@ -252,7 +242,7 @@ export default function OwnershipPage() {
             OWNERSHIP / LAND REGISTRY
           </p>
 
-          <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
+          <h1 className="max-w-5xl text-[clamp(2.75rem,5vw,5rem)] font-light leading-[0.95] tracking-[-0.05em]">
             Verify
             <br />
             <span className="text-white/35">ownership.</span>
@@ -294,10 +284,7 @@ export default function OwnershipPage() {
           <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
             <div className="mx-auto max-w-[1400px]">
               <div className="flex items-center gap-3">
-                <MapPin
-                  size={18}
-                  className="text-emerald-400"
-                />
+                <MapPin size={18} className="text-emerald-400" />
 
                 <span className="text-xs font-semibold tracking-[0.3em] text-emerald-400/70">
                   SELECTED PROPERTY
@@ -309,24 +296,12 @@ export default function OwnershipPage() {
               </h2>
 
               <div className="mt-12 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
-                <DetailCard
-                  label="City"
-                  value={property.city}
-                />
-
-                <DetailCard
-                  label="State"
-                  value={property.state}
-                />
-
+                <DetailCard label="City" value={property.city} />
+                <DetailCard label="State" value={property.state} />
                 <DetailCard
                   label="Postal Code"
-                  value={
-                    property.postalCode ??
-                    property.zipCode
-                  }
+                  value={property.postalCode ?? property.zipCode}
                 />
-
                 <DetailCard
                   label="Property ID"
                   value={
@@ -348,10 +323,7 @@ export default function OwnershipPage() {
 
               {ownershipHistory.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
-                  <ShieldCheck
-                    size={28}
-                    className="text-white/40"
-                  />
+                  <ShieldCheck size={28} className="text-white/40" />
 
                   <h3 className="mt-5 text-2xl font-light text-white/80">
                     No ownership data available
@@ -387,7 +359,7 @@ export default function OwnershipPage() {
                       {currentOwner?.ownerName ||
                         currentOwner?.owner ||
                         currentOwner?.name ||
-                        "Not available"}
+                        'Not available'}
                     </h3>
 
                     <p className="mt-4 text-sm text-white/40">
@@ -403,10 +375,7 @@ export default function OwnershipPage() {
 
                       <DetailCard
                         label="Transfer Date"
-                        value={
-                          currentOwner?.transferDate ??
-                          "Current owner"
-                        }
+                        value={currentOwner?.transferDate ?? 'Current owner'}
                       />
 
                       <DetailCard
@@ -430,10 +399,10 @@ export default function OwnershipPage() {
                       </div>
 
                       <span className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/50">
-                        {previousOwners.length}{" "}
+                        {previousOwners.length}{' '}
                         {previousOwners.length === 1
-                          ? "Previous owner"
-                          : "Previous owners"}
+                          ? 'Previous owner'
+                          : 'Previous owners'}
                       </span>
                     </div>
 
@@ -490,7 +459,7 @@ export default function OwnershipPage() {
                               {owner.ownerName ||
                                 owner.owner ||
                                 owner.name ||
-                                "Not available"}
+                                'Not available'}
                             </h3>
 
                             <div className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
@@ -499,9 +468,8 @@ export default function OwnershipPage() {
                                 value={owner.acquiredDate}
                               />
 
-                              {/* Hide the entire Transfer Date field when no date exists. */}
                               {owner.transferDate != null &&
-                                owner.transferDate !== "" && (
+                                owner.transferDate !== '' && (
                                   <DetailCard
                                     label="Transfer Date"
                                     value={owner.transferDate}
@@ -522,10 +490,7 @@ export default function OwnershipPage() {
                   {/* Record summary */}
                   <div className="mt-16 rounded-2xl border border-white/10 bg-white/[0.02] p-7 md:p-9">
                     <div className="flex items-center gap-3">
-                      <Clock3
-                        size={20}
-                        className="text-white/50"
-                      />
+                      <Clock3 size={20} className="text-white/50" />
 
                       <p className="text-xs tracking-[0.25em] text-white/35">
                         RECORD SUMMARY
@@ -567,9 +532,7 @@ export default function OwnershipPage() {
               </p>
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
-                <p className="text-lg text-white/65">
-                  {address}
-                </p>
+                <p className="text-lg text-white/65">{address}</p>
 
                 <a
                   href={mapUrl}
@@ -587,10 +550,7 @@ export default function OwnershipPage() {
           <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
             <div className="mx-auto max-w-[1400px] rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
               <div className="flex items-center gap-3">
-                <FileText
-                  size={18}
-                  className="text-white/40"
-                />
+                <FileText size={18} className="text-white/40" />
 
                 <p className="text-xs font-semibold tracking-[0.3em] text-white/30">
                   NEXT RESEARCH STAGE
@@ -636,16 +596,14 @@ export default function OwnershipPage() {
         </div>
       </footer>
     </main>
-  );
+  )
 }
 
 function DetailCard({ label, value }) {
   const displayValue =
-    value === null ||
-      value === undefined ||
-      value === ""
-      ? "Not available"
-      : String(value);
+    value === null || value === undefined || value === ''
+      ? 'Not available'
+      : String(value)
 
   return (
     <div className="bg-[#101010] p-6">
@@ -657,5 +615,5 @@ function DetailCard({ label, value }) {
         {displayValue}
       </p>
     </div>
-  );
+  )
 }

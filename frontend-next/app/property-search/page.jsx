@@ -1,137 +1,119 @@
-"use client";
+'use client'
 
-import { useState } from "react";
+import { useState } from 'react'
 
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = 'http://localhost:8080/api'
 
 export default function PropertySearchPage() {
-  const [address, setAddress] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState(null);
+  const [address, setAddress] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState(null)
 
   async function handleSearch(event) {
-    event.preventDefault();
-    setError("");
-    setResult(null);
+    event.preventDefault()
+    setError('')
+    setResult(null)
 
-    const cleanAddress = address.trim();
+    const cleanAddress = address.trim()
 
     if (!cleanAddress) {
-      setError("Please enter a property address.");
-      return;
+      setError('Please enter a property address.')
+      return
     }
 
     if (cleanAddress.length < 3) {
-      setError("Please enter a valid property address.");
-      return;
+      setError('Please enter a valid property address.')
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem('token')
 
       const response = await fetch(
         `${BASE_URL}/properties/search?address=${encodeURIComponent(
           cleanAddress
         )}`,
         {
-          method: "GET",
+          method: 'GET',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         }
-      );
+      )
 
-      const data = await response.json().catch(() => null);
+      const data = await response.json().catch(() => null)
 
       if (!response.ok) {
         throw new Error(
           data?.message ||
           data?.error?.message ||
           `Search failed (${response.status})`
-        );
+        )
       }
 
-      const properties = Array.isArray(data) ? data : data?.data || [];
+      const properties = Array.isArray(data) ? data : data?.data || []
 
       if (!Array.isArray(properties) || properties.length === 0) {
-        throw new Error("No matching property found");
+        throw new Error('No matching property found')
       }
 
-      const property = properties[0];
+      const property = properties[0]
 
       const propertyResult = {
         formattedAddress: property.address || cleanAddress,
-
-        city: property.city || "Not available",
-
-        state: property.state || "Not available",
-
+        city: property.city || 'Not available',
+        state: property.state || 'Not available',
         postalCode:
           property.zipCode ||
           property.zip_code ||
-          "Not available",
-
-        latitude:
-          property.latitude ??
-          property.lat ??
-          null,
-
-        longitude:
-          property.longitude ??
-          property.lng ??
-          null,
-
+          'Not available',
+        latitude: property.latitude ?? property.lat ?? null,
+        longitude: property.longitude ?? property.lng ?? null,
         propertyId: property.id ?? null,
-
         propertyType:
           property.propertyType ||
           property.property_type ||
-          "Not available",
-      };
+          'Not available',
+      }
 
-      setResult(propertyResult);
+      setResult(propertyResult)
 
       sessionStorage.setItem(
-        "selectedProperty",
+        'selectedProperty',
         JSON.stringify(propertyResult)
-      );
+      )
     } catch (searchError) {
-      console.error("Property search error:", searchError);
+      console.error('Property search error:', searchError)
 
       setError(
         searchError.message ||
-        "Unable to search for this property."
-      );
+        'Unable to search for this property.'
+      )
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
-  // Map URL:
-  // Use coordinates when available.
-  // Otherwise search the address on OpenStreetMap.
+  // Use coordinates when available. Otherwise, search the address on OpenStreetMap.
   const mapUrl =
-    result?.latitude != null &&
-      result?.longitude != null
+    result?.latitude != null && result?.longitude != null
       ? `https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=17/${result.latitude}/${result.longitude}`
       : result
         ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(
           result.formattedAddress
         )}`
-        : "#";
+        : '#'
 
   return (
     <main className="min-h-screen bg-[#0b0b0b] text-white">
       {/* BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute left-[-200px] top-[5%] h-[550px] w-[550px] rounded-full bg-orange-500/[0.06] blur-[150px]" />
-
         <div className="absolute right-[-200px] top-[35%] h-[650px] w-[650px] rounded-full bg-blue-500/[0.05] blur-[170px]" />
-
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.035),transparent_45%)]" />
       </div>
 
@@ -142,7 +124,7 @@ export default function PropertySearchPage() {
             PROPERTY SEARCH
           </p>
 
-          <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
+          <h1 className="max-w-5xl text-[clamp(2.75rem,5vw,5rem)] font-light leading-[0.95] tracking-[-0.05em]">
             Start with
             <br />
             <span className="text-white/35">the address.</span>
@@ -175,9 +157,9 @@ export default function PropertySearchPage() {
                 type="text"
                 value={address}
                 onChange={(event) => {
-                  setAddress(event.target.value);
-                  setError("");
-                  setResult(null);
+                  setAddress(event.target.value)
+                  setError('')
+                  setResult(null)
                 }}
                 placeholder="Enter a property address"
                 autoComplete="street-address"
@@ -299,24 +281,14 @@ export default function PropertySearchPage() {
               <div className="grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
                 <DetailCard
                   label="Property ID"
-                  value={result.propertyId ?? "Not available"}
+                  value={result.propertyId ?? 'Not available'}
                 />
-
                 <DetailCard
                   label="Property Type"
                   value={result.propertyType}
                 />
-
-                <DetailCard
-                  label="City"
-                  value={result.city}
-                />
-
-                <DetailCard
-                  label="State"
-                  value={result.state}
-                />
-
+                <DetailCard label="City" value={result.city} />
+                <DetailCard label="State" value={result.state} />
                 <DetailCard
                   label="Postal Code"
                   value={result.postalCode}
@@ -331,29 +303,25 @@ export default function PropertySearchPage() {
               </p>
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
-                <div>
-                  {/* MAP LOCATION */}
-                  <p className="text-xs tracking-[0.25em] text-white/40">
-                    MAP LOCATION
-                  </p>
+                <p className="text-xs tracking-[0.25em] text-white/40">
+                  MAP LOCATION
+                </p>
 
-                  <p className="mt-4 break-words text-lg text-white/80">
-                    {result.formattedAddress}
-                  </p>
+                <p className="mt-4 break-words text-lg text-white/80">
+                  {result.formattedAddress}
+                </p>
 
-                  <a
-                    href={mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/15 px-6 py-3 text-sm text-white/65 transition hover:border-white/30 hover:bg-white hover:text-black"
-                  >
-                    Open Map
-                    <span>↗</span>
-                  </a>
-                </div>
+                <a
+                  href={mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/15 px-6 py-3 text-sm text-white/65 transition hover:border-white/30 hover:bg-white hover:text-black"
+                >
+                  Open Map
+                  <span>↗</span>
+                </a>
               </div>
             </div>
-            {/* END PROPERTY LOCATION */}
           </div>
         </section>
       )}
@@ -405,7 +373,7 @@ export default function PropertySearchPage() {
         </div>
       </footer>
     </main>
-  );
+  )
 }
 
 /* INFO BLOCK */
@@ -424,7 +392,7 @@ function InfoBlock({ number, title, text }) {
         {text}
       </p>
     </div>
-  );
+  )
 }
 
 /* DETAIL CARD */
@@ -439,5 +407,5 @@ function DetailCard({ label, value }) {
         {value}
       </p>
     </div>
-  );
+  )
 }

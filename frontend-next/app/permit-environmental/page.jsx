@@ -299,8 +299,8 @@ export default function PermitEnvironmentalPage() {
                         category:
                             "Pollution Events",
                         value: `${pollutionEvents.length} event${pollutionEvents.length === 1
-                                ? ""
-                                : "s"
+                            ? ""
+                            : "s"
                             }`,
                         status: "Review",
                     });
@@ -324,8 +324,8 @@ export default function PermitEnvironmentalPage() {
                         category:
                             "Nearby Environmental Sites",
                         value: `${nearbySites.length} site${nearbySites.length === 1
-                                ? ""
-                                : "s"
+                            ? ""
+                            : "s"
                             }`,
                         status: "Review",
                     });
@@ -393,7 +393,7 @@ export default function PermitEnvironmentalPage() {
                         PERMIT & ENVIRONMENTAL RECORDS
                     </p>
 
-                    <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
+                    <h1 className="max-w-5xl text-[clamp(2.75rem,5vw,5rem)] font-light leading-[0.95] tracking-[-0.05em]">
                         Review the
                         <br />
                         <span className="text-white/35">
@@ -1219,8 +1219,8 @@ function EnvironmentalCard({
                 {hasValue(status) && (
                     <span
                         className={`shrink-0 rounded-full border px-3 py-1 text-xs ${review
-                                ? "border-yellow-400/20 text-yellow-400/70"
-                                : "border-emerald-400/20 text-emerald-400/70"
+                            ? "border-yellow-400/20 text-yellow-400/70"
+                            : "border-emerald-400/20 text-emerald-400/70"
                             }`}
                     >
                         {status}

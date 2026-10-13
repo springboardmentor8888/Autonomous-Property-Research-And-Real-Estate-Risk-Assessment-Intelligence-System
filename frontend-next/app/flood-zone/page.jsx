@@ -755,7 +755,7 @@ export default function FloodZonePage() {
                         PROPERTY / FLOOD ZONE
                     </p>
 
-                    <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
+                    <h1 className="max-w-5xl text-[clamp(2.75rem,5vw,5rem)] font-light leading-[0.95] tracking-[-0.05em]">
                         Verify
                         <br />
 

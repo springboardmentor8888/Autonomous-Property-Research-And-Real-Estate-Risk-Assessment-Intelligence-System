@@ -27,12 +27,39 @@ const NAV_ITEMS = [
       { label: 'Investors', href: '#investors' },
     ],
   },
-  { label: 'Leadership', href: '#leadership' },
-  { label: 'People', href: '#people' },
-  { label: 'ESG', href: '#esg' },
-  { label: 'Newsroom', href: '#newsroom' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Capabilities', href: '/#capabilities' },
+  { label: 'Contact', href: '/#contact' },
 ]
+
+function isTokenUsable(storedToken) {
+  if (typeof storedToken !== 'string' || !storedToken.trim()) {
+    return false
+  }
+
+  const token = storedToken.replace(/^Bearer\s+/i, '').trim()
+  const parts = token.split('.')
+
+  if (parts.length !== 3 || !parts[1]) {
+    return false
+  }
+
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const paddedBase64 = base64.padEnd(
+      Math.ceil(base64.length / 4) * 4,
+      '='
+    )
+
+    const payload = JSON.parse(atob(paddedBase64))
+
+    return (
+      typeof payload.exp === 'number' &&
+      payload.exp * 1000 > Date.now()
+    )
+  } catch {
+    return false
+  }
+}
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -44,41 +71,57 @@ export default function Navbar() {
   const [user, setUser] = useState(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
+  // Restore saved user only when a usable JWT and user data exist.
   useEffect(() => {
+    const clearSavedAuth = () => {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      setUser(null)
+      setUserMenuOpen(false)
+    }
+
     const loadUser = () => {
       const token = localStorage.getItem('token')
       const savedUser = localStorage.getItem('user')
 
-      // Only show the user avatar when BOTH token and user exist.
-      if (!token || !savedUser) {
-        localStorage.removeItem('user')
-        setUser(null)
+      if (!token || !savedUser || !isTokenUsable(token)) {
+        clearSavedAuth()
         return
       }
 
       try {
         const parsedUser = JSON.parse(savedUser)
 
-        if (!parsedUser || typeof parsedUser !== 'object') {
-          localStorage.removeItem('user')
-          setUser(null)
+        const hasUserDetails =
+          parsedUser &&
+          typeof parsedUser === 'object' &&
+          !Array.isArray(parsedUser) &&
+          Boolean(
+            parsedUser.fullName ||
+            parsedUser.name ||
+            parsedUser.email
+          )
+
+        if (!hasUserDetails) {
+          clearSavedAuth()
           return
         }
 
         setUser(parsedUser)
       } catch (error) {
-        console.error('Failed to parse user data:', error)
-        localStorage.removeItem('user')
-        setUser(null)
+        console.error('Failed to parse saved user data:', error)
+        clearSavedAuth()
       }
     }
 
     loadUser()
 
     window.addEventListener('auth-change', loadUser)
+    window.addEventListener('storage', loadUser)
 
     return () => {
       window.removeEventListener('auth-change', loadUser)
+      window.removeEventListener('storage', loadUser)
     }
   }, [pathname])
 
@@ -111,7 +154,6 @@ export default function Navbar() {
     setDrawerOpen(false)
 
     window.dispatchEvent(new Event('auth-change'))
-
     router.push('/login')
   }
 
@@ -121,6 +163,7 @@ export default function Navbar() {
   const authLabel =
     pathname === '/login' ? 'Sign Up' : 'Login'
 
+  // Header scroll effect.
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 20)
@@ -135,6 +178,7 @@ export default function Navbar() {
     }
   }, [])
 
+  // Prevent background scrolling while the mobile drawer is open.
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : ''
 
@@ -143,9 +187,10 @@ export default function Navbar() {
     }
   }, [drawerOpen])
 
+  // Close menus when Escape is pressed.
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
+    const onKey = (event) => {
+      if (event.key === 'Escape') {
         setOpenDropdown(null)
         setDrawerOpen(false)
         setUserMenuOpen(false)
@@ -175,7 +220,6 @@ export default function Navbar() {
           }`}
       >
         <div className="max-w-[1440px] mx-auto h-full px-8 flex items-center gap-10">
-
           {/* LOGO */}
           <Link
             href="/"
@@ -185,6 +229,7 @@ export default function Navbar() {
             <span className="text-[22px] text-accent leading-none">
               ⬡
             </span>
+
             <span className="text-[20px] font-semibold tracking-tight text-white">
               PropDue
             </span>
@@ -200,8 +245,12 @@ export default function Navbar() {
                 <div
                   key={item.label}
                   className="relative"
-                  onMouseEnter={() => setOpenDropdown(item.label)}
-                  onMouseLeave={() => setOpenDropdown(null)}
+                  onMouseEnter={() =>
+                    setOpenDropdown(item.label)
+                  }
+                  onMouseLeave={() =>
+                    setOpenDropdown(null)
+                  }
                 >
                   <button
                     id={`btn-${item.label.toLowerCase()}`}
@@ -209,6 +258,7 @@ export default function Navbar() {
                     className="inline-flex items-center gap-1 px-3.5 py-1.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] rounded-md transition-all"
                     aria-haspopup="true"
                     aria-expanded={openDropdown === item.label}
+                    onFocus={() => setOpenDropdown(item.label)}
                   >
                     {item.label}
 
@@ -222,25 +272,28 @@ export default function Navbar() {
                     </span>
                   </button>
 
+                  {/* Dropdown hover bridge prevents accidental closing. */}
                   <div
-                    className={`absolute top-[calc(100%+10px)] left-1/2 -translate-x-1/2 min-w-[210px] bg-[rgba(10,16,28,0.93)] backdrop-blur-2xl border border-white/10 rounded-xl p-2 shadow-2xl transition-all duration-200 ${openDropdown === item.label
+                    className={`absolute top-full left-1/2 -translate-x-1/2 pt-2 min-w-[230px] z-[100] transition-all duration-200 ${openDropdown === item.label
                         ? 'opacity-100 visible translate-y-0'
                         : 'opacity-0 invisible -translate-y-1 pointer-events-none'
                       }`}
                   >
-                    {item.dropdown.map((sub) => (
-                      <Link
-                        key={sub.label}
-                        href={sub.href}
-                        id={`sol-${sub.label
-                          .toLowerCase()
-                          .replace(/\s+/g, '-')}`}
-                        className="block px-3.5 py-2.5 text-[13.5px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
-                        onClick={() => setOpenDropdown(null)}
-                      >
-                        {sub.label}
-                      </Link>
-                    ))}
+                    <div className="bg-[rgba(10,16,28,0.97)] backdrop-blur-2xl border border-white/10 rounded-xl p-2 shadow-2xl">
+                      {item.dropdown.map((sub) => (
+                        <Link
+                          key={sub.label}
+                          href={sub.href}
+                          id={`sol-${sub.label
+                            .toLowerCase()
+                            .replace(/\s+/g, '-')}`}
+                          className="block px-3.5 py-2.5 text-[13.5px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
+                          onClick={() => setOpenDropdown(null)}
+                        >
+                          {sub.label}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -258,14 +311,15 @@ export default function Navbar() {
 
           {/* RIGHT CONTROLS */}
           <div className="flex items-center gap-3 ml-auto">
-
-            {/* LOGGED-IN USER */}
+            {/* DESKTOP USER MENU */}
             {user ? (
               <div className="relative hidden lg:block">
                 <button
                   id="user-avatar-btn"
                   type="button"
-                  onClick={() => setUserMenuOpen((v) => !v)}
+                  onClick={() =>
+                    setUserMenuOpen((value) => !value)
+                  }
                   className="w-10 h-10 rounded-full flex items-center justify-center bg-[#4f9cf9] text-white font-bold text-sm border border-white/20 hover:bg-[#2d7ef4] hover:scale-105 transition-all shadow-[0_4px_20px_rgba(79,156,249,0.25)]"
                   aria-label="Open user menu"
                   aria-expanded={userMenuOpen}
@@ -350,13 +404,17 @@ export default function Navbar() {
               </span>
             </button>
 
-            {/* HAMBURGER */}
+            {/* MOBILE HAMBURGER */}
             <button
               id="hamburger"
               type="button"
               className="lg:hidden flex flex-col justify-center gap-[5px] p-2 rounded-md hover:bg-white/[0.08] transition-all"
-              onClick={() => setDrawerOpen((v) => !v)}
-              aria-label={drawerOpen ? 'Close Menu' : 'Open Menu'}
+              onClick={() =>
+                setDrawerOpen((value) => !value)
+              }
+              aria-label={
+                drawerOpen ? 'Close Menu' : 'Open Menu'
+              }
               aria-expanded={drawerOpen}
             >
               <span
@@ -385,9 +443,7 @@ export default function Navbar() {
       {/* MOBILE DRAWER */}
       <aside
         id="mobile-drawer"
-        className={`fixed top-0 right-0 h-full w-[300px] z-[2000] pt-20 px-6 pb-10 overflow-y-auto drawer-scroll bg-[rgba(8,12,20,0.97)] backdrop-blur-2xl border-l border-white/10 transition-transform duration-300 ease-in-out ${drawerOpen
-            ? 'translate-x-0'
-            : 'translate-x-full'
+        className={`fixed top-0 right-0 h-full w-[300px] z-[2000] pt-20 px-6 pb-10 overflow-y-auto drawer-scroll bg-[rgba(8,12,20,0.97)] backdrop-blur-2xl border-l border-white/10 transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         aria-hidden={!drawerOpen}
       >
@@ -435,7 +491,7 @@ export default function Navbar() {
             )
           )}
 
-          {/* MOBILE USER */}
+          {/* MOBILE USER MENU */}
           <div className="mt-5 pt-5 border-t border-white/10">
             {user ? (
               <div className="space-y-3">

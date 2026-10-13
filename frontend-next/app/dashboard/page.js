@@ -80,33 +80,6 @@ export default function DashboardPage() {
     },
   ]
 
-  const quickActions = [
-    {
-      title: 'Search Property',
-      description:
-        'Find a property by address and start a complete due diligence assessment.',
-      icon: '⌕',
-      buttonText: 'Search Property',
-      action: () => router.push('/property-search'),
-      accent:
-        'from-blue-500/[0.14] via-blue-500/[0.04] to-transparent',
-      iconColor: 'text-blue-300',
-      borderColor: 'hover:border-blue-400/30',
-    },
-    {
-      title: 'Risk Assessment',
-      description:
-        'Review ownership, zoning, flood risk, tax history, permits and environmental information.',
-      icon: '◈',
-      buttonText: 'Start Assessment',
-      action: () => router.push('/property-search'),
-      accent:
-        'from-cyan-500/[0.12] via-blue-500/[0.04] to-transparent',
-      iconColor: 'text-cyan-300',
-      borderColor: 'hover:border-cyan-400/30',
-    },
-  ]
-
   const accentStyles = {
     blue: {
       icon: 'border-blue-400/20 bg-blue-400/[0.08] text-blue-300',
@@ -138,10 +111,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="relative mx-auto max-w-7xl">
-
-        {/* =========================================================
-            HEADER
-        ========================================================== */}
+        {/* HEADER */}
         <header className="mb-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -162,27 +132,10 @@ export default function DashboardPage() {
                 real-estate risk intelligence from one workspace.
               </p>
             </div>
-
-            <button
-              onClick={() => router.push('/property-search')}
-              className="group inline-flex items-center justify-center gap-3 rounded-xl border border-blue-400/20 bg-blue-500/[0.10] px-5 py-3 text-sm font-semibold text-blue-200 shadow-lg shadow-blue-950/20 transition-all duration-200 hover:border-blue-300/40 hover:bg-blue-500/[0.18] hover:text-white"
-            >
-              <span className="text-lg leading-none text-blue-300">
-                +
-              </span>
-
-              Search Property
-
-              <span className="transition-transform duration-200 group-hover:translate-x-1">
-                →
-              </span>
-            </button>
           </div>
         </header>
 
-        {/* =========================================================
-            WELCOME CARD
-        ========================================================== */}
+        {/* WELCOME CARD */}
         <section className="relative mb-8 overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#111d37] via-[#0d1528] to-[#0a101e] p-6 shadow-2xl shadow-black/20 sm:p-7">
           <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-blue-500/[0.08] blur-3xl" />
 
@@ -220,9 +173,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* =========================================================
-            OVERVIEW
-        ========================================================== */}
+        {/* OVERVIEW */}
         <section className="mb-10">
           <div className="mb-5 flex items-end justify-between">
             <div>
@@ -266,9 +217,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <p
-                      className={`text-3xl font-bold tracking-tight ${style.value}`}
-                    >
+                    <p className={`text-3xl font-bold tracking-tight ${style.value}`}>
                       {metric.value}
                     </p>
 
@@ -282,72 +231,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* =========================================================
-            QUICK ACTIONS
-        ========================================================== */}
-        <section className="mb-10">
-          <div className="mb-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-400/80">
-              Workspace
-            </p>
-
-            <h2 className="mt-1 text-lg font-semibold text-white">
-              Quick Actions
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-400">
-              Start a property investigation or continue your risk assessment.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {quickActions.map((item) => (
-              <div
-                key={item.title}
-                className={`group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br ${item.accent} p-6 transition-all duration-200 hover:-translate-y-0.5 ${item.borderColor}`}
-              >
-                <div className="pointer-events-none absolute -bottom-20 -right-20 h-48 w-48 rounded-full bg-blue-500/[0.035] blur-3xl" />
-
-                <div className="relative">
-                  <div className="mb-5 flex items-center justify-between">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.09] bg-[#090f1d]/70 text-2xl shadow-inner">
-                      <span className={item.iconColor}>
-                        {item.icon}
-                      </span>
-                    </div>
-
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                      Action
-                    </span>
-                  </div>
-
-                  <h3 className="text-xl font-semibold tracking-tight text-white">
-                    {item.title}
-                  </h3>
-
-                  <p className="mt-3 min-h-[52px] max-w-xl text-sm leading-6 text-slate-400">
-                    {item.description}
-                  </p>
-
-                  <button
-                    onClick={item.action}
-                    className="group/button mt-6 inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-200 transition-all duration-200 hover:border-blue-400/20 hover:bg-blue-500/[0.10] hover:text-white"
-                  >
-                    {item.buttonText}
-
-                    <span className="transition-transform duration-200 group-hover/button:translate-x-1">
-                      →
-                    </span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* =========================================================
-            DUE DILIGENCE CTA
-        ========================================================== */}
+        {/* DUE DILIGENCE CTA */}
         <section className="relative overflow-hidden rounded-2xl border border-blue-400/[0.16] bg-gradient-to-r from-[#0d1a32] via-[#0d1629] to-[#0b1221] p-6 shadow-xl shadow-blue-950/10 sm:p-8">
           <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-blue-500/[0.07] blur-3xl" />
 
@@ -387,13 +271,9 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* =========================================================
-            FOOTER STATUS
-        ========================================================== */}
+        {/* FOOTER STATUS */}
         <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-white/[0.06] pt-5 text-[11px] text-slate-600 sm:flex-row">
-          <span>
-            PropDue Property Intelligence Platform
-          </span>
+          <span>PropDue Property Intelligence Platform</span>
 
           <span className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />

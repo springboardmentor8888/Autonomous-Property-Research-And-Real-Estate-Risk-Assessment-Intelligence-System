@@ -1,8 +1,50 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+
+function isTokenUsable(storedToken) {
+  if (typeof storedToken !== 'string' || !storedToken.trim()) {
+    return false
+  }
+
+  const token = storedToken.replace(/^Bearer\s+/i, '').trim()
+  const parts = token.split('.')
+
+  if (parts.length !== 3 || !parts[1]) {
+    return false
+  }
+
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const paddedBase64 = base64.padEnd(
+      Math.ceil(base64.length / 4) * 4,
+      '='
+    )
+    const payload = JSON.parse(atob(paddedBase64))
+
+    return (
+      typeof payload.exp === 'number' &&
+      payload.exp * 1000 > Date.now()
+    )
+  } catch {
+    return false
+  }
+}
 
 export default function Hero() {
+  const router = useRouter()
+
+  function handlePropertySearch() {
+    const token = localStorage.getItem('token')
+
+    if (isTokenUsable(token)) {
+      router.push('/property-search')
+    } else {
+      router.push('/login?next=/property-search')
+    }
+  }
+
   return (
     <section
       id="hero"
@@ -11,7 +53,6 @@ export default function Hero() {
                  max-md:px-7 max-md:items-center max-md:text-center"
     >
       <div className="max-w-[680px]">
-
         {/* Eyebrow */}
         <p
           id="hero-eyebrow"
@@ -30,7 +71,8 @@ export default function Hero() {
           Your Complete<br />
           <span className="font-semibold relative inline-block headline-accent">
             Due Diligence
-          </span><br />
+          </span>
+          <br />
           Partner
         </h1>
 
@@ -49,8 +91,9 @@ export default function Hero() {
           id="hero-cta"
           className="flex gap-4 flex-wrap opacity-0 animate-fade-up-4 max-md:justify-center"
         >
-          <Link
-            href="/property-search"
+          <button
+            type="button"
+            onClick={handlePropertySearch}
             id="cta-search"
             className="inline-flex items-center justify-center px-8 py-3.5 text-sm font-medium
                        rounded-lg text-white bg-accent border border-accent tracking-wide
@@ -58,7 +101,8 @@ export default function Hero() {
                        hover:shadow-[0_8px_30px_rgba(79,156,249,0.35)] transition-all duration-300"
           >
             Search a Property
-          </Link>
+          </button>
+
           <Link
             href="/we-are"
             id="cta-learn"
@@ -80,7 +124,9 @@ export default function Hero() {
         aria-hidden="true"
       >
         <div className="w-px h-[50px] bg-gradient-to-b from-transparent via-white/50 to-transparent animate-scroll-pulse" />
-        <span className="text-[10px] tracking-[0.15em] uppercase text-white/50">Scroll</span>
+        <span className="text-[10px] tracking-[0.15em] uppercase text-white/50">
+          Scroll
+        </span>
       </div>
     </section>
   )

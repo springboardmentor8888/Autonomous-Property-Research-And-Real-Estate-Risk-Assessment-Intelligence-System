@@ -1,56 +1,56 @@
-"use client";
+'use client'
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
     ArrowLeft,
     ArrowRight,
     CalendarDays,
     CheckCircle2,
     CircleDollarSign,
-} from "lucide-react";
+} from 'lucide-react'
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = 'http://localhost:8080/api'
 
 const DEFAULT_PROPERTY = {
-    formattedAddress: "",
-    city: "",
-    state: "",
-    postalCode: "",
-    propertyId: "",
-};
+    formattedAddress: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    propertyId: '',
+}
 
 function isAvailable(value) {
-    if (value === null || value === undefined) return false;
+    if (value === null || value === undefined) return false
 
-    if (typeof value === "string") {
-        const cleaned = value.trim().toLowerCase();
+    if (typeof value === 'string') {
+        const cleaned = value.trim().toLowerCase()
 
         if (
-            cleaned === "" ||
-            cleaned === "not available" ||
-            cleaned === "n/a" ||
-            cleaned === "na" ||
-            cleaned === "null" ||
-            cleaned === "undefined"
+            cleaned === '' ||
+            cleaned === 'not available' ||
+            cleaned === 'n/a' ||
+            cleaned === 'na' ||
+            cleaned === 'null' ||
+            cleaned === 'undefined'
         ) {
-            return false;
+            return false
         }
     }
 
-    return true;
+    return true
 }
 
 function normalizeTaxData(response) {
     const payload =
-        response?.data ?? response?.property ?? response ?? {};
+        response?.data ?? response?.property ?? response ?? {}
 
     const rawRecords =
         payload.taxHistory ??
         payload.taxRecords ??
         payload.tax_history ??
         payload.tax_records ??
-        [];
+        []
 
     const records = Array.isArray(rawRecords)
         ? rawRecords
@@ -59,7 +59,7 @@ function normalizeTaxData(response) {
                     record.year ??
                     record.taxYear ??
                     record.tax_year ??
-                    ""
+                    ''
                 ),
                 taxAmount: Number(
                     record.taxAmount ??
@@ -81,14 +81,12 @@ function normalizeTaxData(response) {
                     record.payment_status ??
                     null,
             }))
-            .filter(
-                (record) => record.year || record.taxAmount > 0
-            )
-        : [];
+            .filter((record) => record.year || record.taxAmount > 0)
+        : []
 
-    records.sort((a, b) => Number(b.year) - Number(a.year));
+    records.sort((a, b) => Number(b.year) - Number(a.year))
 
-    const latest = records[0] ?? {};
+    const latest = records[0] ?? {}
 
     return {
         records,
@@ -125,19 +123,19 @@ function normalizeTaxData(response) {
             payload.taxAuthority ??
             payload.tax_authority ??
             null,
-    };
+    }
 }
 
 function formatCurrency(value) {
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
         maximumFractionDigits: 0,
-    }).format(Number(value) || 0);
+    }).format(Number(value) || 0)
 }
 
 function DetailCard({ label, value }) {
-    if (!isAvailable(value)) return null;
+    if (!isAvailable(value)) return null
 
     return (
         <div className="bg-[#101010] p-6">
@@ -149,11 +147,11 @@ function DetailCard({ label, value }) {
                 {value}
             </p>
         </div>
-    );
+    )
 }
 
 function StatCard({ icon, label, value }) {
-    if (!isAvailable(value)) return null;
+    if (!isAvailable(value)) return null
 
     return (
         <div className="bg-[#101010] p-6">
@@ -169,15 +167,15 @@ function StatCard({ icon, label, value }) {
                 {value}
             </p>
         </div>
-    );
+    )
 }
 
 function InfoItem({
     label,
     value,
-    valueClassName = "text-white/70",
+    valueClassName = 'text-white/70',
 }) {
-    if (!isAvailable(value)) return null;
+    if (!isAvailable(value)) return null
 
     return (
         <div>
@@ -189,45 +187,45 @@ function InfoItem({
                 {value}
             </p>
         </div>
-    );
+    )
 }
 
 export default function TaxHistoryPage() {
-    const [property, setProperty] = useState(DEFAULT_PROPERTY);
-    const [taxData, setTaxData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const [property, setProperty] = useState(DEFAULT_PROPERTY)
+    const [taxData, setTaxData] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
 
     useEffect(() => {
-        let cancelled = false;
+        let cancelled = false
 
         async function loadTaxHistory() {
             try {
-                setLoading(true);
-                setError("");
+                setLoading(true)
+                setError('')
 
                 const savedProperty =
-                    sessionStorage.getItem("selectedProperty");
+                    sessionStorage.getItem('selectedProperty')
 
                 if (!savedProperty) {
                     throw new Error(
-                        "No property is selected. Please select a property from Property Search."
-                    );
+                        'No property is selected. Please select a property from Property Search.'
+                    )
                 }
 
-                const parsedProperty = JSON.parse(savedProperty);
+                const parsedProperty = JSON.parse(savedProperty)
 
                 if (!cancelled) {
                     setProperty({
                         ...DEFAULT_PROPERTY,
                         ...parsedProperty,
-                    });
+                    })
                 }
 
                 const rawId =
                     parsedProperty.propertyDbId ??
                     parsedProperty.id ??
-                    parsedProperty.propertyId;
+                    parsedProperty.propertyId
 
                 if (
                     rawId === null ||
@@ -235,63 +233,61 @@ export default function TaxHistoryPage() {
                     !/^\d+$/.test(String(rawId))
                 ) {
                     throw new Error(
-                        "A valid numeric property database ID was not found. Please select a property saved by the backend."
-                    );
+                        'A valid numeric property database ID was not found. Please select a property saved by the backend.'
+                    )
                 }
 
-                const token = localStorage.getItem("token");
+                const token = localStorage.getItem('token')
 
                 const response = await fetch(
                     `${API_URL}/properties/${encodeURIComponent(rawId)}`,
                     {
-                        method: "GET",
+                        method: 'GET',
                         headers: {
-                            "Content-Type": "application/json",
+                            'Content-Type': 'application/json',
                             ...(token
                                 ? { Authorization: `Bearer ${token}` }
                                 : {}),
                         },
                     }
-                );
+                )
 
                 const responseData = await response
                     .json()
-                    .catch(() => null);
+                    .catch(() => null)
 
                 if (!response.ok) {
                     throw new Error(
                         responseData?.message ||
                         responseData?.error?.message ||
                         `Unable to load tax history (HTTP ${response.status}).`
-                    );
+                    )
                 }
 
                 if (!cancelled) {
-                    setTaxData(normalizeTaxData(responseData));
+                    setTaxData(normalizeTaxData(responseData))
                 }
             } catch (err) {
-                console.error("Tax history loading error:", err);
+                console.error('Tax history loading error:', err)
 
                 if (!cancelled) {
-                    setError(
-                        err.message || "Unable to load tax history."
-                    );
+                    setError(err.message || 'Unable to load tax history.')
                 }
             } finally {
                 if (!cancelled) {
-                    setLoading(false);
+                    setLoading(false)
                 }
             }
         }
 
-        loadTaxHistory();
+        loadTaxHistory()
 
         return () => {
-            cancelled = true;
-        };
-    }, []);
+            cancelled = true
+        }
+    }, [])
 
-    const records = taxData?.records ?? [];
+    const records = taxData?.records ?? []
 
     const totalTax = useMemo(
         () =>
@@ -300,57 +296,48 @@ export default function TaxHistoryPage() {
                 0
             ),
         [records]
-    );
+    )
 
     const averageTax = useMemo(() => {
-        if (records.length === 0) return 0;
+        if (records.length === 0) return 0
 
-        return Math.round(totalTax / records.length);
-    }, [records, totalTax]);
+        return Math.round(totalTax / records.length)
+    }, [records, totalTax])
 
     const taxChange = useMemo(() => {
-        if (
-            records.length < 2 ||
-            records[1].taxAmount === 0
-        ) {
-            return 0;
+        if (records.length < 2 || records[1].taxAmount === 0) {
+            return 0
         }
 
         return Math.round(
             ((records[0].taxAmount - records[1].taxAmount) /
                 records[1].taxAmount) *
             100
-        );
-    }, [records]);
+        )
+    }, [records])
 
     const hasPaymentDate = records.some((record) =>
         isAvailable(record.paymentDate)
-    );
+    )
 
     const hasStatus = records.some((record) =>
         isAvailable(record.status)
-    );
+    )
 
-    const hasLastPayment = isAvailable(
-        taxData?.lastPaymentDate
-    );
-
-    const hasNextDueDate = isAvailable(
-        taxData?.nextDueDate
-    );
-
-    const hasCounty = isAvailable(taxData?.county);
-    const hasTaxAuthority = isAvailable(taxData?.taxAuthority);
+    const hasLastPayment = isAvailable(taxData?.lastPaymentDate)
+    const hasNextDueDate = isAvailable(taxData?.nextDueDate)
+    const hasCounty = isAvailable(taxData?.county)
+    const hasTaxAuthority = isAvailable(taxData?.taxAuthority)
 
     const currentOverviewCount = [
         isAvailable(taxData?.currentTaxAmount),
         isAvailable(taxData?.taxStatus),
-    ].filter(Boolean).length;
+    ].filter(Boolean).length
 
     const paymentInformationCount = [
         hasLastPayment,
         hasNextDueDate,
-    ].filter(Boolean).length;
+    ].filter(Boolean).length
 
     if (loading) {
         return (
@@ -362,7 +349,7 @@ export default function TaxHistoryPage() {
                     </div>
                 </div>
             </main>
-        );
+        )
     }
 
     return (
@@ -391,16 +378,15 @@ export default function TaxHistoryPage() {
                         PROPERTY TAX / HISTORY
                     </p>
 
-                    <h1 className="max-w-6xl text-[clamp(3.5rem,8vw,8rem)] font-light leading-[0.9] tracking-[-0.05em]">
+                    <h1 className="max-w-5xl text-[clamp(2.75rem,5vw,5rem)] font-light leading-[0.95] tracking-[-0.05em]">
                         Review
                         <br />
                         <span className="text-white/35">tax history.</span>
                     </h1>
 
                     <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
-                        Review historical property tax assessments, tax
-                        amounts, payment status, and changes across previous
-                        tax years.
+                        Review historical property tax assessments, tax amounts,
+                        payment status, and changes across previous tax years.
                     </p>
 
                     {/* BACKEND DATA badge removed */}
@@ -411,10 +397,7 @@ export default function TaxHistoryPage() {
             <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
                     <div className="flex items-center gap-3">
-                        <CheckCircle2
-                            size={18}
-                            className="text-emerald-400"
-                        />
+                        <CheckCircle2 size={18} className="text-emerald-400" />
 
                         <span className="text-xs font-semibold tracking-[0.3em] text-emerald-400/70">
                             PROPERTY SELECTED
@@ -424,19 +407,16 @@ export default function TaxHistoryPage() {
                     <h2 className="mt-6 max-w-5xl text-4xl font-light leading-tight tracking-tight md:text-6xl">
                         {property.formattedAddress ||
                             property.address ||
-                            "Selected Property"}
+                            'Selected Property'}
                     </h2>
 
                     <div className="mt-12 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
                         <DetailCard label="City" value={property.city} />
-
                         <DetailCard label="State" value={property.state} />
-
                         <DetailCard
                             label="Postal Code"
                             value={property.postalCode}
                         />
-
                         <DetailCard
                             label="Property ID"
                             value={
@@ -482,8 +462,8 @@ export default function TaxHistoryPage() {
 
                         <div
                             className={`grid gap-px overflow-hidden border border-white/10 bg-white/10 ${currentOverviewCount === 2
-                                ? "lg:grid-cols-2"
-                                : "lg:grid-cols-1"
+                                    ? 'lg:grid-cols-2'
+                                    : 'lg:grid-cols-1'
                                 }`}
                         >
                             <StatCard
@@ -531,28 +511,20 @@ export default function TaxHistoryPage() {
                             <InfoItem
                                 label="TAX AUTHORITY"
                                 value={
-                                    hasTaxAuthority
-                                        ? taxData.taxAuthority
-                                        : null
+                                    hasTaxAuthority ? taxData.taxAuthority : null
                                 }
                             />
 
                             <InfoItem
                                 label="LAST PAYMENT"
                                 value={
-                                    hasLastPayment
-                                        ? taxData.lastPaymentDate
-                                        : null
+                                    hasLastPayment ? taxData.lastPaymentDate : null
                                 }
                             />
 
                             <InfoItem
                                 label="NEXT DUE DATE"
-                                value={
-                                    hasNextDueDate
-                                        ? taxData.nextDueDate
-                                        : null
-                                }
+                                value={hasNextDueDate ? taxData.nextDueDate : null}
                             />
 
                             <InfoItem
@@ -577,13 +549,13 @@ export default function TaxHistoryPage() {
                                 label="CURRENT CHANGE"
                                 value={
                                     records.length > 0
-                                        ? `${taxChange >= 0 ? "+" : ""}${taxChange}%`
+                                        ? `${taxChange >= 0 ? '+' : ''}${taxChange}%`
                                         : null
                                 }
                                 valueClassName={
                                     taxChange >= 0
-                                        ? "text-orange-300"
-                                        : "text-emerald-300"
+                                        ? 'text-orange-300'
+                                        : 'text-emerald-300'
                                 }
                             />
                         </div>
@@ -609,7 +581,7 @@ export default function TaxHistoryPage() {
                                     const maxTax = Math.max(
                                         ...records.map((item) => item.taxAmount),
                                         1
-                                    );
+                                    )
 
                                     return (
                                         <div key={record.year}>
@@ -633,7 +605,7 @@ export default function TaxHistoryPage() {
                                                 />
                                             </div>
                                         </div>
-                                    );
+                                    )
                                 })}
                             </div>
                         )}
@@ -676,8 +648,8 @@ export default function TaxHistoryPage() {
                                                 colSpan={hasStatus ? 3 : 2}
                                                 className="px-6 py-8 text-sm text-white/40 md:px-8"
                                             >
-                                                No tax history records were returned by
-                                                the backend for this property.
+                                                No tax history records were returned by the
+                                                backend for this property.
                                             </td>
                                         </tr>
                                     ) : (
@@ -724,8 +696,8 @@ export default function TaxHistoryPage() {
 
                         <div
                             className={`grid gap-px overflow-hidden border border-white/10 bg-white/10 ${paymentInformationCount === 2
-                                ? "md:grid-cols-2"
-                                : "md:grid-cols-1"
+                                    ? 'md:grid-cols-2'
+                                    : 'md:grid-cols-1'
                                 }`}
                         >
                             {hasLastPayment && (
@@ -794,8 +766,8 @@ export default function TaxHistoryPage() {
 
                         <p className="mt-3 max-w-2xl text-sm leading-7 text-white/35">
                             Review the property&apos;s zoning classification,
-                            permitted use, development rules, and zoning
-                            authority information.
+                            permitted use, development rules, and zoning authority
+                            information.
                         </p>
 
                         <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
@@ -827,5 +799,5 @@ export default function TaxHistoryPage() {
                 </div>
             </footer>
         </main>
-    );
+    )
 }

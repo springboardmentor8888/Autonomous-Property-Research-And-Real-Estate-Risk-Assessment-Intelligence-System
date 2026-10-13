@@ -955,7 +955,7 @@ export default function DueDiligenceReportPage() {
 
                         <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
                             <div>
-                                <h1 className="max-w-5xl text-[clamp(3rem,7vw,7rem)] font-light leading-[0.95] tracking-[-0.05em]">
+                                <h1 className="max-w-5xl text-[clamp(2.5rem,5vw,5rem)] font-light leading-[0.95] tracking-[-0.05em]">
                                     Property
                                     <br />
 
