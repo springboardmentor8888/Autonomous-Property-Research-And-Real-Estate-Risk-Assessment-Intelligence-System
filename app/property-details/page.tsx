@@ -367,6 +367,14 @@ function PropertyDetailsContent() {
   const [aggregationStage, setAggregationStage] = useState<AggregationResponse | null>(null);
   const [riskStage, setRiskStage] = useState<RiskAssessment | null>(null);
   const [marketStage, setMarketStage] = useState<MarketAnalysis | null>(null);
+  // Stage-card visibility: each workflow card appears only once the user
+  // clicks that stage's action button — never pre-emptied by data hydrated
+  // from a previous visit. The workflow diagram and Supporting Documents
+  // cards stay visible as soon as the property loads.
+  const [researchRevealed, setResearchRevealed] = useState(false);
+  const [riskRevealed, setRiskRevealed] = useState(false);
+  const [marketRevealed, setMarketRevealed] = useState(false);
+  const [reportRevealed, setReportRevealed] = useState(false);
   const [done, setDone] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -448,6 +456,7 @@ function PropertyDetailsContent() {
     try {
       const result = await propertyApi.runAggregation(details.propertyId);
       setAggregationStage(result);
+      setResearchRevealed(true);
     } catch (err) {
       setAggregationError(err instanceof Error ? err.message : 'Failed to run the aggregation pipeline.');
     } finally {
@@ -463,6 +472,7 @@ function PropertyDetailsContent() {
     try {
       const result = await propertyApi.runRiskAssessment(details.propertyId);
       setRiskStage(result);
+      setRiskRevealed(true);
       const refreshed = await propertyApi.getDiligence(details.propertyId).catch(() => null);
       if (refreshed) setDiligence(refreshed);
     } catch (err) {
@@ -480,6 +490,7 @@ function PropertyDetailsContent() {
     try {
       const result = await propertyApi.runMarketAnalysis(details.propertyId);
       setMarketStage(result);
+      setMarketRevealed(true);
     } catch (err) {
       setMarketError(err instanceof Error ? err.message : 'Failed to run the market analysis.');
     } finally {
@@ -494,6 +505,7 @@ function PropertyDetailsContent() {
     try {
       const generated = await propertyApi.generateReport(details.propertyId);
       setReport(generated);
+      setReportRevealed(true);
       const refreshed = await propertyApi.getDiligence(details.propertyId).catch(() => null);
       if (refreshed) setDiligence(refreshed);
     } catch (err) {
@@ -799,7 +811,7 @@ function PropertyDetailsContent() {
       )}
 
       {/* Stage 1: Research — own top-level card */}
-      {details && (
+      {details && researchRevealed && (
         <section id="stage-research" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -997,7 +1009,7 @@ function PropertyDetailsContent() {
       )}
 
       {/* Stage 2: Risk Assessment — own top-level card */}
-      {riskStage && (
+      {riskRevealed && riskStage && (
         <section id="stage-risk" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-slate-900">Risk Assessment</h2>
@@ -1020,7 +1032,7 @@ function PropertyDetailsContent() {
       )}
 
       {/* Stage 3: Market & Comparables — own top-level card */}
-      {(marketStage || report) && (
+      {marketRevealed && (
         <section id="stage-market" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -1142,7 +1154,7 @@ function PropertyDetailsContent() {
       )}
 
       {/* Stage 4: Report — own top-level card */}
-      {details && (
+      {reportRevealed && (
         <section id="stage-report" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
