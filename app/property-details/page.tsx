@@ -1026,6 +1026,21 @@ function PropertyDetailsContent() {
             <RiskDomainCard label="Legal / Environmental" value={riskStage.legalRisk ?? undefined} />
             <RiskDomainCard label="Ownership Verification" value={riskStage.ownershipVerification ?? undefined} />
           </div>
+
+          {/* Next stage action — reveals the Market & Comparables card */}
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button onClick={runMarketAnalysis} disabled={marketBusy} className="btn-primary">
+                {marketBusy ? 'Analyzing…' : marketStage ? 'Re-run Analysis' : 'Analyze Market'}
+              </button>
+              <span className="text-xs text-slate-400">
+                Positions the property against its comparables and market trends.
+              </span>
+            </div>
+            {marketError && (
+              <p className="mt-3 text-xs font-medium text-rose-600">{marketError}</p>
+            )}
+          </div>
         </section>
       )}
 
@@ -1039,13 +1054,7 @@ function PropertyDetailsContent() {
                 Positions the property against nearby listings and market trends.
               </p>
             </div>
-            <button onClick={runMarketAnalysis} disabled={marketBusy} className="btn-primary">
-              {marketBusy ? 'Analyzing…' : marketStage ? 'Re-run Analysis' : 'Analyze Market'}
-            </button>
           </div>
-          {marketError && (
-            <p className="mt-3 text-xs font-medium text-rose-600">{marketError}</p>
-          )}
 
           {marketStage?.summary && (
             <p className="mt-4 text-sm leading-relaxed text-slate-700">{marketStage.summary}</p>
@@ -1148,6 +1157,21 @@ function PropertyDetailsContent() {
               <MarketTrendChart trends={diligence.marketTrends} />
             </div>
           )}
+
+          {/* Next stage action — reveals the Report card */}
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button onClick={generateReport} disabled={generating} className="btn-primary">
+                {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Report'}
+              </button>
+              <span className="text-xs text-slate-400">
+                Assembles the research, risk and market analysis into a downloadable document.
+              </span>
+            </div>
+            {generateError && (
+              <p className="mt-3 text-xs font-medium text-rose-600">{generateError}</p>
+            )}
+          </div>
         </section>
       )}
 
@@ -1162,9 +1186,6 @@ function PropertyDetailsContent() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={generateReport} disabled={generating} className="btn-primary">
-                {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Report'}
-              </button>
               {report && (
                 <button onClick={downloadPdf} disabled={downloading} className="btn-secondary">
                   {downloading ? 'Preparing…' : 'Download PDF'}
@@ -1177,9 +1198,6 @@ function PropertyDetailsContent() {
               )}
             </div>
           </div>
-          {generateError && (
-            <p className="mt-3 text-xs font-medium text-rose-600">{generateError}</p>
-          )}
           {downloadError && (
             <p className="mt-3 text-xs font-medium text-rose-600">{downloadError}</p>
           )}
