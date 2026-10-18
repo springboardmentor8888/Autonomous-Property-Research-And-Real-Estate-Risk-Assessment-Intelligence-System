@@ -782,22 +782,22 @@ function PropertyDetailsContent() {
               {
                 label: 'Research',
                 hint: 'Inventory + scoring',
-                state: aggregationStage ? 'done' : 'active',
+                state: researchRevealed ? 'done' : 'active',
               },
               {
                 label: 'Risk Assessment',
                 hint: 'Domain scores',
-                state: riskStage ? 'done' : aggregationStage ? 'active' : 'locked',
+                state: riskRevealed ? 'done' : researchRevealed ? 'active' : 'locked',
               },
               {
                 label: 'Market & Comparables',
                 hint: 'Positioning',
-                state: (marketStage || report) ? 'done' : riskStage ? 'active' : 'locked',
+                state: marketRevealed ? 'done' : riskRevealed ? 'active' : 'locked',
               },
               {
                 label: 'Report',
                 hint: 'Download',
-                state: report ? 'done' : (marketStage || riskStage) ? 'active' : 'locked',
+                state: reportRevealed ? 'done' : marketRevealed ? 'active' : 'locked',
               },
             ]}
             onStepClick={(i) => {
