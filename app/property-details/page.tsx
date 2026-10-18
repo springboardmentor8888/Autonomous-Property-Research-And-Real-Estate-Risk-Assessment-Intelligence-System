@@ -371,7 +371,6 @@ function PropertyDetailsContent() {
   // clicks that stage's action button — never pre-emptied by data hydrated
   // from a previous visit. The workflow diagram and Supporting Documents
   // cards stay visible as soon as the property loads.
-  const [researchRevealed, setResearchRevealed] = useState(false);
   const [riskRevealed, setRiskRevealed] = useState(false);
   const [marketRevealed, setMarketRevealed] = useState(false);
   const [reportRevealed, setReportRevealed] = useState(false);
@@ -456,7 +455,6 @@ function PropertyDetailsContent() {
     try {
       const result = await propertyApi.runAggregation(details.propertyId);
       setAggregationStage(result);
-      setResearchRevealed(true);
     } catch (err) {
       setAggregationError(err instanceof Error ? err.message : 'Failed to run the aggregation pipeline.');
     } finally {
@@ -782,12 +780,12 @@ function PropertyDetailsContent() {
               {
                 label: 'Research',
                 hint: 'Inventory + scoring',
-                state: researchRevealed ? 'done' : 'active',
+                state: aggregationStage ? 'done' : 'active',
               },
               {
                 label: 'Risk Assessment',
                 hint: 'Domain scores',
-                state: riskRevealed ? 'done' : researchRevealed ? 'active' : 'locked',
+                state: riskRevealed ? 'done' : aggregationStage ? 'active' : 'locked',
               },
               {
                 label: 'Market & Comparables',
@@ -810,8 +808,8 @@ function PropertyDetailsContent() {
         </section>
       )}
 
-      {/* Stage 1: Research — own top-level card */}
-      {details && researchRevealed && (
+      {/* Stage 1: Research — own top-level card, visible once the property loads */}
+      {details && (
         <section id="stage-research" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
