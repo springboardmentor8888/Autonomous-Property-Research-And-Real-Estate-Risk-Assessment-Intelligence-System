@@ -72,3 +72,6 @@ Thumbs.db
 *.log
 *.bak
 cookies.txt
+
+# User-uploaded documents (runtime data, never commit)
+uploads/

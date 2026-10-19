@@ -719,6 +719,12 @@ export type ReportResponse = {
   };
   executiveSummary?: string;
   summaryPoints?: string[];
+  /** Final due-diligence assessment: per-tier verdict headline, concerns, actions. */
+  verdict?: {
+    headline?: string;
+    majorConcerns?: string[];
+    followUpActions?: string[];
+  };
   status?: string;
   generatedAt?: string;
   risk?: RiskAssessment;
@@ -1039,5 +1045,61 @@ export const savedPropertiesApi = {
     return fetchWithAuth<void>(`/saved-properties/${propertyId}`, {
       method: 'DELETE',
     });
+  },
+};
+
+/** One monitored property on the caller's change-watch list. */
+export type MonitoredProperty = {
+  propertyId: number;
+  address: string;
+  city?: string;
+  monitoredSince?: string;
+  lastCheckedAt?: string;
+};
+
+/** One property needing the legal reviewer's attention. */
+export type ReviewQueueItem = {
+  propertyId: number;
+  address: string;
+  city?: string;
+  legalEnvironmentalRisk?: number;
+  permitCompliance?: number;
+  zoningCompliance?: number;
+  flags: string[];
+};
+
+/** Risk-tier distribution over the caller's own portfolio. */
+export type PortfolioRisk = {
+  low: number;
+  moderate: number;
+  elevated: number;
+  high: number;
+  insufficientData: number;
+  totalAssessed: number;
+  highRiskProperties: Array<{
+    propertyId: number;
+    address: string;
+    overallScore?: number;
+  }>;
+};
+
+/**
+ * Role-dashboard aggregations. Every endpoint returns only the calling
+ * user's own data — the dashboard chooses which to render per role.
+ */
+export const dashboardApi = {
+  /** The caller's change-watch list (buyer dashboard). */
+  async monitored() {
+    return fetchWithAuth<MonitoredProperty[]>('/dashboard/monitored');
+  },
+
+  /** Properties whose legal/permit/zoning position needs review (legal reviewer). */
+  async reviewQueue() {
+    return fetchWithAuth<ReviewQueueItem[]>('/dashboard/review-queue');
+  },
+
+  /** Risk-tier distribution over the caller's own portfolio (financial institution). */
+  async portfolioRisk() {
+    return fetchWithAuth<PortfolioRisk>('/dashboard/portfolio-risk');
   },
 };

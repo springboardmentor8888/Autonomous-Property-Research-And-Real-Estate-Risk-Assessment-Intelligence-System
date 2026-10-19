@@ -519,4 +519,44 @@ class ReportServiceTest {
         assertThat(comp.getLocality()).isEqualTo("Casagrand Savoye");
         assertThat(comp.getPricePerSqft()).isEqualByComparingTo("7300");
     }
+
+    @Test
+    void reportListShowsOnlyTheLatestReportPerProperty() {
+        // Two generations for property 1004 (regeneration appends history
+        // rows) and one for property 1001 — the list must present one
+        // card per property: its newest report.
+        DueDiligenceReport older1004 = DueDiligenceReport.builder()
+                .reportId(1L).propertyId(1004L).generatedBy(1L)
+                .generatedAt(java.time.LocalDateTime.of(2026, 10, 8, 10, 0))
+                .status("COMPLETED")
+                .build();
+        DueDiligenceReport latest1004 = DueDiligenceReport.builder()
+                .reportId(3L).propertyId(1004L).generatedBy(1L)
+                .generatedAt(java.time.LocalDateTime.of(2026, 10, 10, 8, 27))
+                .status("COMPLETED")
+                .build();
+        DueDiligenceReport only1001 = DueDiligenceReport.builder()
+                .reportId(2L).propertyId(1001L).generatedBy(1L)
+                .generatedAt(java.time.LocalDateTime.of(2026, 10, 9, 9, 0))
+                .status("COMPLETED")
+                .build();
+
+        when(reportRepository.findByGeneratedByOrderByGeneratedAtDesc(1L))
+                .thenReturn(List.of(latest1004, only1001, older1004));
+        when(propertyRepository.findById(1004L)).thenReturn(Optional.of(property(1004)));
+        when(propertyRepository.findById(1001L)).thenReturn(Optional.of(property(1001)));
+        when(diligenceService.getDiligenceData(any())).thenReturn(DiligenceDataResponse.builder().build());
+        when(marketAnalysisService.analyze(any())).thenReturn(noMarket());
+        when(supportingDocsRepository.findByPropertyIdOrderByUploadedAtDesc(any())).thenReturn(List.of());
+
+        List<ReportResponse> reports = service.listForUser(1L);
+
+        assertThat(reports).hasSize(2);
+        // Newest-first ordering preserved: 1004 (Oct 10) before 1001 (Oct 9).
+        assertThat(reports.get(0).getReportId()).isEqualTo(3L);
+        assertThat(reports.get(1).getReportId()).isEqualTo(2L);
+        // The older 1004 generation is not listed.
+        assertThat(reports).extracting(ReportResponse::getReportId)
+                .doesNotContain(1L);
+    }
 }

@@ -2,6 +2,7 @@ package com.duedilligenceagent.backend.service;
 
 import com.duedilligenceagent.backend.entities.DueDiligenceReport;
 import com.duedilligenceagent.backend.entities.SupportingDocs;
+import com.duedilligenceagent.backend.exception.InvalidAuthRequestException;
 import com.duedilligenceagent.backend.exception.ResourceNotFoundException;
 import com.duedilligenceagent.backend.repositories.DueDiligenceReportRepository;
 import com.duedilligenceagent.backend.repositories.PropertyRepository;
@@ -37,6 +38,13 @@ import java.util.UUID;
 @Slf4j
 public class SupportingDocsService {
 
+    /** Maximum upload size: 10 MB. */
+    static final long MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024;
+
+    /** Evidence-file types accepted for upload (lowercase, no dot). */
+    static final java.util.Set<String> ALLOWED_EXTENSIONS = java.util.Set.of(
+            "pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "csv", "txt");
+
     private final SupportingDocsRepository supportingDocsRepository;
     private final PropertyRepository propertyRepository;
     private final DueDiligenceReportRepository reportRepository;
@@ -44,9 +52,57 @@ public class SupportingDocsService {
     @Value("${app.uploads.dir:uploads}")
     private String uploadsDir;
 
+    /**
+     * Upload guards: the file must be present, within the size limit, an
+     * accepted evidence type, and not an exact duplicate of a file already
+     * uploaded for the property. Violations surface as 400s with a clear
+     * message (InvalidAuthRequestException is mapped to BAD_REQUEST).
+     */
+    void validateUpload(MultipartFile file, Long propertyId) {
+        if (file == null || file.isEmpty()) {
+            throw new InvalidAuthRequestException("Select a file to upload.");
+        }
+        if (file.getSize() > MAX_FILE_SIZE_BYTES) {
+            throw new InvalidAuthRequestException(String.format(
+                    "File is too large (%.1f MB) — the maximum size is 10 MB.",
+                    file.getSize() / (1024.0 * 1024.0)));
+        }
+
+        String fileName = new File(
+                file.getOriginalFilename() != null ? file.getOriginalFilename() : "document")
+                .getName();
+        String extension = extensionOf(fileName);
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw new InvalidAuthRequestException(
+                    "Unsupported file type \"." + extension + "\" — allowed: "
+                            + String.join(", ", ALLOWED_EXTENSIONS.stream().sorted()
+                                    .map(e -> "." + e).toList()) + ".");
+        }
+
+        boolean duplicate = supportingDocsRepository
+                .findByPropertyIdOrderByUploadedAtDesc(propertyId).stream()
+                .anyMatch(doc -> normalize(doc.getFileName()).equals(normalize(fileName)));
+        if (duplicate) {
+            throw new InvalidAuthRequestException(
+                    "\"" + fileName + "\" has already been uploaded for this property.");
+        }
+    }
+
+    private static String extensionOf(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        return dot < 0 ? "" : fileName.substring(dot + 1).toLowerCase();
+    }
+
+    /** Case- and whitespace-insensitive duplicate comparison key. */
+    private static String normalize(String fileName) {
+        return fileName == null ? "" : fileName.trim().toLowerCase();
+    }
+
     /** Stores a document on disk and persists its metadata. */
     public SupportingDocs upload(Long userId, Long propertyId, Long reportId,
                                  MultipartFile file) {
+        validateUpload(file, propertyId);
+
         propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Property not found with id: " + propertyId));

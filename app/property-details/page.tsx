@@ -367,6 +367,13 @@ function PropertyDetailsContent() {
   const [aggregationStage, setAggregationStage] = useState<AggregationResponse | null>(null);
   const [riskStage, setRiskStage] = useState<RiskAssessment | null>(null);
   const [marketStage, setMarketStage] = useState<MarketAnalysis | null>(null);
+  // Stage-card visibility: each workflow card appears only once the user
+  // clicks that stage's action button — never pre-emptied by data hydrated
+  // from a previous visit. The workflow diagram and Supporting Documents
+  // cards stay visible as soon as the property loads.
+  const [riskRevealed, setRiskRevealed] = useState(false);
+  const [marketRevealed, setMarketRevealed] = useState(false);
+  const [reportRevealed, setReportRevealed] = useState(false);
   const [done, setDone] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -463,6 +470,7 @@ function PropertyDetailsContent() {
     try {
       const result = await propertyApi.runRiskAssessment(details.propertyId);
       setRiskStage(result);
+      setRiskRevealed(true);
       const refreshed = await propertyApi.getDiligence(details.propertyId).catch(() => null);
       if (refreshed) setDiligence(refreshed);
     } catch (err) {
@@ -480,6 +488,7 @@ function PropertyDetailsContent() {
     try {
       const result = await propertyApi.runMarketAnalysis(details.propertyId);
       setMarketStage(result);
+      setMarketRevealed(true);
     } catch (err) {
       setMarketError(err instanceof Error ? err.message : 'Failed to run the market analysis.');
     } finally {
@@ -494,6 +503,7 @@ function PropertyDetailsContent() {
     try {
       const generated = await propertyApi.generateReport(details.propertyId);
       setReport(generated);
+      setReportRevealed(true);
       const refreshed = await propertyApi.getDiligence(details.propertyId).catch(() => null);
       if (refreshed) setDiligence(refreshed);
     } catch (err) {
@@ -545,11 +555,45 @@ function PropertyDetailsContent() {
     }
   }
 
+  /** Upload guards mirrored from the backend so users get instant feedback. */
+  const MAX_DOC_SIZE_MB = 10;
+  const ALLOWED_DOC_EXTENSIONS = [
+    'pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt',
+  ];
+
   /** Uploads a selected document against the property's latest report. */
   async function handleDocUpload(file: File) {
     if (!details) return;
-    setUploadingDoc(true);
     setDocError(null);
+
+    if (file.size === 0) {
+      setDocError('The selected file is empty — choose a valid document.');
+      return;
+    }
+    if (file.size > MAX_DOC_SIZE_MB * 1024 * 1024) {
+      setDocError(
+        `File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB) — the maximum size is ${MAX_DOC_SIZE_MB} MB.`
+      );
+      return;
+    }
+    const extension = file.name.includes('.')
+      ? file.name.split('.').pop()!.toLowerCase()
+      : '';
+    if (!ALLOWED_DOC_EXTENSIONS.includes(extension)) {
+      setDocError(
+        `Unsupported file type ".${extension || '?'}" — allowed: ${ALLOWED_DOC_EXTENSIONS.map((e) => '.' + e).join(', ')}.`
+      );
+      return;
+    }
+    const duplicate = docs.some(
+      (d) => d.fileName.trim().toLowerCase() === file.name.trim().toLowerCase()
+    );
+    if (duplicate) {
+      setDocError(`"${file.name}" has already been uploaded for this property.`);
+      return;
+    }
+
+    setUploadingDoc(true);
     try {
       const doc = await documentApi.upload(
         details.propertyId,
@@ -752,81 +796,6 @@ function PropertyDetailsContent() {
         )}
       </section>
 
-      {details && (
-        <section className="card mt-6 p-8">
-          <h2 className="text-sm font-semibold text-slate-700">Due Diligence Records</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            The records stored for this property. Absent sections have not been sourced yet.
-          </p>
-
-          {!hasDiligenceRecords ? (
-            <p className="mt-4 text-sm text-slate-500">
-              No due-diligence records are stored for this property yet.
-            </p>
-          ) : (
-            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {diligence?.ownership && (
-                <RecordCard title="Ownership">
-                  <Field label="Owner" value={diligence.ownership.ownerName ?? '—'} />
-                  <Field label="Type" value={<StatusBadge status={diligence.ownership.ownershipType} />} />
-                  <Field label="Recorded" value={formatDate(diligence.ownership.recordDate)} />
-                </RecordCard>
-              )}
-              {diligence?.tax && (
-                <RecordCard title="Property Tax">
-                  <Field label="Status" value={<StatusBadge status={diligence.tax.paymentStatus} />} />
-                  <Field label="Amount" value={formatPrice(diligence.tax.taxAmount)} />
-                  <Field label="Due" value={formatPrice(diligence.tax.taxDue)} />
-                  <Field label="Paid on" value={formatDate(diligence.tax.taxPayDate)} />
-                </RecordCard>
-              )}
-              {diligence?.permits && diligence.permits.length > 0 && (
-                <RecordCard title="Building Permits">
-                  {diligence.permits.map((p, i) => (
-                    <div key={i} className="space-y-1 border-b border-slate-100 pb-1.5 last:border-b-0">
-                      <Field label={p.permitNumber ?? 'Permit'} value={<StatusBadge status={p.permitStatus} />} />
-                      <Field label="Issued" value={formatDate(p.issueDate)} />
-                    </div>
-                  ))}
-                </RecordCard>
-              )}
-              {diligence?.zoning && (
-                <RecordCard title="Zoning">
-                  <Field label="Code" value={diligence.zoning.zoningCode ?? '—'} />
-                  <Field label="Status" value={<StatusBadge status={diligence.zoning.zoningStatus} />} />
-                  <Field label="Allowed use" value={diligence.zoning.allowedUse ?? '—'} />
-                </RecordCard>
-              )}
-              {diligence?.flood && (
-                <RecordCard title="Flood Zone">
-                  <Field label="Zone" value={diligence.flood.zone ?? '—'} />
-                  <Field label="Risk" value={<StatusBadge status={diligence.flood.riskLevel} />} />
-                  <Field label="Effective" value={formatDate(diligence.flood.effectiveDate)} />
-                </RecordCard>
-              )}
-              {diligence?.environmental && (
-                <RecordCard title="Environmental">
-                  <Field label="Type" value={diligence.environmental.recordType ?? '—'} />
-                  <Field label="Status" value={<StatusBadge status={diligence.environmental.status} />} />
-                  <Field label="Risk" value={<StatusBadge status={diligence.environmental.riskLevel} />} />
-                </RecordCard>
-              )}
-              {diligence?.utilities && diligence.utilities.length > 0 && (
-                <RecordCard title="Utilities">
-                  {diligence.utilities.map((u, i) => (
-                    <Field
-                      key={i}
-                      label={u.utilityType ?? 'Utility'}
-                      value={<StatusBadge status={u.availabilityStatus} />}
-                    />
-                  ))}
-                </RecordCard>
-              )}
-            </div>
-          )}
-
-        </section>
-      )}
 
       {details && (
         <section className="card mt-6 p-6">
@@ -850,17 +819,17 @@ function PropertyDetailsContent() {
               {
                 label: 'Risk Assessment',
                 hint: 'Domain scores',
-                state: riskStage ? 'done' : aggregationStage ? 'active' : 'locked',
+                state: riskRevealed ? 'done' : aggregationStage ? 'active' : 'locked',
               },
               {
                 label: 'Market & Comparables',
                 hint: 'Positioning',
-                state: (marketStage || report) ? 'done' : riskStage ? 'active' : 'locked',
+                state: marketRevealed ? 'done' : riskRevealed ? 'active' : 'locked',
               },
               {
                 label: 'Report',
                 hint: 'Download',
-                state: report ? 'done' : (marketStage || riskStage) ? 'active' : 'locked',
+                state: reportRevealed ? 'done' : marketRevealed ? 'active' : 'locked',
               },
             ]}
             onStepClick={(i) => {
@@ -873,7 +842,7 @@ function PropertyDetailsContent() {
         </section>
       )}
 
-      {/* Stage 1: Research — own top-level card */}
+      {/* Stage 1: Research — own top-level card, visible once the property loads */}
       {details && (
         <section id="stage-research" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -993,11 +962,86 @@ function PropertyDetailsContent() {
                 <p className="mt-3 text-xs font-medium text-rose-600">{riskError}</p>
               )}
             </div>
+
+            <section className="card mt-6 p-8">
+            <h2 className="text-sm font-semibold text-slate-700">Stored diligence records</h2>
+            <p className="mt-1 text-xs text-slate-500">
+            The records stored for this property. Absent sections have not been sourced yet.
+            </p>
+
+            {!hasDiligenceRecords ? (
+            <p className="mt-4 text-sm text-slate-500">
+            No due-diligence records are stored for this property yet.
+            </p>
+            ) : (
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {diligence?.ownership && (
+            <RecordCard title="Ownership">
+            <Field label="Owner" value={diligence.ownership.ownerName ?? '—'} />
+            <Field label="Type" value={<StatusBadge status={diligence.ownership.ownershipType} />} />
+            <Field label="Recorded" value={formatDate(diligence.ownership.recordDate)} />
+            </RecordCard>
+            )}
+            {diligence?.tax && (
+            <RecordCard title="Property Tax">
+            <Field label="Status" value={<StatusBadge status={diligence.tax.paymentStatus} />} />
+            <Field label="Amount" value={formatPrice(diligence.tax.taxAmount)} />
+            <Field label="Due" value={formatPrice(diligence.tax.taxDue)} />
+            <Field label="Paid on" value={formatDate(diligence.tax.taxPayDate)} />
+            </RecordCard>
+            )}
+            {diligence?.permits && diligence.permits.length > 0 && (
+            <RecordCard title="Building Permits">
+            {diligence.permits.map((p, i) => (
+            <div key={i} className="space-y-1 border-b border-slate-100 pb-1.5 last:border-b-0">
+            <Field label={p.permitNumber ?? 'Permit'} value={<StatusBadge status={p.permitStatus} />} />
+            <Field label="Issued" value={formatDate(p.issueDate)} />
+            </div>
+            ))}
+            </RecordCard>
+            )}
+            {diligence?.zoning && (
+            <RecordCard title="Zoning">
+            <Field label="Code" value={diligence.zoning.zoningCode ?? '—'} />
+            <Field label="Status" value={<StatusBadge status={diligence.zoning.zoningStatus} />} />
+            <Field label="Allowed use" value={diligence.zoning.allowedUse ?? '—'} />
+            </RecordCard>
+            )}
+            {diligence?.flood && (
+            <RecordCard title="Flood Zone">
+            <Field label="Zone" value={diligence.flood.zone ?? '—'} />
+            <Field label="Risk" value={<StatusBadge status={diligence.flood.riskLevel} />} />
+            <Field label="Effective" value={formatDate(diligence.flood.effectiveDate)} />
+            </RecordCard>
+            )}
+            {diligence?.environmental && (
+            <RecordCard title="Environmental">
+            <Field label="Type" value={diligence.environmental.recordType ?? '—'} />
+            <Field label="Status" value={<StatusBadge status={diligence.environmental.status} />} />
+            <Field label="Risk" value={<StatusBadge status={diligence.environmental.riskLevel} />} />
+            </RecordCard>
+            )}
+            {diligence?.utilities && diligence.utilities.length > 0 && (
+            <RecordCard title="Utilities">
+            {diligence.utilities.map((u, i) => (
+            <Field
+            key={i}
+            label={u.utilityType ?? 'Utility'}
+            value={<StatusBadge status={u.availabilityStatus} />}
+            />
+            ))}
+            </RecordCard>
+            )}
+            </div>
+            )}
+
+            </section>
+
         </section>
       )}
 
       {/* Stage 2: Risk Assessment — own top-level card */}
-      {riskStage && (
+      {riskRevealed && riskStage && (
         <section id="stage-risk" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-slate-900">Risk Assessment</h2>
@@ -1016,11 +1060,26 @@ function PropertyDetailsContent() {
             <RiskDomainCard label="Legal / Environmental" value={riskStage.legalRisk ?? undefined} />
             <RiskDomainCard label="Ownership Verification" value={riskStage.ownershipVerification ?? undefined} />
           </div>
+
+          {/* Next stage action — reveals the Market & Comparables card */}
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button onClick={runMarketAnalysis} disabled={marketBusy} className="btn-primary">
+                {marketBusy ? 'Analyzing…' : marketStage ? 'Re-run Analysis' : 'Analyze Market'}
+              </button>
+              <span className="text-xs text-slate-400">
+                Positions the property against its comparables and market trends.
+              </span>
+            </div>
+            {marketError && (
+              <p className="mt-3 text-xs font-medium text-rose-600">{marketError}</p>
+            )}
+          </div>
         </section>
       )}
 
       {/* Stage 3: Market & Comparables — own top-level card */}
-      {(marketStage || report) && (
+      {marketRevealed && (
         <section id="stage-market" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -1029,13 +1088,7 @@ function PropertyDetailsContent() {
                 Positions the property against nearby listings and market trends.
               </p>
             </div>
-            <button onClick={runMarketAnalysis} disabled={marketBusy} className="btn-primary">
-              {marketBusy ? 'Analyzing…' : marketStage ? 'Re-run Analysis' : 'Analyze Market'}
-            </button>
           </div>
-          {marketError && (
-            <p className="mt-3 text-xs font-medium text-rose-600">{marketError}</p>
-          )}
 
           {marketStage?.summary && (
             <p className="mt-4 text-sm leading-relaxed text-slate-700">{marketStage.summary}</p>
@@ -1138,11 +1191,26 @@ function PropertyDetailsContent() {
               <MarketTrendChart trends={diligence.marketTrends} />
             </div>
           )}
+
+          {/* Next stage action — reveals the Report card */}
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button onClick={generateReport} disabled={generating} className="btn-primary">
+                {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Report'}
+              </button>
+              <span className="text-xs text-slate-400">
+                Assembles the research, risk and market analysis into a downloadable document.
+              </span>
+            </div>
+            {generateError && (
+              <p className="mt-3 text-xs font-medium text-rose-600">{generateError}</p>
+            )}
+          </div>
         </section>
       )}
 
       {/* Stage 4: Report — own top-level card */}
-      {details && (
+      {reportRevealed && (
         <section id="stage-report" className="card mt-6 p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -1152,9 +1220,6 @@ function PropertyDetailsContent() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={generateReport} disabled={generating} className="btn-primary">
-                {generating ? 'Generating…' : report ? 'Regenerate Report' : 'Generate Report'}
-              </button>
               {report && (
                 <button onClick={downloadPdf} disabled={downloading} className="btn-secondary">
                   {downloading ? 'Preparing…' : 'Download PDF'}
@@ -1167,9 +1232,6 @@ function PropertyDetailsContent() {
               )}
             </div>
           </div>
-          {generateError && (
-            <p className="mt-3 text-xs font-medium text-rose-600">{generateError}</p>
-          )}
           {downloadError && (
             <p className="mt-3 text-xs font-medium text-rose-600">{downloadError}</p>
           )}
@@ -1365,6 +1427,7 @@ function PropertyDetailsContent() {
                 <input
                   ref={fileInputRef}
                   type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];

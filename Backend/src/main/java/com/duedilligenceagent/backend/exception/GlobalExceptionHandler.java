@@ -52,6 +52,16 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    // Oversize upload -> 400 with a clear message instead of the raw
+    // container 413 (the multipart limit is 10 MB, matching the service).
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleMaxUploadSize(
+            org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("message",
+                        "File is too large — the maximum upload size is 10 MB."));
+    }
+
     // Profile incomplete before a gated action (e.g. property search) -> 403
     // with the missing fields, plus a machine-readable reason the frontend
     // can use to route the user to the profile page.
