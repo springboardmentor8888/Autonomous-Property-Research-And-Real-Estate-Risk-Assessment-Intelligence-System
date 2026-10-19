@@ -555,11 +555,45 @@ function PropertyDetailsContent() {
     }
   }
 
+  /** Upload guards mirrored from the backend so users get instant feedback. */
+  const MAX_DOC_SIZE_MB = 10;
+  const ALLOWED_DOC_EXTENSIONS = [
+    'pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt',
+  ];
+
   /** Uploads a selected document against the property's latest report. */
   async function handleDocUpload(file: File) {
     if (!details) return;
-    setUploadingDoc(true);
     setDocError(null);
+
+    if (file.size === 0) {
+      setDocError('The selected file is empty — choose a valid document.');
+      return;
+    }
+    if (file.size > MAX_DOC_SIZE_MB * 1024 * 1024) {
+      setDocError(
+        `File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB) — the maximum size is ${MAX_DOC_SIZE_MB} MB.`
+      );
+      return;
+    }
+    const extension = file.name.includes('.')
+      ? file.name.split('.').pop()!.toLowerCase()
+      : '';
+    if (!ALLOWED_DOC_EXTENSIONS.includes(extension)) {
+      setDocError(
+        `Unsupported file type ".${extension || '?'}" — allowed: ${ALLOWED_DOC_EXTENSIONS.map((e) => '.' + e).join(', ')}.`
+      );
+      return;
+    }
+    const duplicate = docs.some(
+      (d) => d.fileName.trim().toLowerCase() === file.name.trim().toLowerCase()
+    );
+    if (duplicate) {
+      setDocError(`"${file.name}" has already been uploaded for this property.`);
+      return;
+    }
+
+    setUploadingDoc(true);
     try {
       const doc = await documentApi.upload(
         details.propertyId,
@@ -1393,6 +1427,7 @@ function PropertyDetailsContent() {
                 <input
                   ref={fileInputRef}
                   type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
