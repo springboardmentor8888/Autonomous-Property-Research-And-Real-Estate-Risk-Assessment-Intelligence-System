@@ -6,31 +6,59 @@ import Link from 'next/link'
 
 const BASE_URL = '/api'
 
-async function post(endpoint, body) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+function splitValidationMessage(message) {
+  const fields = {}
+  const generalMessages = []
 
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  for (const part of String(message || '').split(/;\s*/)) {
+    const separator = part.indexOf(':')
+
+    if (separator > 0) {
+      const field = part.slice(0, separator).trim().toLowerCase()
+      const fieldMessage = part.slice(separator + 1).trim()
+
+      if (fieldMessage) {
+        fields[field] = fieldMessage
+        continue
+      }
+    }
+
+    if (part.trim()) generalMessages.push(part.trim())
+  }
+
+  return { fields, general: generalMessages.join('; ') }
+}
+
+async function post(endpoint, body) {
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token
-        ? { Authorization: `Bearer ${token}` }
-        : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
   })
 
-  const data = await res.json().catch(() => null)
+  const data = await response.json().catch(() => null)
 
-  if (!res.ok) {
-    throw new Error(
+  if (!response.ok) {
+    const message =
       data?.error?.message ||
       data?.message ||
-      `Request failed (${res.status})`
-    )
+      data?.detail ||
+      `Request failed (${response.status})`
+
+    throw new Error(message)
   }
 
   return data
+}
+
+function getFieldError(errors, field) {
+  return errors[field] || errors[field.toLowerCase()] || ''
 }
 
 export default function LoginPage() {
@@ -40,36 +68,26 @@ export default function LoginPage() {
     email: '',
     password: '',
   })
-
+  const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
+  const handleChange = (event) => {
+    const { name, value } = event.target
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
+    setForm((previous) => ({ ...previous, [name]: value }))
+    setFieldErrors((previous) => ({
+      ...previous,
+      [name]: '',
+      [name.toLowerCase()]: '',
     }))
-
     setError('')
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setError('')
-
-    if (!form.email.trim()) {
-      setError('Work email is required.')
-      return
-    }
-
-    if (!form.password) {
-      setError('Password is required.')
-      return
-    }
-
+    setFieldErrors({})
     setLoading(true)
 
     try {
@@ -77,7 +95,6 @@ export default function LoginPage() {
         email: form.email.trim(),
         password: form.password,
       })
-
 
       localStorage.setItem('token', data.token)
 
@@ -88,79 +105,200 @@ export default function LoginPage() {
         role: data.role,
       }
 
-      localStorage.setItem(
-        'user',
-        JSON.stringify(userData)
+      localStorage.setItem('user', JSON.stringify(userData))
+      window.dispatchEvent(new Event('auth-change'))
+
+      const role = String(data.role || '')
+        .replace(/^ROLE_/, '')
+        .toUpperCase()
+
+      router.push(role === 'ADMINISTRATOR' ? '/admin/dashboard' : '/dashboard')
+    } catch (requestError) {
+      const parsed = splitValidationMessage(
+        requestError.message || 'Sign in failed. Please check your details.'
       )
-
-
-      window.dispatchEvent(
-        new Event('auth-change')
-      )
-
-      router.push(String(data.role || '').replace(/^ROLE_/, '').toUpperCase() === 'ADMINISTRATOR' ? '/admin/dashboard' : '/dashboard')
-
-    } catch (err) {
-      setError(
-        err.message ||
-        'Invalid enterprise credentials. Please check your details.'
-      )
+      setFieldErrors(parsed.fields)
+      setError(parsed.general)
     } finally {
       setLoading(false)
     }
   }
 
+  const inputClass =
+    'login-glass-input w-full rounded-full border border-white/20 bg-[#3b343b]/85 px-5 py-3 text-sm text-white outline-none placeholder:text-white/70 focus:border-white/50 focus:ring-2 focus:ring-white/20'
+
   return (
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-5 py-16 text-white">
+      <style>{`
+        .login-glass-input,
+        .login-glass-input:-webkit-autofill,
+        .login-glass-input:-webkit-autofill:hover,
+        .login-glass-input:-webkit-autofill:focus,
+        .login-glass-input:-webkit-autofill:active {
+          -webkit-text-fill-color: #ffffff !important;
+          caret-color: #ffffff;
+          transition: background-color 999999s ease-in-out 0s;
+          box-shadow: 0 0 0 1000px rgba(59, 52, 59, 0.96) inset !important;
+        }
+      `}</style>
 
-    <main className="min-h-screen bg-[#0a0e16] flex items-center justify-center px-4 py-20"> <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
+      {/* Purple and magenta concentric loops at the upper left */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[-210px] top-[-300px] h-[620px] w-[850px] rounded-[50%] border-[30px] border-fuchsia-600/70 blur-[13px] sm:left-[-170px] sm:top-[-330px] sm:h-[780px] sm:w-[1050px]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[-205px] top-[-295px] h-[610px] w-[840px] rounded-[50%] border-[12px] border-violet-500/90 blur-[4px] sm:left-[-165px] sm:top-[-325px] sm:h-[770px] sm:w-[1040px]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[-190px] top-[-280px] h-[580px] w-[810px] rounded-[50%] border border-pink-400/50 blur-[1px] sm:left-[-150px] sm:top-[-310px] sm:h-[740px] sm:w-[1010px]"
+      />
 
-      {/* Left Panel */}
-      <div className="hidden lg:flex flex-col gap-8 px-8">
-        <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#4f9cf9]">Enterprise Security Node</p>
-        <h2 className="text-4xl font-light leading-tight text-white">Autonomous Property<br /><span className="font-semibold">Risk Assessment</span>{' '}Platform</h2>
-        <p className="text-white/60 leading-relaxed">Log in to access real-time title deed audits, environmental hazard analysis, and GIS parcel verification.</p>
+      {/* Yellow and lime loops sweeping across the lower right */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-[-310px] right-[-350px] h-[470px] w-[1000px] rotate-[14deg] rounded-[50%] border-[28px] border-yellow-400/80 blur-[12px] sm:bottom-[-300px] sm:right-[-320px] sm:h-[560px] sm:w-[1180px]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-[-300px] right-[-345px] h-[450px] w-[990px] rotate-[14deg] rounded-[50%] border-[10px] border-lime-300/90 blur-[4px] sm:bottom-[-290px] sm:right-[-315px] sm:h-[540px] sm:w-[1170px]"
+      />
 
-        <div className="grid gap-4">
-          {[{ icon: '✓', value: '99.8%', label: 'Risk Audit Accuracy', color: 'text-[#4f9cf9]' }, { icon: '⚡', value: 'Instant', label: 'Automated Public Registry Checks', color: 'text-[#00E5FF]' }, { icon: '🛡', value: '50-State', label: 'Legal Compliance Auditing', color: 'text-[#E040FB]' }].map((m) => (
-            <div key={m.label} className="flex items-center gap-4 bg-white/[0.04] border border-white/10 rounded-xl p-4">
-              <span className={`text-2xl font-bold ${m.color}`}>{m.value}</span>
-              <span className="text-sm text-white/50">{m.label}</span>
-            </div>
-          ))}
+      {/* Soft magenta light behind the glass */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[34%] top-[43%] h-[330px] w-[440px] rounded-full bg-fuchsia-600/25 blur-[120px]"
+      />
+
+      {/* Enlarged glass login card */}
+      <section className="relative z-10 grid w-full max-w-[1100px] overflow-hidden rounded-2xl border border-white/30 bg-white/[0.16] shadow-[0_25px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl md:grid-cols-[1.15fr_3px_0.85fr]">
+        {/* Intro panel */}
+        <div className="flex min-h-[375px] flex-col justify-between p-9 sm:p-12">
+          <Link
+            href="/"
+            className="w-fit text-2xl font-extrabold tracking-tight text-white"
+          >
+            PropDue
+          </Link>
+
+          <div className="my-8">
+            <p className="text-2xl font-light leading-tight text-white">
+              Property
+            </p>
+            <h1 className="text-2xl font-bold leading-tight text-white sm:text-3xl">
+              Due Diligence
+            </h1>
+
+            <p className="mt-4 max-w-sm text-xs leading-[1.45] text-white/90">
+              Research properties, review risk assessments, and access due
+              diligence reports in one secure workspace.
+            </p>
+          </div>
+
+          <p className="text-[11px] text-white/85">propdue.com</p>
         </div>
-      </div>
 
-      {/* Right Panel */}
-      <div className="bg-[rgba(11,19,43,0.65)] backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-        <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[#4f9cf9] mb-2">Secure Authentication</p>
-        <h1 className="text-2xl font-semibold text-white mb-1">Sign In to Platform</h1>
-        <p className="text-white/50 text-sm mb-6">Enter your enterprise credentials below</p>
+        {/* Vertical divider on desktop */}
+        <div className="mx-9 h-px bg-white/95 md:my-9 md:mx-0 md:h-auto md:w-[3px] md:rounded-full" />
 
-        {error && <div className="mb-4 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg px-4 py-3 text-sm"><span>⚠</span>{error}</div>}
+        {/* Login form */}
+        <div className="flex flex-col justify-center px-9 py-9 sm:px-12 md:px-10">
+          <h2 className="mb-6 text-center text-lg font-medium text-white">
+            Login
+          </h2>
 
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+            <div>
+              <label htmlFor="login-email" className="sr-only">
+                Email address
+              </label>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                placeholder="Email address"
+                value={form.email}
+                onChange={handleChange}
+                autoComplete="email"
+                aria-invalid={Boolean(getFieldError(fieldErrors, 'email'))}
+                aria-describedby={
+                  getFieldError(fieldErrors, 'email')
+                    ? 'login-email-error'
+                    : undefined
+                }
+                className={inputClass}
+              />
+              {getFieldError(fieldErrors, 'email') && (
+                <p
+                  id="login-email-error"
+                  className="px-3 pt-1 text-xs text-red-200"
+                >
+                  {getFieldError(fieldErrors, 'email')}
+                </p>
+              )}
+            </div>
 
-          {/* Email */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="login-email" className="text-xs font-bold tracking-widest uppercase text-white/50">Work Email Address</label>
-            <input id="login-email" name="email" type="email" placeholder="name@company.com" value={form.email} onChange={handleChange} required autoComplete="email" className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-4 py-3 text-white placeholder-white/30 text-sm outline-none focus:border-[#4f9cf9] focus:ring-2 focus:ring-[#4f9cf9]/20 transition-all" />
-          </div>
+            <div>
+              <label htmlFor="login-password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                autoComplete="current-password"
+                aria-invalid={Boolean(getFieldError(fieldErrors, 'password'))}
+                aria-describedby={
+                  getFieldError(fieldErrors, 'password')
+                    ? 'login-password-error'
+                    : undefined
+                }
+                className={inputClass}
+              />
+              {getFieldError(fieldErrors, 'password') && (
+                <p
+                  id="login-password-error"
+                  className="px-3 pt-1 text-xs text-red-200"
+                >
+                  {getFieldError(fieldErrors, 'password')}
+                </p>
+              )}
+            </div>
 
-          {/* Password */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="login-password" className="text-xs font-bold tracking-widest uppercase text-white/50">Enterprise Password</label>
-            <input id="login-password" name="password" type="password" placeholder="••••••••••••" value={form.password} onChange={handleChange} required autoComplete="current-password" className="w-full bg-white/[0.03] border border-white/10 rounded-lg px-4 py-3 text-white placeholder-white/30 text-sm outline-none focus:border-[#4f9cf9] focus:ring-2 focus:ring-[#4f9cf9]/20 transition-all" />
-          </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mx-auto mt-1 rounded-full border border-white/25 bg-white/[0.28] px-8 py-2 text-sm font-medium text-white shadow-md backdrop-blur-md transition hover:bg-white/[0.38] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Signing in...' : 'Login'}
+            </button>
 
-          {/* Login Button */}
-          <button type="submit" disabled={loading} className="w-full mt-2 py-3 px-6 bg-[#4f9cf9] hover:bg-[#2d7ef4] text-white font-semibold rounded-lg transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(79,156,249,0.35)] disabled:opacity-60 disabled:cursor-not-allowed">{loading ? 'Authenticating...' : 'Sign In to Dashboard'}</button>
-        </form>
+            {error && (
+              <div
+                role="alert"
+                className="rounded-lg border border-red-300/40 bg-red-900/40 px-4 py-3 text-sm text-red-100 backdrop-blur-md"
+              >
+                {error}
+              </div>
+            )}
+          </form>
 
-        <p className="mt-6 text-center text-sm text-white/40">Need an enterprise account? <Link href="/register" className="text-[#4f9cf9] hover:underline">Register Enterprise Account</Link></p>
-      </div>
-
-    </div>
-
+          <p className="mt-5 text-center text-xs text-white/85">
+            Need an account?{' '}
+            <Link
+              href="/register"
+              className="font-semibold text-white underline decoration-white/60 underline-offset-2 hover:decoration-white"
+            >
+              Register
+            </Link>
+          </p>
+        </div>
+      </section>
     </main>
   )
 }

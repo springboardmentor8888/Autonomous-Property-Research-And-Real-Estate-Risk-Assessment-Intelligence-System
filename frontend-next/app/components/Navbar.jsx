@@ -163,11 +163,13 @@ export default function Navbar() {
   const authLabel =
     pathname === '/login' ? 'Sign Up' : 'Login'
 
-  // Header scroll effect.
+  // Add a translucent, glossy blur after the page scrolls.
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 20)
     }
+
+    onScroll()
 
     window.addEventListener('scroll', onScroll, {
       passive: true,
@@ -214,19 +216,19 @@ export default function Navbar() {
     <>
       {/* HEADER */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 h-[72px] transition-all duration-300 ${scrolled
-            ? 'bg-[rgba(8,12,20,0.88)] backdrop-blur-xl border-b border-white/10 shadow-xl'
-            : ''
+        className={`fixed left-0 right-0 top-0 z-50 h-[72px] border-b transition-all duration-300 ${scrolled
+            ? 'border-white/10 bg-[rgba(20,18,30,0.48)] shadow-[0_8px_32px_rgba(0,0,0,0.18)] backdrop-blur-2xl'
+            : 'border-transparent bg-transparent shadow-none backdrop-blur-0'
           }`}
       >
-        <div className="max-w-[1440px] mx-auto h-full px-8 flex items-center gap-10">
+        <div className="mx-auto flex h-full max-w-[1440px] items-center gap-10 px-8">
           {/* LOGO */}
           <Link
             href="/"
             id="logo-link"
-            className="flex items-center gap-2.5 flex-shrink-0 hover:opacity-80 transition-opacity"
+            className="flex flex-shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80"
           >
-            <span className="text-[22px] text-accent leading-none">
+            <span className="text-[22px] leading-none text-accent">
               ⬡
             </span>
 
@@ -237,7 +239,7 @@ export default function Navbar() {
 
           {/* DESKTOP NAVIGATION */}
           <nav
-            className="hidden lg:flex items-center gap-0.5 flex-1"
+            className="hidden flex-1 items-center gap-0.5 lg:flex"
             aria-label="Main Navigation"
           >
             {NAV_ITEMS.map((item) =>
@@ -255,7 +257,7 @@ export default function Navbar() {
                   <button
                     id={`btn-${item.label.toLowerCase()}`}
                     type="button"
-                    className="inline-flex items-center gap-1 px-3.5 py-1.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] rounded-md transition-all"
+                    className="inline-flex items-center gap-1 rounded-md px-3.5 py-1.5 text-sm text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
                     aria-haspopup="true"
                     aria-expanded={openDropdown === item.label}
                     onFocus={() => setOpenDropdown(item.label)}
@@ -263,7 +265,7 @@ export default function Navbar() {
                     {item.label}
 
                     <span
-                      className={`text-[9px] inline-block transition-transform duration-200 ${openDropdown === item.label
+                      className={`inline-block text-[9px] transition-transform duration-200 ${openDropdown === item.label
                           ? 'rotate-0'
                           : 'rotate-180'
                         }`}
@@ -274,12 +276,12 @@ export default function Navbar() {
 
                   {/* Dropdown hover bridge prevents accidental closing. */}
                   <div
-                    className={`absolute top-full left-1/2 -translate-x-1/2 pt-2 min-w-[230px] z-[100] transition-all duration-200 ${openDropdown === item.label
-                        ? 'opacity-100 visible translate-y-0'
-                        : 'opacity-0 invisible -translate-y-1 pointer-events-none'
+                    className={`absolute left-1/2 top-full z-[100] min-w-[230px] -translate-x-1/2 pt-2 transition-all duration-200 ${openDropdown === item.label
+                        ? 'visible translate-y-0 opacity-100'
+                        : 'invisible -translate-y-1 opacity-0 pointer-events-none'
                       }`}
                   >
-                    <div className="bg-[rgba(10,16,28,0.97)] backdrop-blur-2xl border border-white/10 rounded-xl p-2 shadow-2xl">
+                    <div className="rounded-xl border border-white/10 bg-[rgba(10,16,28,0.97)] p-2 shadow-2xl backdrop-blur-2xl">
                       {item.dropdown.map((sub) => (
                         <Link
                           key={sub.label}
@@ -287,7 +289,7 @@ export default function Navbar() {
                           id={`sol-${sub.label
                             .toLowerCase()
                             .replace(/\s+/g, '-')}`}
-                          className="block px-3.5 py-2.5 text-[13.5px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
+                          className="block rounded-lg px-3.5 py-2.5 text-[13.5px] text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
                           onClick={() => setOpenDropdown(null)}
                         >
                           {sub.label}
@@ -301,7 +303,7 @@ export default function Navbar() {
                   key={item.label}
                   href={item.href}
                   id={`nav-${item.label.toLowerCase()}`}
-                  className="inline-flex items-center px-3.5 py-1.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] rounded-md transition-all whitespace-nowrap"
+                  className="inline-flex items-center whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
                 >
                   {item.label}
                 </Link>
@@ -310,7 +312,7 @@ export default function Navbar() {
           </nav>
 
           {/* RIGHT CONTROLS */}
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="ml-auto flex items-center gap-3">
             {/* DESKTOP USER MENU */}
             {user ? (
               <div className="relative hidden lg:block">
@@ -320,7 +322,7 @@ export default function Navbar() {
                   onClick={() =>
                     setUserMenuOpen((value) => !value)
                   }
-                  className="w-10 h-10 rounded-full flex items-center justify-center bg-[#4f9cf9] text-white font-bold text-sm border border-white/20 hover:bg-[#2d7ef4] hover:scale-105 transition-all shadow-[0_4px_20px_rgba(79,156,249,0.25)]"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-[#4f9cf9] text-sm font-bold text-white shadow-[0_4px_20px_rgba(79,156,249,0.25)] transition-all hover:scale-105 hover:bg-[#2d7ef4]"
                   aria-label="Open user menu"
                   aria-expanded={userMenuOpen}
                 >
@@ -328,20 +330,20 @@ export default function Navbar() {
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 top-[calc(100%+12px)] w-[250px] bg-[rgba(10,16,28,0.97)] backdrop-blur-2xl border border-white/10 rounded-xl p-2 shadow-2xl z-[100]">
-                    <div className="px-3 py-3 border-b border-white/10">
+                  <div className="absolute right-0 top-[calc(100%+12px)] z-[100] w-[250px] rounded-xl border border-white/10 bg-[rgba(10,16,28,0.97)] p-2 shadow-2xl backdrop-blur-2xl">
+                    <div className="border-b border-white/10 px-3 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#4f9cf9] text-white font-bold text-sm flex-shrink-0">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#4f9cf9] text-sm font-bold text-white">
                           {initials}
                         </div>
 
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-white truncate">
+                          <p className="truncate text-sm font-semibold text-white">
                             {userName}
                           </p>
 
                           {userEmail && (
-                            <p className="text-xs text-white/40 truncate">
+                            <p className="truncate text-xs text-white/40">
                               {userEmail}
                             </p>
                           )}
@@ -352,7 +354,7 @@ export default function Navbar() {
                     <Link
                       href="/dashboard"
                       onClick={() => setUserMenuOpen(false)}
-                      className="block w-full px-3 py-2.5 mt-1 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
+                      className="mt-1 block w-full rounded-lg px-3 py-2.5 text-sm text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
                     >
                       Dashboard
                     </Link>
@@ -360,7 +362,7 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full text-left px-3 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
+                      className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
                     >
                       Sign Out
                     </button>
@@ -373,7 +375,7 @@ export default function Navbar() {
                 id="auth-icon-btn"
                 title={authLabel}
                 aria-label={authLabel}
-                className="hidden lg:inline-flex items-center justify-center w-10 h-10 text-white/80 hover:text-white hover:bg-white/[0.08] border border-white/10 rounded-md transition-all"
+                className="hidden h-10 w-10 items-center justify-center rounded-md border border-white/10 text-white/80 transition-all hover:bg-white/[0.08] hover:text-white lg:inline-flex"
               >
                 <UserCircle size={20} strokeWidth={1.8} />
               </Link>
@@ -383,11 +385,11 @@ export default function Navbar() {
             <button
               id="lang-btn"
               type="button"
-              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] rounded-md transition-all"
+              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-white/70 transition-all hover:bg-white/[0.08] hover:text-white lg:inline-flex"
               aria-label="Select Language"
             >
               <svg
-                className="w-4 h-4"
+                className="h-4 w-4"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -399,7 +401,7 @@ export default function Navbar() {
 
               <span>EN</span>
 
-              <span className="text-[9px] rotate-180 inline-block">
+              <span className="inline-block rotate-180 text-[9px]">
                 ⌃
               </span>
             </button>
@@ -408,7 +410,7 @@ export default function Navbar() {
             <button
               id="hamburger"
               type="button"
-              className="lg:hidden flex flex-col justify-center gap-[5px] p-2 rounded-md hover:bg-white/[0.08] transition-all"
+              className="flex flex-col justify-center gap-[5px] rounded-md p-2 transition-all hover:bg-white/[0.08] lg:hidden"
               onClick={() =>
                 setDrawerOpen((value) => !value)
               }
@@ -418,19 +420,19 @@ export default function Navbar() {
               aria-expanded={drawerOpen}
             >
               <span
-                className={`block w-[22px] h-0.5 bg-white rounded transition-all duration-300 origin-center ${drawerOpen
+                className={`block h-0.5 w-[22px] origin-center rounded bg-white transition-all duration-300 ${drawerOpen
                     ? 'translate-y-[7px] rotate-45'
                     : ''
                   }`}
               />
 
               <span
-                className={`block w-[22px] h-0.5 bg-white rounded transition-all duration-300 ${drawerOpen ? 'opacity-0' : ''
+                className={`block h-0.5 w-[22px] rounded bg-white transition-all duration-300 ${drawerOpen ? 'opacity-0' : ''
                   }`}
               />
 
               <span
-                className={`block w-[22px] h-0.5 bg-white rounded transition-all duration-300 origin-center ${drawerOpen
+                className={`block h-0.5 w-[22px] origin-center rounded bg-white transition-all duration-300 ${drawerOpen
                     ? '-translate-y-[7px] -rotate-45'
                     : ''
                   }`}
@@ -443,14 +445,14 @@ export default function Navbar() {
       {/* MOBILE DRAWER */}
       <aside
         id="mobile-drawer"
-        className={`fixed top-0 right-0 h-full w-[300px] z-[2000] pt-20 px-6 pb-10 overflow-y-auto drawer-scroll bg-[rgba(8,12,20,0.97)] backdrop-blur-2xl border-l border-white/10 transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`drawer-scroll fixed right-0 top-0 z-[2000] h-full w-[300px] overflow-y-auto border-l border-white/10 bg-[rgba(8,12,20,0.97)] px-6 pb-10 pt-20 backdrop-blur-2xl transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         aria-hidden={!drawerOpen}
       >
         <button
           id="drawer-close"
           type="button"
-          className="absolute top-5 right-5 text-3xl text-white/70 hover:text-white hover:bg-white/[0.08] px-2 py-0.5 rounded-md transition-all"
+          className="absolute right-5 top-5 rounded-md px-2 py-0.5 text-3xl text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
           onClick={closeDrawer}
           aria-label="Close Menu"
         >
@@ -464,7 +466,7 @@ export default function Navbar() {
           {NAV_ITEMS.map((item) =>
             item.dropdown ? (
               <details key={item.label} className="group">
-                <summary className="list-none px-4 py-3 text-[15px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg cursor-pointer transition-all">
+                <summary className="list-none cursor-pointer rounded-lg px-4 py-3 text-[15px] text-white/70 transition-all hover:bg-white/[0.08] hover:text-white">
                   {item.label}
                 </summary>
 
@@ -472,7 +474,7 @@ export default function Navbar() {
                   <Link
                     key={sub.label}
                     href={sub.href}
-                    className="block px-8 py-2.5 text-sm text-white/50 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
+                    className="block rounded-lg px-8 py-2.5 text-sm text-white/50 transition-all hover:bg-white/[0.08] hover:text-white"
                     onClick={closeDrawer}
                   >
                     {sub.label}
@@ -483,7 +485,7 @@ export default function Navbar() {
               <Link
                 key={item.label}
                 href={item.href}
-                className="block px-4 py-3 text-[15px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
+                className="block rounded-lg px-4 py-3 text-[15px] text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
                 onClick={closeDrawer}
               >
                 {item.label}
@@ -492,21 +494,21 @@ export default function Navbar() {
           )}
 
           {/* MOBILE USER MENU */}
-          <div className="mt-5 pt-5 border-t border-white/10">
+          <div className="mt-5 border-t border-white/10 pt-5">
             {user ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 px-2">
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center bg-[#4f9cf9] text-white font-bold text-sm">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#4f9cf9] text-sm font-bold text-white">
                     {initials}
                   </div>
 
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">
+                    <p className="truncate text-sm font-semibold text-white">
                       {userName}
                     </p>
 
                     {userEmail && (
-                      <p className="text-xs text-white/40 truncate">
+                      <p className="truncate text-xs text-white/40">
                         {userEmail}
                       </p>
                     )}
@@ -515,7 +517,7 @@ export default function Navbar() {
 
                 <Link
                   href="/dashboard"
-                  className="w-full flex items-center px-4 py-3 text-[15px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
+                  className="flex w-full items-center rounded-lg px-4 py-3 text-[15px] text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
                   onClick={closeDrawer}
                 >
                   Dashboard
@@ -524,7 +526,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-3 text-[15px] text-white/70 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all"
+                  className="w-full rounded-lg px-4 py-3 text-left text-[15px] text-white/70 transition-all hover:bg-white/[0.08] hover:text-white"
                 >
                   Sign Out
                 </button>
@@ -535,7 +537,7 @@ export default function Navbar() {
                 id="mobile-auth-btn"
                 title={authLabel}
                 aria-label={authLabel}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[15px] text-white/80 hover:text-white hover:bg-white/[0.08] border border-white/10 rounded-lg transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-4 py-3 text-[15px] text-white/80 transition-all hover:bg-white/[0.08] hover:text-white"
                 onClick={closeDrawer}
               >
                 <UserCircle size={19} strokeWidth={1.8} />

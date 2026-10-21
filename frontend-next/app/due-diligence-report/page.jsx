@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 const API_URL = "http://localhost:8080/api";
+const DISPLAY_FONT = "'Syne', 'Arial Black', system-ui, sans-serif";
+const BODY_FONT = "'Red Hat Display', system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 function getStoredToken() {
     if (typeof window === "undefined") {
@@ -898,9 +900,9 @@ export default function DueDiligenceReportPage() {
 
     if (loading) {
         return (
-            <main className="min-h-screen bg-black px-6 py-32 text-white">
+            <main style={{ fontFamily: BODY_FONT }} className="min-h-screen bg-[linear-gradient(135deg,#3F567F_0%,#412653_50%,#2B1740_100%)] px-6 py-32 text-white">
                 <div className="mx-auto max-w-[1400px]">
-                    <p className="text-white/50">
+                    <p className="text-white/75">
                         Loading property report...
                     </p>
                 </div>
@@ -914,7 +916,7 @@ export default function DueDiligenceReportPage() {
 
     if (error) {
         return (
-            <main className="min-h-screen bg-black px-6 py-32 text-white">
+            <main style={{ fontFamily: BODY_FONT }} className="min-h-screen bg-[linear-gradient(135deg,#3F567F_0%,#412653_50%,#2B1740_100%)] px-6 py-32 text-white">
                 <div className="mx-auto max-w-[1400px]">
                     <div className="rounded-2xl border border-red-400/20 bg-red-400/[0.05] p-8">
                         <p className="text-sm tracking-[0.2em] text-red-300">
@@ -932,9 +934,9 @@ export default function DueDiligenceReportPage() {
 
     if (!property) {
         return (
-            <main className="min-h-screen bg-black px-6 py-32 text-white">
+            <main style={{ fontFamily: BODY_FONT }} className="min-h-screen bg-[linear-gradient(135deg,#3F567F_0%,#412653_50%,#2B1740_100%)] px-6 py-32 text-white">
                 <div className="mx-auto max-w-[1400px]">
-                    <p className="text-white/50">
+                    <p className="text-white/75">
                         Property information is unavailable.
                     </p>
                 </div>
@@ -944,28 +946,33 @@ export default function DueDiligenceReportPage() {
 
     return (
         <>
-            <main className="report-print min-h-screen bg-black text-white">
+            <main className="report-print relative isolate min-h-screen text-white selection:bg-[#D174D2]/40" style={{ fontFamily: BODY_FONT }}>
+                <style>{`@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');`}</style>
+                <div aria-hidden="true" className="report-background pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[linear-gradient(135deg,#3F567F_0%,#412653_50%,#2B1740_100%)]">
+                    <div className="absolute -left-40 bottom-[-10%] h-[600px] w-[600px] rounded-full bg-[#E0563F]/25 blur-[160px]" />
+                </div>
                 {/* REPORT HEADER */}
 
-                <section className="border-b border-white/10 px-6 pb-16 pt-32 sm:px-10 md:px-16 lg:px-24 print:pt-8">
+                <section className="border-b border-white/15 px-6 pb-24 pt-32 sm:px-10 md:px-16 lg:px-24 print:pt-8">
                     <div className="mx-auto max-w-[1400px]">
-                        <p className="mb-7 text-xs font-semibold tracking-[0.35em] text-white/35">
-                            PROP DUE / DUE DILIGENCE REPORT
+                        <p className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-sm font-medium text-white">
+                            <span className="h-2 w-2 rounded-full bg-[#D174D2]" />
+                            Due diligence report
                         </p>
 
                         <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
                             <div>
-                                <h1 className="max-w-5xl text-[clamp(2.5rem,5vw,5rem)] font-light leading-[0.95] tracking-[-0.05em]">
+                                <h1 className="max-w-5xl text-[clamp(2.75rem,6vw,5.5rem)] font-extrabold leading-[1.02] tracking-[-0.02em]">
                                     Property
                                     <br />
 
-                                    <span className="text-white/35">
+                                    <span className="text-[#D174D2]">
                                         Due Diligence
                                         Report.
                                     </span>
                                 </h1>
 
-                                <p className="mt-8 max-w-2xl text-base leading-8 text-white/45 md:text-lg">
+                                <p className="mt-10 max-w-2xl text-lg leading-8 text-white/80 md:text-xl">
                                     A consolidated
                                     overview of
                                     ownership, taxes,
@@ -981,7 +988,7 @@ export default function DueDiligenceReportPage() {
                             <button
                                 type="button"
                                 onClick={() => window.print()}
-                                className="no-print inline-flex w-fit items-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm text-white/70 transition hover:bg-white hover:text-black"
+                                className="no-print inline-flex w-fit items-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm text-white/70 transition hover:bg-white hover:text-[#412653] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#D174D2]/50"
                             >
                                 Print Report
 
@@ -995,20 +1002,20 @@ export default function DueDiligenceReportPage() {
 
                 {/* PROPERTY INFORMATION */}
 
-                <section className="px-6 py-12 sm:px-10 md:px-16 lg:px-24">
+                <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-7 md:p-10">
-                            <p className="text-xs tracking-[0.3em] text-white/30">
+                        <div className="rounded-2xl border border-white/20 bg-white/[0.09] p-7 md:p-10 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                            <p className="text-sm font-semibold text-[#D174D2]">
                                 PROPERTY INFORMATION
                             </p>
 
-                            <h2 className="mt-5 text-3xl font-light text-white/90 md:text-4xl">
+                            <h2 className="mt-5 break-words text-3xl font-extrabold text-white md:text-4xl">
                                 {property.formattedAddress ||
                                     property.address ||
                                     "Address not available"}
                             </h2>
 
-                            <div className="mt-9 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="report-fields mt-9 overflow-hidden rounded-2xl border border-white/20 bg-white/20">
                                 <Detail
                                     label="City"
                                     value={property.city}
@@ -1026,7 +1033,7 @@ export default function DueDiligenceReportPage() {
 
                                 <Detail
                                     label="Property ID"
-                                    value={property.id}
+                                    value={property.id ?? property.propertyDbId ?? property.propertyId}
                                 />
                             </div>
                         </div>
@@ -1037,7 +1044,7 @@ export default function DueDiligenceReportPage() {
 
                 <section className="px-6 pb-12 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
-                        <p className="text-xs tracking-[0.3em] text-white/30">
+                        <p className="text-sm font-semibold text-[#D174D2]">
                             REPORT OVERVIEW
                         </p>
 
@@ -1065,7 +1072,7 @@ export default function DueDiligenceReportPage() {
 
                 {/* DUE DILIGENCE SECTIONS */}
 
-                <section className="px-6 pb-20 sm:px-10 md:px-16 lg:px-24">
+                <section className="px-6 pb-24 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
                         <div className="space-y-5">
                             {sections.map((section) => (
@@ -1080,19 +1087,19 @@ export default function DueDiligenceReportPage() {
 
                 {/* MILESTONE 3 */}
 
-                <section className="px-6 pb-20 sm:px-10 md:px-16 lg:px-24">
+                <section className="px-6 pb-24 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
                         <div className="mb-10">
-                            <p className="text-xs tracking-[0.3em] text-white/30">
+                            <p className="text-sm font-semibold text-[#D174D2]">
                                 MILESTONE 3
                             </p>
 
-                            <h2 className="mt-5 text-4xl font-light md:text-5xl">
+                            <h2 className="mt-5 text-4xl font-bold md:text-5xl">
                                 Risk, Comparables
                                 &amp; Reports
                             </h2>
 
-                            <p className="mt-5 max-w-3xl text-sm leading-7 text-white/40">
+                            <p className="mt-5 max-w-3xl text-sm leading-7 text-white/75">
                                 Actionable risk
                                 assessment, nearby
                                 comparable
@@ -1103,7 +1110,7 @@ export default function DueDiligenceReportPage() {
                         </div>
 
                         {milestone3Loading && (
-                            <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.025] p-7 text-white/50">
+                            <div className="mb-6 rounded-2xl border border-white/20 bg-white/[0.09] p-7 text-white/75 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl">
                                 Loading risk
                                 assessment and
                                 comparable
@@ -1113,7 +1120,7 @@ export default function DueDiligenceReportPage() {
 
                         {milestone3Error && (
                             <div className="no-print mb-6 rounded-2xl border border-red-400/20 bg-red-400/[0.05] p-6">
-                                <p className="text-xs tracking-[0.2em] text-red-300">
+                                <p className="text-sm font-semibold text-red-300">
                                     MILESTONE 3 ERROR
                                 </p>
 
@@ -1125,18 +1132,18 @@ export default function DueDiligenceReportPage() {
 
                         {/* RISK ASSESSMENT */}
 
-                        <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-7 md:p-9">
+                        <div className="rounded-3xl border border-white/20 bg-white/[0.09] p-7 md:p-9 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl">
                             <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
                                 <div>
-                                    <p className="text-xs tracking-[0.3em] text-white/30">
+                                    <p className="text-sm font-semibold text-[#D174D2]">
                                         RISK ASSESSMENT
                                     </p>
 
-                                    <h3 className="mt-5 text-3xl font-light">
+                                    <h3 className="mt-5 text-3xl font-bold">
                                         Overall Property Risk
                                     </h3>
 
-                                    <p className="mt-3 max-w-2xl text-sm leading-7 text-white/40">
+                                    <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
                                         Backend-generated
                                         risk assessment
                                         based on the
@@ -1159,13 +1166,24 @@ export default function DueDiligenceReportPage() {
                                         {riskAssessment?.riskScore ?? "—"}
                                     </p>
 
-                                    <p className="mt-2 text-xs text-white/40">
+                                    <p className="mt-2 text-xs text-white/75">
                                         Risk Score
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="mt-8 grid gap-px overflow-hidden border border-white/10 bg-white/10 md:grid-cols-2">
+                            {!milestone3Loading && ![
+                                riskAssessment?.taxRiskNote,
+                                riskAssessment?.floodRiskNote,
+                                riskAssessment?.zoningRiskNote,
+                                riskAssessment?.permitRiskNote,
+                                riskAssessment?.environmentalRiskNote,
+                            ].some(isAvailable) && (
+                                    <p className="mt-8 text-sm leading-7 text-white/75">
+                                        No detailed risk notes are available.
+                                    </p>
+                                )}
+                            <div className="report-fields report-risk-fields mt-8 overflow-hidden rounded-2xl border border-white/20 bg-white/20">
                                 <RiskNote
                                     label="TAX RISK"
                                     value={riskAssessment?.taxRiskNote}
@@ -1195,16 +1213,16 @@ export default function DueDiligenceReportPage() {
 
                         {/* COMPARABLE PROPERTIES */}
 
-                        <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.02] p-7 md:p-9">
-                            <p className="text-xs tracking-[0.3em] text-white/30">
+                        <div className="mt-6 rounded-3xl border border-white/20 bg-white/[0.09] p-7 md:p-9 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                            <p className="text-sm font-semibold text-[#D174D2]">
                                 COMPARABLE PROPERTIES
                             </p>
 
-                            <h3 className="mt-5 text-3xl font-light">
+                            <h3 className="mt-5 text-3xl font-bold">
                                 Nearby Comparable Properties
                             </h3>
 
-                            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/40">
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
                                 Comparable property
                                 information
                                 returned by the
@@ -1216,11 +1234,11 @@ export default function DueDiligenceReportPage() {
                                     {comparables.map((item, index) => (
                                         <div
                                             key={item.id || index}
-                                            className="rounded-2xl border border-white/10 bg-black/20 p-6"
+                                            className="rounded-2xl border border-white/20 bg-[#2B1740]/60 p-6"
                                         >
                                             <div className="grid gap-6 md:grid-cols-[1fr_auto_auto] md:items-center">
                                                 <div>
-                                                    <p className="text-xs tracking-[0.15em] text-white/30">
+                                                    <p className="text-sm font-semibold text-[#D174D2]">
                                                         ADDRESS
                                                     </p>
 
@@ -1230,7 +1248,7 @@ export default function DueDiligenceReportPage() {
                                                 </div>
 
                                                 <div>
-                                                    <p className="text-xs tracking-[0.15em] text-white/30">
+                                                    <p className="text-sm font-semibold text-[#D174D2]">
                                                         PRICE
                                                     </p>
 
@@ -1240,7 +1258,7 @@ export default function DueDiligenceReportPage() {
                                                 </div>
 
                                                 <div>
-                                                    <p className="text-xs tracking-[0.15em] text-white/30">
+                                                    <p className="text-sm font-semibold text-[#D174D2]">
                                                         DISTANCE
                                                     </p>
 
@@ -1256,7 +1274,7 @@ export default function DueDiligenceReportPage() {
                                 </div>
                             ) : (
                                 !milestone3Loading && (
-                                    <div className="mt-8 rounded-2xl border border-white/10 p-7 text-sm text-white/40">
+                                    <div className="mt-8 rounded-2xl border border-white/20 p-7 text-sm text-white/75">
                                         No comparable
                                         properties
                                         were returned.
@@ -1267,16 +1285,16 @@ export default function DueDiligenceReportPage() {
 
                         {/* DOWNLOADABLE REPORTS */}
 
-                        <div className="relative z-20 mt-6 rounded-3xl border border-white/10 bg-white/[0.02] p-7 md:p-9">
-                            <p className="text-xs tracking-[0.3em] text-white/30">
+                        <div className="relative z-20 mt-6 rounded-3xl border border-white/20 bg-gradient-to-br from-[#3F567F]/80 via-[#412653]/80 to-[#2B1740]/90 p-8 md:p-12 lg:p-14 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                            <p className="text-sm font-semibold text-[#D174D2]">
                                 DOWNLOADABLE REPORTS
                             </p>
 
-                            <h3 className="mt-5 text-3xl font-light">
+                            <h3 className="mt-5 text-3xl font-bold">
                                 Export this property report
                             </h3>
 
-                            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/40">
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
                                 Download the complete
                                 due-diligence report
                                 in PDF or Excel
@@ -1297,7 +1315,7 @@ export default function DueDiligenceReportPage() {
                                         console.log("PDF BUTTON ONCLICK");
                                         downloadReport("pdf");
                                     }}
-                                    className="relative z-40 inline-flex cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm text-white/75 transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="relative z-40 inline-flex cursor-pointer items-center justify-center gap-3 rounded-full bg-[#E0563F] px-9 py-5 text-sm font-bold text-white shadow-[0_10px_30px_-8px_rgba(224,86,63,0.7)] transition duration-200 hover:bg-[#c94a34] focus:outline-none focus-visible:ring-4 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     {downloading === "pdf"
                                         ? "Generating PDF..."
@@ -1319,7 +1337,7 @@ export default function DueDiligenceReportPage() {
                                         console.log("EXCEL BUTTON ONCLICK");
                                         downloadReport("excel");
                                     }}
-                                    className="relative z-40 inline-flex cursor-pointer items-center justify-center gap-3 rounded-full border border-white/10 px-7 py-4 text-sm text-white/55 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="relative z-40 inline-flex cursor-pointer items-center justify-center gap-3 rounded-full border border-white/50 bg-white/10 px-9 py-5 text-sm font-semibold text-white transition duration-200 hover:bg-white hover:text-[#412653] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#D174D2]/50 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     {downloading === "excel"
                                         ? "Generating Excel..."
@@ -1329,7 +1347,7 @@ export default function DueDiligenceReportPage() {
                                 </button>
                             </div>
 
-                            <p className="mt-5 text-xs leading-6 text-white/25">
+                            <p className="mt-5 text-xs leading-6 text-white/60">
                                 Generating a report may also trigger the
                                 confirmation email configured by the backend.
                             </p>
@@ -1341,16 +1359,16 @@ export default function DueDiligenceReportPage() {
 
                 <section className="px-6 pb-24 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
-                        <div className="border-t border-white/10 pt-12">
-                            <p className="text-xs tracking-[0.3em] text-white/30">
+                        <div className="border-t border-white/20 pt-12">
+                            <p className="text-sm font-semibold text-[#D174D2]">
                                 FINAL REVIEW
                             </p>
 
-                            <h2 className="mt-5 text-4xl font-light md:text-5xl">
+                            <h2 className="mt-5 text-4xl font-bold md:text-5xl">
                                 Due diligence complete.
                             </h2>
 
-                            <p className="mt-5 max-w-3xl text-sm leading-7 text-white/40">
+                            <p className="mt-5 max-w-3xl text-sm leading-7 text-white/75">
                                 Review the property
                                 records above and
                                 download the generated
@@ -1359,90 +1377,67 @@ export default function DueDiligenceReportPage() {
                         </div>
                     </div>
                 </section>
+                <footer className="border-t border-white/15 bg-[#2B1740]/60 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
+                    <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs font-medium text-white/60 md:flex-row">
+                        <span>PROP DUE</span>
+                        <span>Property due diligence platform</span>
+                    </div>
+                </footer>
             </main>
 
             {/* PRINT STYLES */}
 
             <style jsx global>{`
+                .report-print h1,
+                .report-print h2,
+                .report-print h3,
+                .report-print h4 {
+                    font-family: ${DISPLAY_FONT};
+                }
+                .report-print .report-fields {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 1px;
+                }
+                .report-print .report-fields:empty { display: none; }
+                .report-print .report-field {
+                    flex: 1 1 100%;
+                    overflow-wrap: anywhere;
+                }
+                @media (min-width: 640px) {
+                    .report-print .report-field { flex-basis: 230px; }
+                    .report-print .report-risk-fields .report-field { flex-basis: 380px; }
+                }
+                .report-print a,
+                .report-print button { -webkit-tap-highlight-color: transparent; }
+                .report-print a:focus-visible,
+                .report-print button:focus-visible {
+                    outline: 3px solid #D174D2;
+                    outline-offset: 4px;
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .report-print * { animation: none !important; transition: none !important; }
+                }
                 @media print {
-                    @page {
-                        size: A4 portrait;
-                        margin: 12mm;
-                    }
-
-                    html,
-                    body {
-                        background: #ffffff !important;
-                        color: #111111 !important;
-                    }
-
-                    body {
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-
-                    .no-print {
-                        display: none !important;
-                    }
-
-                    .report-print {
-                        background: #ffffff !important;
-                        color: #111111 !important;
-                    }
-
-                    .report-print section {
-                        break-inside: avoid;
-                        page-break-inside: avoid;
-                    }
-
-                    .report-print .space-y-5 > div {
-                        break-inside: avoid;
-                        page-break-inside: avoid;
-                    }
-
-                    .report-print .bg-white\\/\\[0\\.025\\] {
-                        background-color: #ffffff !important;
-                    }
-
-                    .report-print .bg-white\\/\\[0\\.02\\] {
-                        background-color: #ffffff !important;
-                    }
-
-                    .report-print .bg-white\\/10 {
-                        background-color: #e5e7eb !important;
-                    }
-
-                    .report-print .border-white\\/10,
-                    .report-print .border-white\\/20 {
+                    @page { size: A4 portrait; margin: 12mm; }
+                    html, body { background: white !important; color: #111 !important; }
+                    .report-print, .report-print * {
+                        color: #111 !important;
+                        background: transparent !important;
+                        box-shadow: none !important;
+                        backdrop-filter: none !important;
                         border-color: #d1d5db !important;
                     }
-
-                    .report-print .text-white\\/30 {
-                        color: #555555 !important;
-                    }
-
-                    .report-print .text-white\\/35 {
-                        color: #555555 !important;
-                    }
-
-                    .report-print .text-white\\/40 {
-                        color: #555555 !important;
-                    }
-
-                    .report-print .text-white\\/45 {
-                        color: #555555 !important;
-                    }
-
-                    .report-print .text-white\\/50 {
-                        color: #444444 !important;
-                    }
-
-                    .report-print .text-white\\/70,
-                    .report-print .text-white\\/75,
-                    .report-print .text-white\\/80,
-                    .report-print .text-white\\/90 {
-                        color: #111111 !important;
-                    }
+                    .report-print .report-background,
+                    .report-print .no-print { display: none !important; }
+                    .report-print section { padding: 16px 0 !important; }
+                    .report-print h1 { font-size: 32px !important; }
+                    .report-print h2 { font-size: 24px !important; }
+                    .report-print h3 { font-size: 20px !important; }
+                    .report-print h1, .report-print h2,
+                    .report-print h3, .report-print h4 { break-after: avoid; }
+                    .report-print .report-field { flex-basis: 180px; break-inside: avoid; }
+                    .report-print a { text-decoration: none !important; }
                 }
             `}</style>
         </>
@@ -1454,9 +1449,11 @@ export default function DueDiligenceReportPage() {
  */
 
 function RiskNote({ label, value }) {
+    if (!isAvailable(value)) return null;
+
     return (
-        <div className="bg-[#101010] p-7">
-            <p className="text-xs tracking-[0.2em] text-white/30">
+        <div className="report-field min-w-0 bg-[#341D47] p-7 md:p-9">
+            <p className="text-sm font-semibold text-[#D174D2]">
                 {label}
             </p>
 
@@ -1472,13 +1469,15 @@ function RiskNote({ label, value }) {
  */
 
 function Detail({ label, value }) {
+    if (!isAvailable(value)) return null;
+
     return (
-        <div className="bg-[#101010] p-6">
-            <p className="text-xs tracking-[0.2em] text-white/30">
+        <div className="report-field min-w-0 bg-[#341D47] p-6">
+            <p className="text-sm font-semibold text-[#D174D2]">
                 {label}
             </p>
 
-            <p className="mt-4 break-words text-base font-medium text-white/80">
+            <p className="mt-3 break-words text-base font-semibold text-white">
                 {displayValue(value)}
             </p>
         </div>
@@ -1491,16 +1490,16 @@ function Detail({ label, value }) {
 
 function OverviewCard({ label, value, description }) {
     return (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-7">
-            <p className="text-xs tracking-[0.2em] text-white/30">
+        <div className="rounded-2xl border border-white/20 bg-white/[0.09] p-7 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+            <p className="text-sm font-semibold text-[#D174D2]">
                 {label}
             </p>
 
-            <p className="mt-5 text-4xl font-light text-white/90">
+            <p className="mt-5 text-4xl font-bold text-white/90">
                 {value}
             </p>
 
-            <p className="mt-3 text-sm text-white/35">
+            <p className="mt-3 text-sm text-white/75">
                 {description}
             </p>
         </div>
@@ -1512,6 +1511,7 @@ function OverviewCard({ label, value, description }) {
  */
 
 function ReportSection({ section }) {
+    const availableFields = section.fields.filter(([, value]) => isAvailable(value));
     return (
         <div
             id={
@@ -1519,20 +1519,20 @@ function ReportSection({ section }) {
                     ? "utility-information"
                     : undefined
             }
-            className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]"
+            className="overflow-hidden rounded-2xl border border-white/20 bg-white/[0.09] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl"
         >
-            <div className="flex flex-col gap-5 border-b border-white/10 p-7 md:flex-row md:items-start md:justify-between md:p-9">
+            <div className="flex flex-col gap-5 border-b border-white/20 p-7 md:flex-row md:items-start md:justify-between md:p-9">
                 <div className="flex gap-5">
-                    <span className="pt-1 text-xs tracking-[0.2em] text-white/25">
+                    <span className="pt-1 text-sm font-semibold text-white/60">
                         {section.number}
                     </span>
 
                     <div>
-                        <h3 className="text-2xl font-light text-white/90 md:text-3xl">
+                        <h3 className="text-2xl font-bold text-white/90 md:text-3xl">
                             {section.title}
                         </h3>
 
-                        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/40">
+                        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
                             {section.description}
                         </p>
                     </div>
@@ -1540,14 +1540,19 @@ function ReportSection({ section }) {
 
                 <a
                     href={section.href}
-                    className="no-print w-fit shrink-0 rounded-full border border-white/10 px-5 py-3 text-xs text-white/50 transition hover:border-white/30 hover:text-white"
+                    className="no-print w-fit shrink-0 rounded-full border border-white/20 px-5 py-3 text-xs text-white/75 transition hover:border-white/30 hover:text-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[#D174D2]/50"
                 >
                     View Section →
                 </a>
             </div>
 
-            <div className="grid gap-px bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
-                {section.fields.map(([label, value], index) => (
+            {availableFields.length === 0 && (
+                <p className="px-7 py-8 text-sm leading-7 text-white/75">
+                    No information is available for this section.
+                </p>
+            )}
+            <div className="report-fields mx-7 my-6 overflow-hidden rounded-2xl border border-white/20 bg-white/20 md:mx-9">
+                {availableFields.map(([label, value], index) => (
                     <Detail
                         key={`${section.number}-${label}-${index}`}
                         label={label}
@@ -1559,19 +1564,19 @@ function ReportSection({ section }) {
             {/* OWNERSHIP HISTORY */}
 
             {section.recordType === "ownership" && (
-                <div className="border-t border-white/10 p-7 md:p-9">
+                <div className="border-t border-white/20 p-7 md:p-9">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div>
-                            <p className="text-xs tracking-[0.2em] text-white/30">
+                            <p className="text-sm font-semibold text-[#D174D2]">
                                 OWNERSHIP HISTORY
                             </p>
 
-                            <h4 className="mt-3 text-xl font-light text-white/85">
+                            <h4 className="mt-3 text-xl font-bold text-white/85">
                                 Previous Owners
                             </h4>
                         </div>
 
-                        <span className="w-fit rounded-full border border-white/10 px-4 py-2 text-xs text-white/45">
+                        <span className="w-fit rounded-full border border-white/20 px-4 py-2 text-xs text-white/75">
                             {section.records?.length || 0}{" "}
                             {(section.records?.length || 0) === 1
                                 ? "previous owner"
@@ -1588,11 +1593,11 @@ function ReportSection({ section }) {
                                         record.ownershipId ??
                                         `${getOwnerName(record) || "owner"}-${index}`
                                     }
-                                    className="rounded-xl border border-white/10 bg-black/20 p-5"
+                                    className="rounded-xl border border-white/20 bg-[#2B1740]/60 p-5"
                                 >
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div>
-                                            <p className="text-xs tracking-[0.15em] text-white/30">
+                                            <p className="text-sm font-semibold text-[#D174D2]">
                                                 PREVIOUS OWNER {index + 1}
                                             </p>
 
@@ -1601,12 +1606,12 @@ function ReportSection({ section }) {
                                             </p>
                                         </div>
 
-                                        <span className="w-fit rounded-full border border-white/10 px-3 py-1 text-xs text-white/50">
+                                        <span className="w-fit rounded-full border border-white/20 px-3 py-1 text-xs text-white/75">
                                             Ownership ended
                                         </span>
                                     </div>
 
-                                    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    <div className="report-fields mt-5 overflow-hidden rounded-xl bg-white/20">
                                         <Detail
                                             label="Acquired Date"
                                             value={formatDate(getAcquiredDate(record))}
@@ -1628,7 +1633,7 @@ function ReportSection({ section }) {
                             ))}
                         </div>
                     ) : (
-                        <p className="mt-6 text-sm leading-7 text-white/40">
+                        <p className="mt-6 text-sm leading-7 text-white/75">
                             No previous ownership records were returned
                             by the backend for this property.
                         </p>
@@ -1640,8 +1645,8 @@ function ReportSection({ section }) {
 
             {section.recordType !== "ownership" &&
                 section.records?.length > 0 && (
-                    <div className="border-t border-white/10 p-7 md:p-9">
-                        <p className="mb-5 text-xs tracking-[0.2em] text-white/30">
+                    <div className="border-t border-white/20 p-7 md:p-9">
+                        <p className="mb-5 text-sm font-semibold text-[#D174D2]">
                             PERMIT DETAILS
                         </p>
 
@@ -1649,7 +1654,7 @@ function ReportSection({ section }) {
                             {section.records.map((record, index) => (
                                 <div
                                     key={record.id || index}
-                                    className="rounded-xl border border-white/10 bg-black/20 p-5"
+                                    className="rounded-xl border border-white/20 bg-[#2B1740]/60 p-5"
                                 >
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div>
@@ -1659,19 +1664,19 @@ function ReportSection({ section }) {
                                                     "Permit"}
                                             </p>
 
-                                            <p className="mt-2 text-sm text-white/40">
+                                            <p className="mt-2 text-sm text-white/75">
                                                 {record.description ||
                                                     record.details ||
                                                     "Description not available"}
                                             </p>
                                         </div>
 
-                                        <span className="w-fit rounded-full border border-white/10 px-3 py-1 text-xs text-white/50">
+                                        <span className="w-fit rounded-full border border-white/20 px-3 py-1 text-xs text-white/75">
                                             {record.status || "Not available"}
                                         </span>
                                     </div>
 
-                                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                    <div className="report-fields mt-4 overflow-hidden rounded-xl bg-white/20">
                                         <Detail
                                             label="Permit Number"
                                             value={

@@ -8,100 +8,130 @@ function getInitials(name) {
 
   return name
     .trim()
-    .split(' ')
+    .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((word) => word.charAt(0).toUpperCase())
     .join('')
 }
 
+function getHistoryKey(user) {
+  const identity = user?.id ?? user?.email ?? 'guest'
+  return `propdue:recent-properties:${String(identity).toLowerCase()}`
+}
+
+function getPropertyAddress(property) {
+  return (
+    property?.formattedAddress ||
+    property?.address ||
+    property?.fullAddress ||
+    'Property assessment'
+  )
+}
+
+function formatSearchDate(value) {
+  if (!value) return ''
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString()
+}
+
 export default function DashboardPage() {
   const router = useRouter()
 
-  const [token, setToken] = useState(null)
+  const [isReady, setIsReady] = useState(false)
   const [user, setUser] = useState(null)
+  const [recentProperties, setRecentProperties] = useState([])
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user')
-
-    if (!storedToken) {
+    if (!localStorage.getItem('token')) {
       router.replace('/login')
       return
     }
 
-    setToken(storedToken)
+    let savedUser = null
 
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser))
-      } catch (error) {
-        console.error('Failed to parse user data:', error)
-        localStorage.removeItem('user')
-      }
+    try {
+      savedUser = JSON.parse(localStorage.getItem('user') || 'null')
+      setUser(savedUser)
+    } catch (error) {
+      console.error('Failed to parse user data:', error)
+      localStorage.removeItem('user')
     }
+
+    try {
+      const history = JSON.parse(
+        localStorage.getItem(getHistoryKey(savedUser)) || '[]'
+      )
+
+      if (Array.isArray(history) && history.length > 0) {
+        setRecentProperties(history)
+      } else {
+        // Fallback for a property saved before search history was added.
+        const selectedProperty = JSON.parse(
+          sessionStorage.getItem('selectedProperty') || 'null'
+        )
+
+        if (selectedProperty) {
+          setRecentProperties([selectedProperty])
+        }
+      }
+    } catch (error) {
+      console.error('Failed to read recent properties:', error)
+    }
+
+    setIsReady(true)
   }, [router])
 
-  if (!token) {
-    return null
+  function openPropertyReport(property) {
+    // Detail pages use selectedProperty to identify the property to load.
+    sessionStorage.setItem('selectedProperty', JSON.stringify(property))
+    router.push('/due-diligence-report')
   }
 
-  const userName = user?.fullName || 'User'
+  if (!isReady) return null
+
+  const userName = user?.fullName || user?.name || 'User'
   const userInitials = getInitials(userName)
 
-  const metrics = [
+  const researchTools = [
     {
-      label: 'Assessed Properties',
-      value: '12,482',
-      description: 'Total properties assessed',
-      icon: '⌂',
-      accent: 'blue',
-    },
-    {
-      label: 'Risk Audit Reports',
-      value: '4,910',
-      description: 'Reports generated',
-      icon: '▤',
-      accent: 'cyan',
-    },
-    {
-      label: 'Legal Title Audits',
-      value: '1,240',
-      description: 'Title audits completed',
+      title: 'Ownership Records',
+      description: 'Review current and previous ownership details.',
+      href: '/ownership',
       icon: '◈',
-      accent: 'purple',
     },
     {
-      label: 'Active Alerts',
-      value: '3',
-      description: 'Alerts requiring review',
-      icon: '!',
-      accent: 'amber',
+      title: 'Tax History',
+      description: 'Review property tax records and payment history.',
+      href: '/tax-history',
+      icon: '$',
+    },
+    {
+      title: 'Zoning',
+      description: 'Review land-use classification and compliance.',
+      href: '/zoning',
+      icon: '⌖',
+    },
+    {
+      title: 'Flood Zone',
+      description: 'Review flood classification and risk information.',
+      href: '/flood-zone',
+      icon: '≈',
+    },
+    {
+      title: 'Permits & Environment',
+      description: 'Review permits and environmental records.',
+      href: '/permit-environmental',
+      icon: '▤',
+    },
+    {
+      title: 'Full Due Diligence Report',
+      description: 'View the complete report for the selected property.',
+      href: '/due-diligence-report',
+      icon: '↗',
     },
   ]
-
-  const accentStyles = {
-    blue: {
-      icon: 'border-blue-400/20 bg-blue-400/[0.08] text-blue-300',
-      value: 'text-blue-300',
-      glow: 'bg-blue-500/[0.06]',
-    },
-    cyan: {
-      icon: 'border-cyan-400/20 bg-cyan-400/[0.08] text-cyan-300',
-      value: 'text-cyan-300',
-      glow: 'bg-cyan-500/[0.06]',
-    },
-    purple: {
-      icon: 'border-purple-400/20 bg-purple-400/[0.08] text-purple-300',
-      value: 'text-purple-300',
-      glow: 'bg-purple-500/[0.06]',
-    },
-    amber: {
-      icon: 'border-amber-400/20 bg-amber-400/[0.08] text-amber-300',
-      value: 'text-amber-300',
-      glow: 'bg-amber-500/[0.06]',
-    },
-  }
 
   return (
     <main className="min-h-screen bg-[#080c16] px-4 pb-16 pt-28 text-white sm:px-6">
@@ -113,32 +143,26 @@ export default function DashboardPage() {
       <div className="relative mx-auto max-w-7xl">
         {/* HEADER */}
         <header className="mb-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="mb-3 flex items-center gap-3">
-                <span className="h-px w-8 bg-blue-400/60" />
-
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-300">
-                  PropDue Intelligence Platform
-                </p>
-              </div>
-
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Dashboard
-              </h1>
-
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                Monitor property research, due diligence activity and
-                real-estate risk intelligence from one workspace.
-              </p>
-            </div>
+          <div className="mb-3 flex items-center gap-3">
+            <span className="h-px w-8 bg-blue-400/60" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-300">
+              PropDue Intelligence Platform
+            </p>
           </div>
+
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Dashboard
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            Continue your property research and access your due diligence
+            workspace.
+          </p>
         </header>
 
         {/* WELCOME CARD */}
         <section className="relative mb-8 overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#111d37] via-[#0d1528] to-[#0a101e] p-6 shadow-2xl shadow-black/20 sm:p-7">
           <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-blue-500/[0.08] blur-3xl" />
-
           <div className="pointer-events-none absolute bottom-0 right-1/3 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
 
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -151,11 +175,9 @@ export default function DashboardPage() {
                 <p className="mb-1 text-xs font-medium uppercase tracking-wider text-slate-500">
                   Welcome back
                 </p>
-
                 <h2 className="text-2xl font-bold tracking-tight text-white">
                   {userName}
                 </h2>
-
                 <p className="mt-1.5 text-sm text-slate-400">
                   Your property intelligence workspace is ready.
                 </p>
@@ -167,103 +189,180 @@ export default function DashboardPage() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
               </span>
-
               Account Active
             </div>
           </div>
         </section>
 
-        {/* OVERVIEW */}
-        <section className="mb-10">
-          <div className="mb-5 flex items-end justify-between">
+        {/* RECENT PROPERTIES */}
+        <section className="mb-8">
+          <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-400/80">
-                Intelligence Overview
+                Your Workspace
               </p>
-
               <h2 className="mt-1 text-lg font-semibold text-white">
-                Platform Activity
+                Recent Properties
               </h2>
             </div>
 
-            <span className="hidden text-xs text-slate-600 sm:block">
-              Current platform statistics
-            </span>
+            <button
+              type="button"
+              onClick={() => router.push('/property-search')}
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300 transition hover:bg-white/[0.08]"
+            >
+              Search Property <span aria-hidden="true">→</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {metrics.map((metric) => {
-              const style = accentStyles[metric.accent]
+          {recentProperties.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {recentProperties.map((property, index) => {
+                const location = [
+                  property.city,
+                  property.state,
+                  property.postalCode || property.zipCode,
+                ]
+                  .filter(
+                    (value) => value && value !== 'Not available'
+                  )
+                  .join(', ')
 
-              return (
-                <div
-                  key={metric.label}
-                  className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c1322] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-[#0e1728]"
-                >
-                  <div
-                    className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full blur-3xl ${style.glow}`}
-                  />
-
-                  <div className="relative">
-                    <div className="mb-5 flex items-start justify-between gap-4">
-                      <p className="max-w-[150px] text-xs font-medium uppercase tracking-wider text-slate-500">
-                        {metric.label}
+                return (
+                  <article
+                    key={
+                      property.propertyId ??
+                      `${getPropertyAddress(property)}-${index}`
+                    }
+                    className="flex flex-col justify-between gap-5 rounded-2xl border border-white/[0.08] bg-[#0c1322] p-6 sm:flex-row sm:items-center"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                        {index === 0
+                          ? 'Most recently searched'
+                          : 'Recent search'}
                       </p>
 
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-lg font-bold ${style.icon}`}
-                      >
-                        {metric.icon}
-                      </div>
+                      <h3 className="mt-2 break-words text-lg font-semibold text-white">
+                        {getPropertyAddress(property)}
+                      </h3>
+
+                      {location && (
+                        <p className="mt-1 text-sm text-slate-400">
+                          {location}
+                        </p>
+                      )}
+
+                      {property.propertyType &&
+                        property.propertyType !== 'Not available' && (
+                          <p className="mt-2 text-xs text-slate-500">
+                            Property type: {property.propertyType}
+                          </p>
+                        )}
+
+                      {property.searchedAt && (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Searched: {formatSearchDate(property.searchedAt)}
+                        </p>
+                      )}
                     </div>
 
-                    <p className={`text-3xl font-bold tracking-tight ${style.value}`}>
-                      {metric.value}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => openPropertyReport(property)}
+                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-400/25 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/20"
+                    >
+                      Open Report <span aria-hidden="true">→</span>
+                    </button>
+                  </article>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6">
+              <h3 className="text-base font-semibold text-white">
+                No recent properties
+              </h3>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+                Search for a property. Successful searches will appear here,
+                with the newest one at the top.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/property-search')}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+              >
+                Search Property <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          )}
+        </section>
 
-                    <p className="mt-2 text-xs text-slate-500">
-                      {metric.description}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
+        {/* DUE DILIGENCE QUICK LINKS */}
+        <section className="mb-8">
+          <div className="mb-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-400/80">
+              Due Diligence
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-white">
+              Property research tools
+            </h2>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {researchTools.map((item) => (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => router.push(item.href)}
+                className="group flex h-full items-start gap-4 rounded-2xl border border-white/[0.08] bg-[#0c1322] p-5 text-left transition hover:border-blue-400/25 hover:bg-[#0e1728]"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-400/[0.08] text-lg font-semibold text-blue-200">
+                  {item.icon}
+                </span>
+                <span>
+                  <span className="block font-semibold text-white transition group-hover:text-blue-200">
+                    {item.title}
+                  </span>
+                  <span className="mt-1 block text-sm leading-6 text-slate-400">
+                    {item.description}
+                  </span>
+                </span>
+              </button>
+            ))}
           </div>
         </section>
 
-        {/* DUE DILIGENCE CTA */}
+        {/* PRIMARY ACTION */}
         <section className="relative overflow-hidden rounded-2xl border border-blue-400/[0.16] bg-gradient-to-r from-[#0d1a32] via-[#0d1629] to-[#0b1221] p-6 shadow-xl shadow-blue-950/10 sm:p-8">
           <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-blue-500/[0.07] blur-3xl" />
-
           <div className="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-cyan-500/[0.035] blur-3xl" />
 
           <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
               <div className="mb-3 flex items-center gap-3">
                 <span className="h-px w-6 bg-blue-400/60" />
-
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-300">
                   Property Due Diligence
                 </p>
               </div>
 
               <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                Ready to assess a property?
+                Start a property review
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-slate-400">
-                Search for a property and review its ownership, zoning,
-                flood risk, tax history, permits, environmental information
-                and other due diligence details.
+                Find a property and bring its available records together in one
+                due diligence workflow.
               </p>
             </div>
 
             <button
+              type="button"
               onClick={() => router.push('/property-search')}
-              className="group inline-flex shrink-0 items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 transition-all duration-200 hover:bg-blue-500 hover:shadow-blue-500/10"
+              className="group inline-flex shrink-0 items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 transition-all duration-200 hover:bg-blue-500"
             >
               Search Property
-
               <span className="transition-transform duration-200 group-hover:translate-x-1">
                 →
               </span>
@@ -271,15 +370,10 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* FOOTER STATUS */}
-        <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-white/[0.06] pt-5 text-[11px] text-slate-600 sm:flex-row">
+        <footer className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-white/[0.06] pt-5 text-[11px] text-slate-600 sm:flex-row">
           <span>PropDue Property Intelligence Platform</span>
-
-          <span className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            System Ready
-          </span>
-        </div>
+          <span>Recent searches are saved in this browser.</span>
+        </footer>
       </div>
     </main>
   )

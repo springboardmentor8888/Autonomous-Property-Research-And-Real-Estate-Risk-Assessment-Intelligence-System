@@ -11,6 +11,9 @@ import {
 } from 'lucide-react'
 
 const API_URL = 'http://localhost:8080/api'
+const DISPLAY_FONT = "'Syne', 'Arial Black', system-ui, sans-serif"
+const BODY_FONT =
+    "'Red Hat Display', system-ui, -apple-system, 'Segoe UI', sans-serif"
 
 const DEFAULT_PROPERTY = {
     formattedAddress: '',
@@ -138,12 +141,9 @@ function DetailCard({ label, value }) {
     if (!isAvailable(value)) return null
 
     return (
-        <div className="bg-[#101010] p-6">
-            <p className="text-xs tracking-[0.2em] text-white/25">
-                {label}
-            </p>
-
-            <p className="mt-4 break-words text-base font-medium text-white/80">
+        <div className="bg-[#341D47] p-6">
+            <p className="text-sm text-white/65">{label}</p>
+            <p className="mt-3 break-words text-base font-semibold text-white">
                 {value}
             </p>
         </div>
@@ -154,18 +154,12 @@ function StatCard({ icon, label, value }) {
     if (!isAvailable(value)) return null
 
     return (
-        <div className="bg-[#101010] p-6">
-            <div className="flex items-center gap-3 text-white/40">
+        <div className="bg-[#341D47] p-6">
+            <div className="flex items-center gap-3 text-[#D174D2]">
                 {icon}
-
-                <p className="text-xs tracking-[0.2em] text-white/25">
-                    {label}
-                </p>
+                <p className="text-sm font-semibold text-[#D174D2]">{label}</p>
             </div>
-
-            <p className="mt-5 text-2xl font-light text-white/80">
-                {value}
-            </p>
+            <p className="mt-5 text-2xl font-bold text-white">{value}</p>
         </div>
     )
 }
@@ -173,17 +167,14 @@ function StatCard({ icon, label, value }) {
 function InfoItem({
     label,
     value,
-    valueClassName = 'text-white/70',
+    valueClassName = 'text-white',
 }) {
     if (!isAvailable(value)) return null
 
     return (
         <div>
-            <p className="text-xs tracking-[0.22em] text-white/25">
-                {label}
-            </p>
-
-            <p className={`mt-4 text-lg font-light ${valueClassName}`}>
+            <p className="text-sm font-medium text-white/65">{label}</p>
+            <p className={`mt-3 break-words text-lg font-semibold ${valueClassName}`}>
                 {value}
             </p>
         </div>
@@ -300,7 +291,6 @@ export default function TaxHistoryPage() {
 
     const averageTax = useMemo(() => {
         if (records.length === 0) return 0
-
         return Math.round(totalTax / records.length)
     }, [records, totalTax])
 
@@ -315,10 +305,6 @@ export default function TaxHistoryPage() {
             100
         )
     }, [records])
-
-    const hasPaymentDate = records.some((record) =>
-        isAvailable(record.paymentDate)
-    )
 
     const hasStatus = records.some((record) =>
         isAvailable(record.status)
@@ -341,10 +327,15 @@ export default function TaxHistoryPage() {
 
     if (loading) {
         return (
-            <main className="min-h-screen bg-[#0b0b0b] text-white">
+            <main
+                className="min-h-screen text-white"
+                style={{ fontFamily: BODY_FONT }}
+            >
+                <style>{`@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');`}</style>
+                <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[linear-gradient(135deg,#3F567F_0%,#412653_50%,#2B1740_100%)]" />
                 <div className="flex min-h-screen items-center justify-center">
-                    <div className="flex items-center gap-4 text-white/50">
-                        <div className="h-5 w-5 animate-spin rounded-full border border-white/20 border-t-white" />
+                    <div className="flex items-center gap-4 text-white/70">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-[#D174D2]" />
                         <span>Loading tax history...</span>
                     </div>
                 </div>
@@ -353,69 +344,74 @@ export default function TaxHistoryPage() {
     }
 
     return (
-        <main className="min-h-screen bg-[#0b0b0b] text-white">
-            {/* BACKGROUND */}
-            <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-                <div className="absolute left-[-200px] top-[5%] h-[550px] w-[550px] rounded-full bg-orange-500/[0.06] blur-[150px]" />
+        <main
+            className="min-h-screen text-white selection:bg-[#D174D2]/40"
+            style={{ fontFamily: BODY_FONT }}
+        >
+            <style>{`@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');`}</style>
 
-                <div className="absolute right-[-200px] top-[30%] h-[650px] w-[650px] rounded-full bg-blue-500/[0.05] blur-[170px]" />
-
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.035),transparent_45%)]" />
+            {/* Background */}
+            <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[linear-gradient(135deg,#3F567F_0%,#412653_50%,#2B1740_100%)]">
+                <div className="absolute -left-40 bottom-[-10%] h-[600px] w-[600px] rounded-full bg-[#E0563F]/25 blur-[160px]" />
             </div>
 
-            {/* HERO */}
-            <section className="border-b border-white/10 px-6 pb-20 pt-32 sm:px-10 md:px-16 lg:px-24">
-                <div className="mx-auto max-w-[1400px]">
+            {/* Hero */}
+            <section className="relative overflow-hidden border-b border-white/15 px-6 pb-24 pt-32 sm:px-10 md:px-16 lg:px-24">
+                <div className="relative mx-auto max-w-[1400px]">
                     <Link
                         href="/property-search"
-                        className="inline-flex items-center gap-2 text-sm text-white/35 transition hover:text-white"
+                        className="inline-flex items-center gap-2 text-sm font-medium text-white/70 transition hover:text-white"
                     >
                         <ArrowLeft size={16} />
                         Back to Property Search
                     </Link>
 
-                    <p className="mb-7 mt-16 text-xs font-semibold tracking-[0.35em] text-white/35">
-                        PROPERTY TAX / HISTORY
+                    <p className="mb-8 mt-16 block w-fit rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-sm font-medium text-white">
+                        <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#D174D2]" />
+                        Property tax / history
                     </p>
 
-                    <h1 className="max-w-5xl text-[clamp(2.75rem,5vw,5rem)] font-light leading-[0.95] tracking-[-0.05em]">
+                    <h1
+                        className="max-w-5xl text-[clamp(2.75rem,6vw,5.5rem)] font-extrabold leading-[1.02] tracking-[-0.02em] text-white"
+                        style={{ fontFamily: DISPLAY_FONT }}
+                    >
                         Review
                         <br />
-                        <span className="text-white/35">tax history.</span>
+                        <span className="text-[#D174D2]">tax history.</span>
                     </h1>
 
-                    <p className="mt-10 max-w-2xl text-lg font-light leading-8 text-white/45 md:text-xl">
+                    <p className="mt-10 max-w-2xl text-lg leading-8 text-white/80 md:text-xl">
                         Review historical property tax assessments, tax amounts,
                         payment status, and changes across previous tax years.
                     </p>
-
-                    {/* BACKEND DATA badge removed */}
                 </div>
             </section>
 
-            {/* PROPERTY DETAILS */}
+            {/* Property details */}
             <section className="px-6 py-16 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
                     <div className="flex items-center gap-3">
-                        <CheckCircle2 size={18} className="text-emerald-400" />
-
-                        <span className="text-xs font-semibold tracking-[0.3em] text-emerald-400/70">
-                            PROPERTY SELECTED
+                        <CheckCircle2 size={18} className="text-[#D174D2]" />
+                        <span className="text-sm font-semibold text-[#D174D2]">
+                            Property selected
                         </span>
                     </div>
 
-                    <h2 className="mt-6 max-w-5xl text-4xl font-light leading-tight tracking-tight md:text-6xl">
+                    <h2
+                        className="mt-6 max-w-5xl text-3xl font-extrabold leading-tight tracking-tight text-white md:text-5xl"
+                        style={{ fontFamily: DISPLAY_FONT }}
+                    >
                         {property.formattedAddress ||
                             property.address ||
                             'Selected Property'}
                     </h2>
 
-                    <div className="mt-12 grid gap-px overflow-hidden border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/20 sm:grid-cols-2 lg:grid-cols-4">
                         <DetailCard label="City" value={property.city} />
                         <DetailCard label="State" value={property.state} />
                         <DetailCard
-                            label="Postal Code"
-                            value={property.postalCode}
+                            label="Postal code"
+                            value={property.postalCode ?? property.zipCode}
                         />
                         <DetailCard
                             label="Property ID"
@@ -429,59 +425,53 @@ export default function TaxHistoryPage() {
                 </div>
             </section>
 
-            {/* ERROR */}
+            {/* Error */}
             {error && (
                 <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
-                    <div className="mx-auto max-w-[1400px] rounded-2xl border border-red-400/20 bg-red-400/[0.04] p-8">
-                        <p className="text-xs font-semibold tracking-[0.25em] text-red-300/80">
-                            TAX HISTORY COULD NOT BE LOADED
+                    <div className="mx-auto max-w-[1400px] rounded-2xl border border-[#E0563F]/60 bg-[#E0563F]/15 p-8 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] md:p-10">
+                        <p className="text-sm font-semibold text-white">
+                            Tax history could not be loaded
                         </p>
-
-                        <p className="mt-4 text-sm leading-7 text-white/60">
+                        <p className="mt-4 text-base leading-7 text-white/80">
                             {error}
                         </p>
-
                         <Link
                             href="/property-search"
-                            className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/20 px-6 py-3 text-sm text-white/70 transition hover:bg-white hover:text-black"
+                            className="mt-6 inline-flex items-center gap-3 rounded-full bg-[#E0563F] px-7 py-4 text-sm font-bold text-white transition hover:bg-[#c94a34] focus-visible:ring-4 focus-visible:ring-white/40"
                         >
-                            <ArrowLeft size={15} />
+                            <ArrowLeft size={16} />
                             Return to Property Search
                         </Link>
                     </div>
                 </section>
             )}
 
-            {/* CURRENT TAX OVERVIEW */}
+            {/* Current tax overview */}
             {currentOverviewCount > 0 && (
                 <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
-                        <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
-                            CURRENT TAX OVERVIEW
+                        <p className="mb-6 text-sm font-semibold text-[#D174D2]">
+                            Current tax overview
                         </p>
 
                         <div
-                            className={`grid gap-px overflow-hidden border border-white/10 bg-white/10 ${currentOverviewCount === 2
+                            className={`grid gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/20 ${currentOverviewCount === 2
                                     ? 'lg:grid-cols-2'
                                     : 'lg:grid-cols-1'
                                 }`}
                         >
                             <StatCard
                                 icon={<CircleDollarSign size={19} />}
-                                label="CURRENT TAX"
+                                label="Current tax"
                                 value={
                                     isAvailable(taxData?.currentTaxAmount)
                                         ? formatCurrency(taxData.currentTaxAmount)
                                         : null
                                 }
                             />
-
-                            {/* ASSESSED VALUE card removed */}
-                            {/* MARKET VALUE card removed */}
-
                             <StatCard
                                 icon={<CheckCircle2 size={19} />}
-                                label="TAX STATUS"
+                                label="Tax status"
                                 value={taxData?.taxStatus}
                             />
                         </div>
@@ -489,64 +479,55 @@ export default function TaxHistoryPage() {
                 </section>
             )}
 
-            {/* TAX DETAILS */}
+            {/* Tax details */}
             <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
-                    <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
-                        TAX DETAILS
+                    <p className="mb-6 text-sm font-semibold text-[#D174D2]">
+                        Tax details
                     </p>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
+                    <div className="rounded-2xl border border-white/20 bg-white/[0.09] p-8 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl transition duration-300 hover:shadow-[0_0_35px_rgba(43,23,64,0.75),0_20px_60px_-20px_rgba(0,0,0,0.5)] md:p-10">
                         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
                             <InfoItem
-                                label="TAX YEAR"
+                                label="Tax year"
                                 value={taxData?.currentTaxYear}
                             />
-
                             <InfoItem
-                                label="COUNTY"
+                                label="County"
                                 value={hasCounty ? taxData.county : null}
                             />
-
                             <InfoItem
-                                label="TAX AUTHORITY"
-                                value={
-                                    hasTaxAuthority ? taxData.taxAuthority : null
-                                }
+                                label="Tax authority"
+                                value={hasTaxAuthority ? taxData.taxAuthority : null}
                             />
-
                             <InfoItem
-                                label="LAST PAYMENT"
+                                label="Last payment"
                                 value={
                                     hasLastPayment ? taxData.lastPaymentDate : null
                                 }
                             />
-
                             <InfoItem
-                                label="NEXT DUE DATE"
+                                label="Next due date"
                                 value={hasNextDueDate ? taxData.nextDueDate : null}
                             />
-
                             <InfoItem
-                                label="TOTAL HISTORICAL TAX"
+                                label="Total historical tax"
                                 value={
                                     records.length > 0
                                         ? formatCurrency(totalTax)
                                         : null
                                 }
                             />
-
                             <InfoItem
-                                label="AVERAGE ANNUAL TAX"
+                                label="Average annual tax"
                                 value={
                                     records.length > 0
                                         ? formatCurrency(averageTax)
                                         : null
                                 }
                             />
-
                             <InfoItem
-                                label="CURRENT CHANGE"
+                                label="Current change"
                                 value={
                                     records.length > 0
                                         ? `${taxChange >= 0 ? '+' : ''}${taxChange}%`
@@ -554,7 +535,7 @@ export default function TaxHistoryPage() {
                                 }
                                 valueClassName={
                                     taxChange >= 0
-                                        ? 'text-orange-300'
+                                        ? 'text-[#E0563F]'
                                         : 'text-emerald-300'
                                 }
                             />
@@ -563,16 +544,16 @@ export default function TaxHistoryPage() {
                 </div>
             </section>
 
-            {/* TAX TREND */}
+            {/* Tax trend */}
             <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
-                    <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
-                        TAX TREND
+                    <p className="mb-6 text-sm font-semibold text-[#D174D2]">
+                        Tax trend
                     </p>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
+                    <div className="rounded-2xl border border-white/20 bg-white/[0.09] p-8 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl transition duration-300 hover:shadow-[0_0_35px_rgba(43,23,64,0.75),0_20px_60px_-20px_rgba(0,0,0,0.5)] md:p-10">
                         {records.length === 0 ? (
-                            <p className="text-sm text-white/40">
+                            <p className="text-sm text-white/70">
                                 No tax trend data is available.
                             </p>
                         ) : (
@@ -586,21 +567,19 @@ export default function TaxHistoryPage() {
                                     return (
                                         <div key={record.year}>
                                             <div className="mb-3 flex justify-between gap-4 text-sm">
-                                                <span className="text-white/50">
+                                                <span className="text-white/70">
                                                     {record.year}
                                                 </span>
-
-                                                <span className="text-white/80">
+                                                <span className="font-semibold text-white">
                                                     {formatCurrency(record.taxAmount)}
                                                 </span>
                                             </div>
 
-                                            <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                                            <div className="h-2 overflow-hidden rounded-full bg-white/15">
                                                 <div
-                                                    className="h-full rounded-full bg-orange-400"
+                                                    className="h-full rounded-full bg-[#E0563F]"
                                                     style={{
-                                                        width: `${(record.taxAmount / maxTax) * 100
-                                                            }%`,
+                                                        width: `${(record.taxAmount / maxTax) * 100}%`,
                                                     }}
                                                 />
                                             </div>
@@ -613,28 +592,26 @@ export default function TaxHistoryPage() {
                 </div>
             </section>
 
-            {/* HISTORICAL TAX RECORDS */}
+            {/* Historical tax records */}
             <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
-                    <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
-                        HISTORICAL TAX RECORDS
+                    <p className="mb-6 text-sm font-semibold text-[#D174D2]">
+                        Historical tax records
                     </p>
 
-                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+                    <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/[0.09] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl transition duration-300 hover:shadow-[0_0_35px_rgba(43,23,64,0.75),0_20px_60px_-20px_rgba(0,0,0,0.5)]">
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[500px] text-left">
-                                <thead className="border-b border-white/10 bg-white/[0.02]">
+                                <thead className="border-b border-white/20 bg-white/[0.05]">
                                     <tr>
-                                        <th className="px-6 py-5 text-xs font-medium tracking-wider text-white/30 md:px-8">
-                                            Tax Year
+                                        <th className="px-6 py-5 text-sm font-semibold text-white/75 md:px-8">
+                                            Tax year
                                         </th>
-
-                                        <th className="px-6 py-5 text-xs font-medium tracking-wider text-white/30 md:px-8">
-                                            Tax Amount
+                                        <th className="px-6 py-5 text-sm font-semibold text-white/75 md:px-8">
+                                            Tax amount
                                         </th>
-
                                         {hasStatus && (
-                                            <th className="px-6 py-5 text-xs font-medium tracking-wider text-white/30 md:px-8">
+                                            <th className="px-6 py-5 text-sm font-semibold text-white/75 md:px-8">
                                                 Status
                                             </th>
                                         )}
@@ -646,7 +623,7 @@ export default function TaxHistoryPage() {
                                         <tr>
                                             <td
                                                 colSpan={hasStatus ? 3 : 2}
-                                                className="px-6 py-8 text-sm text-white/40 md:px-8"
+                                                className="px-6 py-8 text-sm text-white/70 md:px-8"
                                             >
                                                 No tax history records were returned by the
                                                 backend for this property.
@@ -656,24 +633,26 @@ export default function TaxHistoryPage() {
                                         records.map((record) => (
                                             <tr
                                                 key={record.year}
-                                                className="border-b border-white/[0.06] last:border-b-0"
+                                                className="border-b border-white/10 last:border-b-0"
                                             >
-                                                <td className="px-6 py-6 text-sm text-white/70 md:px-8">
+                                                <td className="px-6 py-6 text-sm text-white md:px-8">
                                                     {record.year}
                                                 </td>
-
-                                                <td className="px-6 py-6 text-sm font-medium text-white/80 md:px-8">
+                                                <td className="px-6 py-6 text-sm font-semibold text-white md:px-8">
                                                     {formatCurrency(record.taxAmount)}
                                                 </td>
-
                                                 {hasStatus && (
                                                     <td className="px-6 py-6 md:px-8">
                                                         {isAvailable(record.status) ? (
-                                                            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/[0.04] px-3 py-1.5 text-xs text-emerald-300/75">
-                                                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                                            <span className="inline-flex items-center gap-2 rounded-full border border-[#D174D2]/40 bg-[#D174D2]/10 px-3 py-1.5 text-xs text-white">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-[#D174D2]" />
                                                                 {record.status}
                                                             </span>
-                                                        ) : null}
+                                                        ) : (
+                                                            <span className="text-sm text-white/50">
+                                                                Not available
+                                                            </span>
+                                                        )}
                                                     </td>
                                                 )}
                                             </tr>
@@ -686,64 +665,58 @@ export default function TaxHistoryPage() {
                 </div>
             </section>
 
-            {/* PAYMENT INFORMATION */}
+            {/* Payment information */}
             {paymentInformationCount > 0 && (
                 <section className="px-6 pb-16 sm:px-10 md:px-16 lg:px-24">
                     <div className="mx-auto max-w-[1400px]">
-                        <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-white/30">
-                            PAYMENT INFORMATION
+                        <p className="mb-6 text-sm font-semibold text-[#D174D2]">
+                            Payment information
                         </p>
 
                         <div
-                            className={`grid gap-px overflow-hidden border border-white/10 bg-white/10 ${paymentInformationCount === 2
+                            className={`grid gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/20 ${paymentInformationCount === 2
                                     ? 'md:grid-cols-2'
                                     : 'md:grid-cols-1'
                                 }`}
                         >
                             {hasLastPayment && (
-                                <div className="bg-[#101010] p-8 md:p-10">
+                                <div className="bg-[#341D47] p-8 md:p-10">
                                     <div className="flex items-center gap-3">
                                         <CalendarDays
                                             size={20}
-                                            className="text-white/40"
+                                            className="text-[#D174D2]"
                                         />
-
-                                        <p className="text-xs tracking-[0.25em] text-white/25">
-                                            LAST PAYMENT
+                                        <p className="text-sm font-semibold text-[#D174D2]">
+                                            Last payment
                                         </p>
                                     </div>
-
-                                    <p className="mt-5 text-2xl font-light text-white/80">
+                                    <p className="mt-5 text-2xl font-bold text-white">
                                         {taxData.lastPaymentDate}
                                     </p>
-
-                                    <p className="mt-3 text-sm leading-7 text-white/35">
-                                        Payment information is displayed from the
-                                        backend property record.
+                                    <p className="mt-3 text-sm leading-7 text-white/70">
+                                        Payment information is displayed from the backend
+                                        property record.
                                     </p>
                                 </div>
                             )}
 
                             {hasNextDueDate && (
-                                <div className="bg-[#101010] p-8 md:p-10">
+                                <div className="bg-[#341D47] p-8 md:p-10">
                                     <div className="flex items-center gap-3">
                                         <CalendarDays
                                             size={20}
-                                            className="text-white/40"
+                                            className="text-[#D174D2]"
                                         />
-
-                                        <p className="text-xs tracking-[0.25em] text-white/25">
-                                            NEXT DUE DATE
+                                        <p className="text-sm font-semibold text-[#D174D2]">
+                                            Next due date
                                         </p>
                                     </div>
-
-                                    <p className="mt-5 text-2xl font-light text-white/80">
+                                    <p className="mt-5 text-2xl font-bold text-white">
                                         {taxData.nextDueDate}
                                     </p>
-
-                                    <p className="mt-3 text-sm leading-7 text-white/35">
-                                        The next due date is displayed when provided
-                                        by the backend.
+                                    <p className="mt-3 text-sm leading-7 text-white/70">
+                                        The next due date is displayed when provided by
+                                        the backend.
                                     </p>
                                 </div>
                             )}
@@ -752,19 +725,22 @@ export default function TaxHistoryPage() {
                 </section>
             )}
 
-            {/* NEXT RESEARCH STAGE */}
+            {/* Next research stage */}
             <section className="px-6 pb-32 sm:px-10 md:px-16 lg:px-24">
                 <div className="mx-auto max-w-[1400px]">
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 md:p-10">
-                        <p className="text-xs font-semibold tracking-[0.3em] text-white/25">
-                            NEXT RESEARCH STAGE
+                    <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-[#3F567F]/80 via-[#412653]/80 to-[#2B1740]/90 p-8 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)] transition duration-300 hover:shadow-[0_0_35px_rgba(43,23,64,0.75),0_20px_60px_-20px_rgba(0,0,0,0.5)] md:p-12 lg:p-14">
+                        <p className="text-sm font-semibold text-[#D174D2]">
+                            Next research stage
                         </p>
 
-                        <h2 className="mt-4 text-3xl font-light text-white/80">
-                            Zoning Information
+                        <h2
+                            className="mt-4 text-3xl font-extrabold text-white md:text-5xl"
+                            style={{ fontFamily: DISPLAY_FONT }}
+                        >
+                            Zoning information
                         </h2>
 
-                        <p className="mt-3 max-w-2xl text-sm leading-7 text-white/35">
+                        <p className="mt-5 max-w-2xl text-base leading-8 text-white/80 md:text-lg">
                             Review the property&apos;s zoning classification,
                             permitted use, development rules, and zoning authority
                             information.
@@ -773,7 +749,7 @@ export default function TaxHistoryPage() {
                         <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
                             <Link
                                 href="/zoning"
-                                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 px-7 py-4 text-sm font-medium text-white transition duration-300 hover:bg-white hover:text-black"
+                                className="inline-flex items-center justify-center gap-3 rounded-full bg-[#E0563F] px-8 py-4 text-sm font-bold text-white shadow-[0_10px_30px_-8px_rgba(224,86,63,0.7)] transition duration-200 hover:bg-[#c94a34] focus-visible:ring-4 focus-visible:ring-white/40"
                             >
                                 View Zoning Information
                                 <ArrowRight size={16} />
@@ -781,7 +757,7 @@ export default function TaxHistoryPage() {
 
                             <Link
                                 href="/property-search"
-                                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/10 px-7 py-4 text-sm font-medium text-white/50 transition duration-300 hover:border-white/20 hover:bg-white/[0.04] hover:text-white"
+                                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/50 bg-white/10 px-8 py-4 text-sm font-semibold text-white transition duration-200 hover:bg-white hover:text-[#412653] focus-visible:ring-4 focus-visible:ring-[#D174D2]/50"
                             >
                                 Property Search
                                 <ArrowLeft size={16} />
@@ -791,11 +767,11 @@ export default function TaxHistoryPage() {
                 </div>
             </section>
 
-            {/* FOOTER */}
-            <footer className="border-t border-white/10 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
-                <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs text-white/25 md:flex-row">
+            {/* Footer */}
+            <footer className="border-t border-white/15 bg-[#2B1740]/60 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
+                <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs font-medium text-white/60 md:flex-row">
                     <span>PROP DUE</span>
-                    <span>PROPERTY TAX HISTORY</span>
+                    <span>Property tax history</span>
                 </div>
             </footer>
         </main>
