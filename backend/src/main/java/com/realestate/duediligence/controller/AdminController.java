@@ -1,28 +1,24 @@
 package com.realestate.duediligence.controller;
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-
+import com.realestate.duediligence.dto.DashboardStatsResponse;
+import com.realestate.duediligence.dto.UserSummaryResponse;
+import com.realestate.duediligence.entity.AuditLog;
+import com.realestate.duediligence.repository.AuditLogRepository;
+import com.realestate.duediligence.repository.PropertyRepository;
+import com.realestate.duediligence.repository.UserRepository;
+import com.realestate.duediligence.service.PropertyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.realestate.duediligence.dto.DashboardStatsResponse;
-import com.realestate.duediligence.entity.AuditLog;
-import com.realestate.duediligence.entity.Property;
-import com.realestate.duediligence.entity.RiskLevel;
-import com.realestate.duediligence.repository.AuditLogRepository;
-import com.realestate.duediligence.repository.PropertyRepository;
-import com.realestate.duediligence.repository.UserRepository;
-import com.realestate.duediligence.service.PropertyService;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Admin-only endpoints — matches our api-contract.md's /api/admin/* paths
- * planned back in Milestone 1. Class-level @PreAuthorize means every endpoint
- * here requires the ADMINISTRATOR role automatically.
+ * Admin-only endpoints. The class-level @PreAuthorize means every
+ * endpoint here requires the ADMINISTRATOR role.
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -44,14 +40,21 @@ public class AdminController {
 
 	@GetMapping("/audit-logs")
 	public ResponseEntity<List<AuditLog>> getAuditLogs() {
-		List<AuditLog> logs = auditLogRepository.findAllByOrderByTimestampDesc();
-		return ResponseEntity.ok(logs);
+		return ResponseEntity.ok(auditLogRepository.findAllByOrderByTimestampDesc());
+	}
+
+	@GetMapping("/users")
+	public ResponseEntity<List<UserSummaryResponse>> getUsers() {
+		List<UserSummaryResponse> users = userRepository.findAll().stream()
+				.map(u -> new UserSummaryResponse(u.getId(), u.getFullName(), u.getEmail(), u.getRole()))
+				.toList();
+		return ResponseEntity.ok(users);
 	}
 
 	/**
-	 * Returns aggregate platform statistics for the admin dashboard: total users,
-	 * properties, reports generated, risk level distribution across all properties,
-	 * and total audit events.
+	 * Aggregate platform statistics. Every figure is computed in the
+	 * database or with a fixed number of bulk queries, so the cost does
+	 * not grow with the number of properties or audit entries.
 	 */
 	@GetMapping("/dashboard")
 	public ResponseEntity<DashboardStatsResponse> getDashboardStats() {
@@ -60,33 +63,12 @@ public class AdminController {
 		long totalProperties = propertyRepository.count();
 		long totalAuditEvents = auditLogRepository.count();
 
-		long totalReportsGenerated = auditLogRepository.findAllByOrderByTimestampDesc().stream()
-				.filter(log -> log.getAction().equals("REPORT_GENERATED_PDF")
-						|| log.getAction().equals("REPORT_GENERATED_EXCEL"))
-				.count();
+		long totalReportsGenerated = auditLogRepository.countByActionIn(
+				List.of("REPORT_GENERATED_PDF", "REPORT_GENERATED_EXCEL"));
 
-//		Map<String, Long> riskLevelDistribution = new EnumMap<>(RiskLevel.class).entrySet().stream()
-//				.collect(java.util.stream.Collectors.toMap(e -> e.getKey().toString(), e -> 0L, (a, b) -> a,
-//						java.util.LinkedHashMap::new));
-		// Initialize all three levels at zero so the response always shows
-		// LOW/MEDIUM/HIGH even if none exist yet.
-		Map<String, Long> riskLevelDistribution = new java.util.LinkedHashMap<>();
-		riskLevelDistribution.put("LOW", 0L);
-		riskLevelDistribution.put("MEDIUM", 0L);
-		riskLevelDistribution.put("HIGH", 0L);
+		Map<String, Long> riskLevelDistribution = propertyService.getRiskLevelDistribution();
 
-		List<Property> allProperties = propertyRepository.findAll();
-		for (Property property : allProperties) {
-			try {
-				RiskLevel level = propertyService.getRiskAssessment(property.getId()).getOverallRiskLevel();
-				riskLevelDistribution.merge(level.toString(), 1L, Long::sum);
-			} catch (Exception ignored) {
-				// Skip properties that somehow fail risk assessment rather than
-				// failing the whole dashboard for one bad record.
-			}
-		}
-
-		return ResponseEntity.ok(new DashboardStatsResponse(totalUsers, totalProperties, totalReportsGenerated,
-				riskLevelDistribution, totalAuditEvents));
+		return ResponseEntity.ok(new DashboardStatsResponse(
+				totalUsers, totalProperties, totalReportsGenerated, riskLevelDistribution, totalAuditEvents));
 	}
 }

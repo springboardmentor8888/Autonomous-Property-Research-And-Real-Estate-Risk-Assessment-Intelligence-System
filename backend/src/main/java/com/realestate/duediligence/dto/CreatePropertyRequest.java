@@ -1,16 +1,16 @@
 package com.realestate.duediligence.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-/**
- * Request body for creating a new property from a raw address.
- * The address will be validated (via Geoapify) before being saved.
- */
 @Data
 public class CreatePropertyRequest {
 
-    private String address;
+	@NotBlank(message = "Address is required")
+	@Size(min = 8, max = 255, message = "Address must be 8 to 255 characters")
+	private String address;
 
-    // Optional — defaults to RESIDENTIAL if not provided.
-    private String propertyType;
+	// Optional: defaults to RESIDENTIAL in PropertyService when blank.
+	private String propertyType;
 }

@@ -6,6 +6,9 @@ import com.realestate.duediligence.service.AuditService;
 import com.realestate.duediligence.service.NotificationService;
 import com.realestate.duediligence.service.PropertyService;
 import com.realestate.duediligence.service.ReportService;
+import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -20,6 +23,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/properties")
 public class PropertyController {
+
+	private static final Logger log = LoggerFactory.getLogger(PropertyController.class);
 
 	private final PropertyService propertyService;
 	private final ReportService reportService;
@@ -38,14 +43,13 @@ public class PropertyController {
 
 	@GetMapping("/search")
 	public ResponseEntity<List<Property>> search(@RequestParam String address) {
-		List<Property> results = propertyService.searchByAddress(address);
-		return ResponseEntity.ok(results);
+		return ResponseEntity.ok(propertyService.searchByAddress(address));
 	}
 
 	@PostMapping("/validate-address")
-	public ResponseEntity<AddressValidationResponse> validateAddress(@RequestBody AddressValidationRequest request) {
-		AddressValidationResponse response = propertyService.validateAddress(request.getAddress());
-		return ResponseEntity.ok(response);
+	public ResponseEntity<AddressValidationResponse> validateAddress(
+			@Valid @RequestBody AddressValidationRequest request) {
+		return ResponseEntity.ok(propertyService.validateAddress(request.getAddress()));
 	}
 
 	@GetMapping("/admin-check")
@@ -57,32 +61,27 @@ public class PropertyController {
 	// ---------- MILESTONE 2 ----------
 
 	@PostMapping
-	public ResponseEntity<Property> createProperty(@RequestBody CreatePropertyRequest request) {
+	public ResponseEntity<Property> createProperty(@Valid @RequestBody CreatePropertyRequest request) {
 		Property property = propertyService.createProperty(request.getAddress(), request.getPropertyType());
-
-		auditService.log(currentUserEmail(), "CREATE_PROPERTY", "propertyId=" + property.getId());
-
+		recordAudit("CREATE_PROPERTY", "propertyId=" + property.getId());
 		return ResponseEntity.status(HttpStatus.CREATED).body(property);
 	}
 
 	@GetMapping("/{id}")
 	public ResponseEntity<PropertyDetailsResponse> getPropertyDetails(@PathVariable Long id) {
-		PropertyDetailsResponse response = propertyService.getPropertyDetails(id);
-		return ResponseEntity.ok(response);
+		return ResponseEntity.ok(propertyService.getPropertyDetails(id));
 	}
 
 	// ---------- MILESTONE 3 ----------
 
 	@GetMapping("/{id}/risk-assessment")
 	public ResponseEntity<RiskAssessmentResponse> getRiskAssessment(@PathVariable Long id) {
-		RiskAssessmentResponse response = propertyService.getRiskAssessment(id);
-		return ResponseEntity.ok(response);
+		return ResponseEntity.ok(propertyService.getRiskAssessment(id));
 	}
 
 	@GetMapping("/{id}/comparables")
 	public ResponseEntity<List<ComparablePropertyResponse>> getComparables(@PathVariable Long id) {
-		List<ComparablePropertyResponse> response = propertyService.getComparables(id);
-		return ResponseEntity.ok(response);
+		return ResponseEntity.ok(propertyService.getComparables(id));
 	}
 
 	@GetMapping("/{id}/report/pdf")
@@ -91,12 +90,13 @@ public class PropertyController {
 		RiskAssessmentResponse risk = propertyService.getRiskAssessment(id);
 		byte[] pdfBytes = reportService.generatePdfReport(details, risk);
 
-		notifyReportReady(id, details.getAddress());
-		auditService.log(currentUserEmail(), "REPORT_GENERATED_PDF", "propertyId=" + id);
+		sendReportEmail(id, details.getAddress());
+		recordAudit("REPORT_GENERATED_PDF", "propertyId=" + id);
 
-		return ResponseEntity
-				.ok().contentType(MediaType.APPLICATION_PDF).header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition
-						.attachment().filename("due-diligence-report-" + id + ".pdf").build().toString())
+		return ResponseEntity.ok()
+				.contentType(MediaType.APPLICATION_PDF)
+				.header(HttpHeaders.CONTENT_DISPOSITION,
+						ContentDisposition.attachment().filename("due-diligence-report-" + id + ".pdf").build().toString())
 				.body(pdfBytes);
 	}
 
@@ -106,20 +106,30 @@ public class PropertyController {
 		RiskAssessmentResponse risk = propertyService.getRiskAssessment(id);
 		byte[] excelBytes = reportService.generateExcelReport(details, risk);
 
-		notifyReportReady(id, details.getAddress());
-		auditService.log(currentUserEmail(), "REPORT_GENERATED_EXCEL", "propertyId=" + id);
+		sendReportEmail(id, details.getAddress());
+		recordAudit("REPORT_GENERATED_EXCEL", "propertyId=" + id);
 
 		return ResponseEntity.ok()
-				.contentType(
-						MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-				.header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-						.filename("due-diligence-report-" + id + ".xlsx").build().toString())
+				.contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+				.header(HttpHeaders.CONTENT_DISPOSITION,
+						ContentDisposition.attachment().filename("due-diligence-report-" + id + ".xlsx").build().toString())
 				.body(excelBytes);
 	}
 
-	private void notifyReportReady(Long propertyId, String propertyAddress) {
-		String userEmail = currentUserEmail();
-		notificationService.sendReportReadyNotification(userEmail, propertyId, propertyAddress);
+	private void sendReportEmail(Long propertyId, String propertyAddress) {
+		try {
+			notificationService.sendReportReadyNotification(currentUserEmail(), propertyId, propertyAddress);
+		} catch (Exception e) {
+			log.warn("Report email could not be sent for property {}: {}", propertyId, e.getMessage());
+		}
+	}
+
+	private void recordAudit(String action, String details) {
+		try {
+			auditService.log(currentUserEmail(), action, details);
+		} catch (Exception e) {
+			log.warn("Audit entry '{}' could not be saved: {}", action, e.getMessage());
+		}
 	}
 
 	private String currentUserEmail() {

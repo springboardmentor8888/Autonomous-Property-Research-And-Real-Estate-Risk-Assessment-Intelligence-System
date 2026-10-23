@@ -1,36 +1,13 @@
 package com.realestate.duediligence.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-/**
- * Data Transfer Object (DTO) used to receive an address
- * from the client when requesting address validation.
- *
- * DTOs are used to transfer data between the client and
- * the application without directly exposing entity classes.
- *
- * Example JSON request:
- *
- * {
- *     "address": "Kukatpally, Hyderabad, Telangana"
- * }
- */
 @Data
 public class AddressValidationRequest {
 
-    /*
-     * Stores the address received from the client.
-     *
-     * Lombok's @Data automatically generates:
-     * - Getter: getAddress()
-     * - Setter: setAddress()
-     * - toString()
-     * - equals()
-     * - hashCode()
-     *
-     * This allows the controller to use:
-     *
-     * request.getAddress()
-     */
-    private String address;
+	@NotBlank(message = "Address is required")
+	@Size(min = 8, max = 255, message = "Address must be 8 to 255 characters")
+	private String address;
 }
