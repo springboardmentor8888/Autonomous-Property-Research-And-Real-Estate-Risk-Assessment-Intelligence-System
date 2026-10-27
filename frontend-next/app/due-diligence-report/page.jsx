@@ -1377,12 +1377,23 @@ export default function DueDiligenceReportPage() {
                         </div>
                     </div>
                 </section>
-                <footer className="border-t border-white/15 bg-[#2B1740]/60 px-6 py-10 sm:px-10 md:px-16 lg:px-24">
-                    <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-4 text-xs font-medium text-white/60 md:flex-row">
-                        <span>PROP DUE</span>
-                        <span>Property due diligence platform</span>
-                    </div>
-                </footer>
+               
+{/* FOOTER */}
+<footer className="border-t border-white/15 bg-transparent px-6 py-8 sm:px-10 md:px-16 lg:px-24">
+  <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-3 text-xs font-semibold text-white/60 sm:flex-row sm:items-center">
+    <span
+      className="text-sm font-extrabold tracking-[0.18em] text-white"
+      style={{ fontFamily: DISPLAY_FONT }}
+    >
+      PROP<span className="text-[#D174D2]">DUE</span>
+    </span>
+
+    <span className="tracking-wide">
+      AUTONOMOUS PROPERTY RISK INTELLIGENCE
+    </span>
+  </div>
+</footer>
+
             </main>
 
             {/* PRINT STYLES */}
