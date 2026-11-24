@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-const BASE_URL = '/api'
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 const MAX_RECENT_PROPERTIES = 20
 
 /*

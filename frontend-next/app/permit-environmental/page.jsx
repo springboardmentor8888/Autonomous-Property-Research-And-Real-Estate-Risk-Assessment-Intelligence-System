@@ -7,7 +7,7 @@ import {
     ArrowRight,
 } from 'lucide-react'
 
-const BASE_URL = 'http://localhost:8080/api'
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"; 
 const DISPLAY_FONT = "'Syne', 'Arial Black', system-ui, sans-serif"
 const BODY_FONT =
     "'Red Hat Display', system-ui, -apple-system, 'Segoe UI', sans-serif"
