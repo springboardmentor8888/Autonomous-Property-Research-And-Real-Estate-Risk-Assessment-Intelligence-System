@@ -4,13 +4,6 @@
 
 Infosys Springboard Virtual Internship project (Team Two). A user enters a property address. The platform validates it, gathers ownership, tax, zoning, flood, permit, environmental and utility information, calculates a risk score, and produces a downloadable PDF or Excel report.
 
-| | |
-|---|---|
-| **Live application** | `<your-vercel-url>` |
-| **API documentation (Swagger UI)** | `[<your-render-url>/swagger-ui.html](http://localhost:8080/swagger-ui.html)` |
-| **Postman collection** | `docs/postman/` |
-| **Database ER diagram** | see [Database](#database), also `docs/er-diagram.png` |
-
 > The backend is on a free host and sleeps after about 15 idle minutes. The first request can take 30 to 50 seconds. Open `<your-render-url>/api/health` a minute before using the app.
 
 ---
