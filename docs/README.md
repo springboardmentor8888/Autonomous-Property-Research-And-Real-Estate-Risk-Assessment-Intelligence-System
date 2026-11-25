@@ -7,7 +7,7 @@ Infosys Springboard Virtual Internship project (Team Two). A user enters a prope
 | | |
 |---|---|
 | **Live application** | `<your-vercel-url>` |
-| **API documentation (Swagger UI)** | `<your-render-url>/swagger-ui.html` |
+| **API documentation (Swagger UI)** | `[<your-render-url>/swagger-ui.html](http://localhost:8080/swagger-ui.html)` |
 | **Postman collection** | `docs/postman/` |
 | **Database ER diagram** | see [Database](#database), also `docs/er-diagram.png` |
 
